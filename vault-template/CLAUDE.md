@@ -60,6 +60,7 @@ One sentence on what was decided or discussed. #meeting
 - When: 2026-11-21 10:00–10:30
 - With: [[Mara Quill]], [[Tobias Fenn]]
 - About: [[Larkspur rollout]]
+- Source: https://docs.example.com/document/d/weekly-sync
 
 ## Summary
 
@@ -69,11 +70,15 @@ One sentence on what was decided or discussed. #meeting
 
 - [[Mara Quill]] sends the revised plan by Friday.
 
+## Notes
+
 ## Transcript
 ```
 
-Leave out a section that has nothing in it. The transcript, when there is
-one, goes last so a reader can stop before it.
+Leave out a line or a section that has nothing in it. `Source` is where the
+notes came from, when there is a link. `Notes` holds the detail behind the
+summary. The transcript, when there is one, goes last so a reader can stop
+before it.
 
 ## Rules for writing here
 
