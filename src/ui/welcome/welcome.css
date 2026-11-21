@@ -25,5 +25,6 @@
 
 .welcome-hint code {
   font-family: var(--font-mono);
+  -webkit-user-select: all;
   user-select: all;
 }

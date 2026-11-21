@@ -11,9 +11,14 @@ import type { OpenIn } from '../panes/layout.ts';
 import type { EditorBridge } from './bridge.ts';
 import { linkAt, noteSpans, tagAt } from './note-spans.ts';
 
-const linkMark = Decoration.mark({ class: 'cm-link-pill' });
-const ghostLinkMark = Decoration.mark({ class: 'cm-link-pill is-unresolved' });
-const tagMark = Decoration.mark({ class: 'cm-tag-pill' });
+// A note's name or a tag is not prose: no spelling underline under it.
+const notProse = { spellcheck: 'false' };
+const linkMark = Decoration.mark({ class: 'cm-link-pill', attributes: notProse });
+const ghostLinkMark = Decoration.mark({
+  class: 'cm-link-pill is-unresolved',
+  attributes: notProse,
+});
+const tagMark = Decoration.mark({ class: 'cm-tag-pill', attributes: notProse });
 
 function pillsOf(view: EditorView, bridge: EditorBridge): DecorationSet {
   const { links, tags } = view.state.field(noteSpans);

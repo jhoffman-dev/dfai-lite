@@ -30,6 +30,12 @@ trash = { version = "5.4.0", default-features = false }
 # in the tree under tauri; this only makes it a direct dependency.
 libc = "0.2.191"
 
+# Turning off macOS's smart quotes and dashes in the web view (text_input.rs).
+# Already in the tree under wry, at these versions.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSDictionary", "NSString", "NSUserDefaults", "NSValue"] }
+
 # No debug info for dependencies: the target folder is GBs, and the disk is small.
 [profile.dev]
 debug = "line-tables-only"

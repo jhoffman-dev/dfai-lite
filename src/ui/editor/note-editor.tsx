@@ -32,7 +32,14 @@ function editorState(text: string, { bridge, typed }: Hooks, cursor: number | nu
       markdown({ base: markdownLanguage }),
       markdownStyle(),
       EditorView.lineWrapping,
-      EditorView.contentAttributes.of({ 'aria-label': 'Note text', spellcheck: 'true' }),
+      // Spelling is underlined but never changed as you type: a corrected
+      // word, like a smart quote, would change the markdown in the file.
+      EditorView.contentAttributes.of({
+        'aria-label': 'Note text',
+        spellcheck: 'true',
+        autocorrect: 'off',
+        autocapitalize: 'off',
+      }),
       placeholder('Start typing…'),
       highlightSelectionMatches(),
       linkPills(bridge),

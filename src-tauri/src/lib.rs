@@ -7,12 +7,15 @@ mod git;
 mod menu;
 mod paths;
 mod settings;
+mod text_input;
 mod vault;
 mod watcher;
 
 use std::sync::{Mutex, MutexGuard};
 
 pub fn run() {
+    // Before any web view exists: WebKit reads these once, on first use.
+    text_input::turn_off_substitutions();
     tauri::Builder::default()
         .menu(menu::build)
         .on_menu_event(menu::on_event)
