@@ -22,6 +22,19 @@ export class FileChangedError extends Error {
   override readonly name = 'FileChangedError';
 }
 
+/** The Trash would not take the file. Nothing was deleted; deleting for good is the person's call. */
+export class TrashRefusedError extends Error {
+  override readonly name = 'TrashRefusedError';
+}
+
+/** What `git add --all` must not be given. */
+export interface Unsyncable {
+  /** Files over GitHub's 100 MB limit: a push holding one is refused, every time. */
+  readonly tooLarge: readonly VaultPath[];
+  /** Folders that are git repositories of their own. */
+  readonly nestedRepos: readonly VaultPath[];
+}
+
 /** A file is already at the path a create or a move wanted. */
 export class FileExistsError extends Error {
   override readonly name = 'FileExistsError';
@@ -49,8 +62,26 @@ export interface VaultFiles {
   }): Promise<void>;
   /** Moves a file, never over another ({@link FileExistsError}); a change of case alone is allowed. */
   rename(from: VaultPath, to: VaultPath): Promise<void>;
-  /** Moves the file to the Trash (deletes it where there is none). */
-  remove(path: VaultPath): Promise<void>;
+  /**
+   * Moves the file to the Trash, or deletes it for good when `permanently`,
+   * only while it holds `expected` (null: whatever it holds). Rejects with
+   * {@link FileChangedError}, or {@link TrashRefusedError} when the Trash
+   * would not take it.
+   */
+  remove(request: {
+    readonly path: VaultPath;
+    readonly expected: string | null;
+    readonly permanently: boolean;
+  }): Promise<void>;
+  /** The vault's top `.gitignore`, or null; the one dot file the app writes. */
+  readIgnoreFile(): Promise<string | null>;
+  /** Writes the `.gitignore` with the same guard as {@link write}. */
+  writeIgnoreFile(request: {
+    readonly text: string;
+    readonly expected: string | null;
+  }): Promise<void>;
+  /** Files and folders `git add --all` must not be given. */
+  findUnsyncable(): Promise<Unsyncable>;
   /**
    * Hears files change on disk, whoever changed them, in batches once the
    * vault is quiet; never git's own files. Returns the way to stop.

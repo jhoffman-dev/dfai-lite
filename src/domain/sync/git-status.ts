@@ -27,6 +27,8 @@ export interface GitStatus {
   readonly behind: number | null;
   /** Every changed or new path that is not in conflict, sorted. */
   readonly changed: readonly VaultPath[];
+  /** The tracked paths among them that are gone from the folder (or staged as gone), sorted. */
+  readonly deleted: readonly VaultPath[];
   readonly conflicts: readonly GitConflict[];
 }
 
@@ -60,9 +62,11 @@ export function parseGitStatus(output: string): GitStatus {
     ahead: null,
     behind: null,
     changed: [],
+    deleted: [],
     conflicts: [],
   };
   const changed: VaultPath[] = [];
+  const deleted: VaultPath[] = [];
   const conflicts: GitConflict[] = [];
   const entries = output.split('\0');
   for (let at = 0; at < entries.length; at += 1) {
@@ -72,12 +76,15 @@ export function parseGitStatus(output: string): GitStatus {
     else if (kind === 'u') {
       conflicts.push({ path: afterFields(entry, 10), code: entry.slice(2, 4) });
     } else if (FIELDS_BEFORE_PATH[kind] !== undefined) {
-      changed.push(afterFields(entry, FIELDS_BEFORE_PATH[kind]));
+      const path = afterFields(entry, FIELDS_BEFORE_PATH[kind]);
+      changed.push(path);
+      if (kind === '1' && entry.slice(2, 4).includes('D')) deleted.push(path);
       // A rename's old path is the next entry: it changed too (it is gone).
       if (kind === '2') changed.push(entries[(at += 1)] ?? '');
     }
   }
   status.changed = [...new Set(changed)].filter(Boolean).sort();
+  status.deleted = deleted.sort();
   status.conflicts = conflicts.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return status;
 }

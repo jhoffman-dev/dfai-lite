@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { open } from '@tauri-apps/plugin-dialog';
+import { ask, open } from '@tauri-apps/plugin-dialog';
 import { register, unregisterAll } from '@tauri-apps/plugin-global-shortcut';
 import type { GitPort, GitResult } from '../../application/index.ts';
 import { hostError } from './vault-files.ts';
@@ -34,6 +34,11 @@ export async function writeSettingsText(text: string): Promise<void> {
 export async function pickFolder(title: string): Promise<string | null> {
   const chosen = await open({ directory: true, multiple: false, title });
   return typeof chosen === 'string' ? chosen : null;
+}
+
+/** Asks a yes-or-no question in the Mac's own alert; true for `yes`. */
+export function askYesNo({ message, yes }: { message: string; yes: string }): Promise<boolean> {
+  return ask(message, { title: 'DFAI Lite', kind: 'warning', okLabel: yes, cancelLabel: 'Cancel' });
 }
 
 /** Brings the window forward from anywhere: minimised, hidden or behind another app. */

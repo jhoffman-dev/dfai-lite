@@ -1,4 +1,4 @@
-import { INDEX_FOLDER, isWithin, noteTitle, type VaultPath } from '../vault/index.ts';
+import { INDEX_FOLDER, isNotePath, isWithin, noteTitle, type VaultPath } from '../vault/index.ts';
 import type { GitConflict } from './git-status.ts';
 
 /** The trailer every commit the app makes ends with, naming the Mac it came from. */
@@ -6,7 +6,8 @@ const FROM = 'From: ';
 
 /**
  * A commit's message: `Notes: <title>` for one note, `Notes: <n> changed`
- * for several, `Notes: index` when only `_index/` changed, then which Mac.
+ * for several, `Notes: index` when only `_index/` changed (`Notes: vault
+ * files` for other files alone, `.gitignore` say), then which Mac.
  */
 export function syncCommitMessage({
   changed,
@@ -15,11 +16,14 @@ export function syncCommitMessage({
   changed: readonly VaultPath[];
   mac: string;
 }): string {
-  const notes = changed.filter((path) => !isWithin(path, INDEX_FOLDER));
+  const notes = changed.filter((path) => isNotePath(path) && !isWithin(path, INDEX_FOLDER));
   const [only] = notes;
+  const indexOnly = changed.every((path) => isWithin(path, INDEX_FOLDER));
   const subject =
     notes.length === 0
-      ? 'Notes: index'
+      ? indexOnly
+        ? 'Notes: index'
+        : 'Notes: vault files'
       : notes.length === 1 && only !== undefined
         ? `Notes: ${noteTitle(only)}`
         : `Notes: ${notes.length} changed`;
@@ -61,14 +65,17 @@ export function conflictStep({ path, code }: GitConflict): ConflictStep {
 /**
  * Why a git run that reached the remote failed, from what git said in
  * English (the host runs it with `LC_ALL=C`). A run stopped at its time
- * limit (`code` null) is unreachable.
+ * limit (`code` null) is unreachable. `locked`: git's `index.lock` is
+ * there, left by another git or by one stopped mid-run.
  */
-export type GitFailureKind = 'auth' | 'unreachable' | 'rejected' | 'error';
+export type GitFailureKind = 'auth' | 'unreachable' | 'rejected' | 'locked' | 'error';
 
 const AUTH =
   /authentication failed|permission denied|could not read username|terminal prompts disabled|returned error: 40[13]|access denied|denied to /i;
 const UNREACHABLE =
   /could not resolve host|unable to access|connection (refused|timed out|reset)|network is unreachable|operation timed out|does not appear to be a git repository|could not read from remote repository|stopped git after/i;
+/** Another git (Terminal, an editor, one stopped mid-run) holds the index: never removed here. */
+const LOCKED = /index\.lock'?: File exists|Another git process seems to be running/i;
 const REJECTED = /\[rejected\]|\[remote rejected\]|fetch first|non-fast-forward/i;
 
 export function gitFailureKind({
@@ -79,6 +86,7 @@ export function gitFailureKind({
   stderr: string;
 }): GitFailureKind {
   if (code === null) return 'unreachable';
+  if (LOCKED.test(stderr)) return 'locked';
   if (REJECTED.test(stderr)) return 'rejected';
   if (AUTH.test(stderr)) return 'auth';
   if (UNREACHABLE.test(stderr)) return 'unreachable';

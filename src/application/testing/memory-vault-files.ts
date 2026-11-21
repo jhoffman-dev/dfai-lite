@@ -2,6 +2,8 @@ import { foldedPath, isTextFile, type VaultPath } from '../../domain/vault/index
 import {
   FileChangedError,
   FileExistsError,
+  TrashRefusedError,
+  type Unsyncable,
   type VaultFiles,
   type VaultSnapshot,
 } from '../ports/index.ts';
@@ -19,6 +21,9 @@ export class MemoryVaultFiles implements VaultFiles {
   private readonly listeners = new Set<(paths: readonly VaultPath[]) => void>();
   /** What was moved to the Trash, newest last. */
   readonly trashed: VaultPath[] = [];
+  /** Set to stand for a Trash that refuses (a volume with none). */
+  trashRefuses = false;
+  private ignoreText: string | null = null;
 
   /** A folder holding these files: `{ path: text }`, and paths of files that are not text. */
   static of(
@@ -85,8 +90,34 @@ export class MemoryVaultFiles implements VaultFiles {
     this.texts.set(to, text);
   }
 
-  async remove(path: VaultPath): Promise<void> {
-    if (this.texts.delete(path) || this.others.delete(path)) this.trashed.push(path);
+  async remove({
+    path,
+    expected,
+    permanently,
+  }: {
+    path: VaultPath;
+    expected: string | null;
+    permanently: boolean;
+  }): Promise<void> {
+    if (expected !== null && this.texts.get(path) !== expected) {
+      throw new FileChangedError(`${path} changed.`);
+    }
+    if (!permanently && this.trashRefuses) throw new TrashRefusedError(`No Trash for ${path}.`);
+    const removed = this.texts.delete(path) || this.others.delete(path);
+    if (removed && !permanently) this.trashed.push(path);
+  }
+
+  async readIgnoreFile(): Promise<string | null> {
+    return this.ignoreText;
+  }
+
+  async writeIgnoreFile({ text, expected }: { text: string; expected: string | null }) {
+    if (this.ignoreText !== expected) throw new FileChangedError('.gitignore changed.');
+    this.ignoreText = text;
+  }
+
+  async findUnsyncable(): Promise<Unsyncable> {
+    return { tooLarge: [], nestedRepos: [] };
   }
 
   watch(listener: (paths: readonly VaultPath[]) => void): () => void {

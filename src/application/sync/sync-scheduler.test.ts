@@ -43,6 +43,7 @@ const SYNCED: SyncResult = {
   pulled: false,
   pushed: false,
   conflicts: [],
+  warnings: [],
 };
 
 function setup(results: SyncResult[] = []) {
@@ -202,5 +203,45 @@ describe('the sync scheduler', () => {
     await scheduler.start();
     expect(scheduler.status()).toMatchObject({ phase: 'error', message: 'bug' });
     expect(timers.scheduled).toBe(1);
+  });
+
+  it('gives up on a sync that never returns, so the next one can run', async () => {
+    const timers = new ManualTimers();
+    let calls = 0;
+    const scheduler = createSyncScheduler({
+      syncNow: () => {
+        calls += 1;
+        return new Promise<SyncResult>(() => undefined);
+      },
+      timers,
+      clock: new FixedClock(),
+      pushDelayMs: 3000,
+      pullEveryMs: 60_000,
+      watchdogMs: 120_000,
+    });
+    void scheduler.wake();
+    await flush();
+    await timers.advance(120_000);
+    expect(scheduler.status()).toMatchObject({
+      phase: 'error',
+      message: expect.stringMatching(/given up/),
+    });
+    void scheduler.wake();
+    await flush();
+    expect(calls).toBe(2);
+  });
+
+  it('shows a sync that waits on the person, with the deletions it asks about', async () => {
+    const { scheduler } = setup([
+      { kind: 'blocked', reason: 'merge-in-progress', message: 'Finish the merge.' },
+      { kind: 'needs-confirmation', deletions: ['a.md', 'b.md'], message: '2 notes are missing.' },
+    ]);
+    await scheduler.wake();
+    expect(scheduler.status()).toMatchObject({ phase: 'blocked', message: 'Finish the merge.' });
+    await scheduler.wake();
+    expect(scheduler.status()).toMatchObject({
+      phase: 'needs-confirmation',
+      deletions: ['a.md', 'b.md'],
+    });
   });
 });

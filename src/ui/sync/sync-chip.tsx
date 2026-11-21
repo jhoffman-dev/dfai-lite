@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { useApp } from '../services.ts';
 import type { SyncControls, SyncStatus } from './sync-status.ts';
 import './sync.css';
 
@@ -20,6 +21,10 @@ export function describeSyncStatus(status: SyncStatus): { label: string; tone: s
       return { label: 'Needs sign-in', tone: 'red' };
     case 'off':
       return { label: 'Sync off', tone: 'gray' };
+    case 'blocked':
+      return { label: 'Sync paused', tone: 'red' };
+    case 'needs-confirmation':
+      return { label: `${status.count} missing`, tone: 'orange' };
     case 'error':
       return { label: 'Sync stopped', tone: 'red' };
     case 'conflicts':
@@ -30,18 +35,38 @@ export function describeSyncStatus(status: SyncStatus): { label: string; tone: s
   }
 }
 
-/** The sidebar footer's chip: where sync stands. Clicking it syncs now. */
+/** Why sync stands where it does, in a sentence, when there is more to say than the label. */
+export function syncStatusDetail(status: SyncStatus): string | null {
+  switch (status.kind) {
+    case 'error':
+    case 'off':
+    case 'blocked':
+    case 'needs-confirmation':
+      return status.message;
+    case 'idle':
+      return status.notice ?? null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The sidebar footer's chip: where sync stands. Clicking it syncs now, or,
+ * when sync waits for a yes, opens Settings where the question is.
+ */
 export function SyncChip({ sync }: { sync: SyncControls }) {
+  const { ui } = useApp();
   const status = useSyncExternalStore(sync.subscribe, sync.getStatus);
   const { label, tone } = describeSyncStatus(status);
+  const asks = status.kind === 'needs-confirmation';
   return (
     <button
       type="button"
       className={`sync-chip tone-${tone}`}
-      aria-label={`Sync status: ${label}. Sync now`}
-      title={status.kind === 'error' || status.kind === 'off' ? status.message : undefined}
+      aria-label={`Sync status: ${label}. ${asks ? 'Open Settings' : 'Sync now'}`}
+      title={syncStatusDetail(status) ?? undefined}
       disabled={status.kind === 'syncing'}
-      onClick={() => sync.syncNow()}
+      onClick={() => (asks ? ui.setState({ settingsOpen: true }) : sync.syncNow())}
     >
       {label}
     </button>

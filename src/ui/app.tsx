@@ -23,7 +23,13 @@ function contextFor(services: AppServices): AppContextValue {
   const deps = { files: services.files, session: services.session };
   const ui = createUiStore({ preview: services.settings.load().ui.preview });
   const vault = createVaultStore(services.session);
-  const actions = createNoteActions({ deps, ui, settings: services.settings });
+  const confirm = services.desktop?.confirm;
+  const actions = createNoteActions({
+    deps,
+    ui,
+    settings: services.settings,
+    ...(confirm === undefined ? {} : { confirm }),
+  });
   return { services, deps, vault, ui, actions };
 }
 

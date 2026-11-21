@@ -1,0 +1,76 @@
+{
+  "comment": "The git argument shapes, shared by src-tauri/src/git.rs and tools/testing/node-git.ts: a test on each side reads this file, so the two cannot drift.",
+  "prefix": [
+    "-c",
+    "core.hooksPath=/dev/null",
+    "-c",
+    "core.fsmonitor=false",
+    "-c",
+    "core.quotePath=false",
+    "-c",
+    "protocol.ext.allow=never",
+    "-c",
+    "color.ui=never",
+    "-c",
+    "commit.gpgSign=false",
+    "-c",
+    "merge.ff=true",
+    "-c",
+    "core.autocrlf=false",
+    "-c",
+    "merge.conflictStyle=merge",
+    "-c",
+    "push.default=upstream",
+    "--literal-pathspecs",
+    "--no-optional-locks"
+  ],
+  "commands": [
+    { "command": { "kind": "isRepo" }, "args": ["rev-parse", "--is-inside-work-tree"] },
+    {
+      "command": { "kind": "status" },
+      "args": ["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"]
+    },
+    { "command": { "kind": "addAll" }, "args": ["add", "--all"] },
+    {
+      "command": { "kind": "commit", "message": "--amend" },
+      "args": ["commit", "--quiet", "--no-verify", "--message=--amend"]
+    },
+    { "command": { "kind": "fetch" }, "args": ["fetch", "--quiet"] },
+    {
+      "command": { "kind": "merge", "message": "Notes: merge" },
+      "args": ["merge", "--no-edit", "--no-stat", "--message=Notes: merge", "@{upstream}"]
+    },
+    { "command": { "kind": "push" }, "args": ["push", "--quiet"] },
+    {
+      "command": { "kind": "refExists", "name": "CHERRY_PICK_HEAD" },
+      "args": ["rev-parse", "-q", "--verify", "CHERRY_PICK_HEAD"]
+    },
+    {
+      "command": { "kind": "showSide", "side": "theirs", "path": "-x.md" },
+      "args": ["cat-file", "blob", ":3:-x.md"]
+    },
+    {
+      "command": {
+        "kind": "saveSide",
+        "side": "theirs",
+        "path": "plan.png",
+        "to": "plan (conflict from Laptop).png"
+      },
+      "args": ["cat-file", "blob", ":3:plan.png"]
+    },
+    {
+      "command": { "kind": "checkoutOurs", "path": "--force.md" },
+      "args": ["checkout", "--ours", "--", "--force.md"]
+    },
+    {
+      "command": { "kind": "moveCase", "from": "Inbox/idea.md", "to": "Inbox/Idea.md" },
+      "args": ["mv", "--", "Inbox/idea.md", "Inbox/Idea.md"]
+    },
+    { "command": { "kind": "trackedFiles" }, "args": ["ls-files", "-z"] },
+    {
+      "command": { "kind": "upstreamMessage" },
+      "args": ["log", "-1", "--format=%B", "@{upstream}", "--"]
+    },
+    { "command": { "kind": "remoteUrl" }, "args": ["ls-remote", "--get-url"] }
+  ]
+}

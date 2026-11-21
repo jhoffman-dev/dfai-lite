@@ -1,16 +1,18 @@
 // A vault folder on disk through Node, for the real-git sync tests: the
 // same port and guards as the Rust host (src-tauri/src/vault.rs), test-only.
-import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   FileChangedError,
   FileExistsError,
   type StoredFile,
+  type Unsyncable,
   type VaultFiles,
   type VaultSnapshot,
 } from '../../src/application/index.ts';
 
 const APP_FOLDER = '.dfai-lite';
+const TOO_LARGE_BYTES = 100 * 1024 * 1024;
 
 const skippedFolder = (name: string) =>
   name === 'node_modules' || (name.startsWith('.') && name !== APP_FOLDER);
@@ -86,14 +88,68 @@ export class NodeVaultFiles implements VaultFiles {
   }
 
   async rename(from: string, to: string): Promise<void> {
+    const source = onDisk(this.root, from);
     const target = onDisk(this.root, to);
-    if ((await textAt(target)) !== null) throw new FileExistsError(`${to} exists`);
     await mkdir(dirname(target), { recursive: true });
-    await rename(onDisk(this.root, from), target);
+    if (from.toLowerCase() === to.toLowerCase()) {
+      await rename(source, target);
+      return;
+    }
+    // As the host on Linux: a link refuses a taken name, then the old name goes.
+    await link(source, target).catch((error: NodeJS.ErrnoException) => {
+      throw error.code === 'EEXIST' ? new FileExistsError(`${to} exists`) : error;
+    });
+    await rm(source);
   }
 
-  async remove(path: string): Promise<void> {
-    await rm(onDisk(this.root, path));
+  async remove({
+    path,
+    expected,
+  }: {
+    path: string;
+    expected: string | null;
+    permanently: boolean;
+  }) {
+    const absolute = onDisk(this.root, path);
+    if (expected !== null && (await textAt(absolute)) !== expected) {
+      throw new FileChangedError(`${path} changed`);
+    }
+    // No Trash in the tests: every delete is for good.
+    await rm(absolute);
+  }
+
+  readIgnoreFile(): Promise<string | null> {
+    return textAt(join(this.root, '.gitignore'));
+  }
+
+  async writeIgnoreFile({ text, expected }: { text: string; expected: string | null }) {
+    const absolute = join(this.root, '.gitignore');
+    if ((await textAt(absolute)) !== expected) throw new FileChangedError('.gitignore changed');
+    await writeFile(absolute, text);
+  }
+
+  async findUnsyncable(): Promise<Unsyncable> {
+    const tooLarge: string[] = [];
+    const nestedRepos: string[] = [];
+    const scan = async (folder: string, prefix: string): Promise<void> => {
+      for (const entry of await readdir(folder, { withFileTypes: true })) {
+        const path = `${prefix}${entry.name}`;
+        const absolute = join(folder, entry.name);
+        if (entry.isDirectory()) {
+          if (path === '.git') continue;
+          const isRepo = await lstat(join(absolute, '.git')).then(
+            () => true,
+            () => false,
+          );
+          if (isRepo) nestedRepos.push(path);
+          else await scan(absolute, `${path}/`);
+        } else if (entry.isFile() && (await lstat(absolute)).size > TOO_LARGE_BYTES) {
+          tooLarge.push(path);
+        }
+      }
+    };
+    await scan(this.root, '');
+    return { tooLarge: tooLarge.sort(), nestedRepos: nestedRepos.sort() };
   }
 
   watch(): () => void {

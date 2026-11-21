@@ -31,7 +31,16 @@ export async function readStatus(git: GitPort): Promise<GitStatus> {
   return parseGitStatus(await runOk(git, { kind: 'status' }, 'read the vault’s git status'));
 }
 
-/** Whether a merge waits to be committed: one an earlier sync left part-way. */
-export async function mergeInProgress(git: GitPort): Promise<boolean> {
-  return (await git.run({ kind: 'mergeInProgress' })).code === 0;
+const IN_PROGRESS = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'REBASE_HEAD'] as const;
+
+/**
+ * Whether a merge, cherry-pick, revert or rebase waits to be finished in
+ * the folder: started in Terminal, by another tool, or by a sync the app
+ * quit during. Not the app's to finish.
+ */
+export async function operationInProgress(git: GitPort): Promise<boolean> {
+  for (const name of IN_PROGRESS) {
+    if ((await git.run({ kind: 'refExists', name })).code === 0) return true;
+  }
+  return false;
 }

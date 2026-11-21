@@ -12,8 +12,8 @@ use std::time::Duration;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::{AppHandle, Emitter};
 
+use crate::files::TEMP_SUFFIX;
 use crate::lock;
-use crate::vault::TEMP_SUFFIX;
 
 /// How long the vault must be quiet before the changes so far are sent.
 const QUIET: Duration = Duration::from_millis(150);

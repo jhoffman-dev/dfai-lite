@@ -26,6 +26,9 @@ notify = "8.2.2"
 # A deleted note goes to the Trash. No default features: they are chrono and
 # Windows COM settings this app has no use for.
 trash = { version = "5.4.0", default-features = false }
+# O_NOFOLLOW, renamex_np(RENAME_EXCL) and killing git's process group. Already
+# in the tree under tauri; this only makes it a direct dependency.
+libc = "0.2.191"
 
 # No debug info for dependencies: the target folder is GBs, and the disk is small.
 [profile.dev]

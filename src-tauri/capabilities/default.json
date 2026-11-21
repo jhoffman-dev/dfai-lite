@@ -9,6 +9,7 @@
     "core:window:allow-unminimize",
     "core:window:allow-set-focus",
     "dialog:allow-open",
+    "dialog:allow-ask",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister-all"
   ]

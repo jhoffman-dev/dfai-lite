@@ -70,6 +70,20 @@ The way DFAI does it, with the Mac's own `git` and the login it already has
 A vault folder that is not a git repository, or whose branch has no upstream,
 works the same and shows "Sync off".
 
+Sync never guesses on your behalf:
+
+- A merge, rebase or cherry-pick you started in Terminal is yours: sync shows
+  "Sync paused" until you finish it, and touches nothing.
+- If more than 20 notes, and more than a tenth of the vault, are gone from the
+  folder, sync asks in Settings before it deletes them on every Mac. iCloud
+  stand-ins (`.Note.md.icloud`, from Optimise Mac Storage) pause sync instead.
+- The app keeps a block of its own at the end of the vault's `.gitignore`
+  (temporary files, `.DS_Store`, `.claude/`, `.env`), plus files over
+  GitHub's 100 MB limit and folders that are repositories of their own; it
+  never changes your lines.
+- While sync commits or merges, saves wait; a note the merge changed gets your
+  typing as a conflict copy.
+
 ## Layout
 
 | Where              | What                                                                                                   |

@@ -14,15 +14,27 @@ export interface SyncTimers {
  * not a repository with a remote, said in `message`. `error`: anything
  * else, said in `message`. Each lasts until a sync succeeds.
  */
-export type SyncPhase = 'idle' | 'syncing' | 'offline' | 'needs-sign-in' | 'off' | 'error';
+export type SyncPhase =
+  | 'idle'
+  | 'syncing'
+  | 'offline'
+  | 'needs-sign-in'
+  | 'off'
+  /** Waiting on the person outside the app: a merge to finish in git, iCloud, a detached branch. */
+  | 'blocked'
+  /** Many notes are gone from the folder: waiting for the person's yes, in `deletions`. */
+  | 'needs-confirmation'
+  | 'error';
 
 export interface SyncStatus {
   readonly phase: SyncPhase;
   /** Conflict copies the last successful sync made (each is a file in the vault to merge). */
   readonly conflicts: number;
   readonly lastSyncedAt: Date | null;
-  /** Why the last sync failed or is off, or null when it did not. */
+  /** Why the last sync failed, is off or waits; after a good one, what it left out. Null when nothing. */
   readonly message: string | null;
+  /** The notes whose deletion waits for a yes (`needs-confirmation`); empty otherwise. */
+  readonly deletions: readonly string[];
 }
 
 export interface SyncScheduler {
@@ -49,6 +61,8 @@ export interface SyncSchedulerDeps {
   readonly pullEveryMs: number;
   /** Changes that keep coming are pushed at least this often (DFAI: five minutes). */
   readonly maxUnsyncedMs?: number;
+  /** A sync that has not finished by then is given up on, so it cannot hold up the next forever. */
+  readonly watchdogMs?: number;
   /**
    * Where an error thrown by a status listener goes, so one broken listener
    * cannot stop sync. Rethrown on its own (to the global error handler) by default.
@@ -61,7 +75,16 @@ const rethrowApart = (error: unknown) =>
     throw error;
   });
 
-const NOT_YET: SyncStatus = { phase: 'idle', conflicts: 0, lastSyncedAt: null, message: null };
+const NOT_YET: SyncStatus = {
+  phase: 'idle',
+  conflicts: 0,
+  lastSyncedAt: null,
+  message: null,
+  deletions: [],
+};
+
+/** Longer than every git step's own limit together; only a sync that hangs reaches it. */
+export const SYNC_WATCHDOG_MS = 15 * 60_000;
 
 /**
  * When to sync: soon after typing stops, on an interval, and when woken.
@@ -99,7 +122,8 @@ export function createSyncScheduler(deps: SyncSchedulerDeps): SyncScheduler {
     // This sync takes every change so far; a change from here on waits its own turn.
     firstUnsyncedAt = null;
     publish({ ...current, phase: 'syncing' });
-    publish(statusAfter(current, await settled(deps.syncNow), deps.clock));
+    const watchdogMs = deps.watchdogMs ?? SYNC_WATCHDOG_MS;
+    publish(statusAfter(current, await settled(deps.syncNow, deps.timers, watchdogMs), deps.clock));
   };
 
   const sync = (): Promise<void> => {
@@ -159,16 +183,35 @@ export function createSyncScheduler(deps: SyncSchedulerDeps): SyncScheduler {
   };
 }
 
-/** The sync's result; a sync that throws (a bug) is a failed one, so the scheduler keeps going. */
-async function settled(syncNow: SyncNow): Promise<SyncResult> {
+/**
+ * The sync's result; a sync that throws (a bug) or never finishes is a
+ * failed one, so the scheduler keeps going.
+ */
+async function settled(
+  syncNow: SyncNow,
+  timers: SyncTimers,
+  watchdogMs: number,
+): Promise<SyncResult> {
+  let cancel: () => void = () => undefined;
+  const givenUp = new Promise<SyncResult>((resolve) => {
+    cancel = timers.after(watchdogMs, () =>
+      resolve({
+        kind: 'failed',
+        reason: 'error',
+        message: 'Sync did not finish and was given up on; it will try again.',
+      }),
+    );
+  });
   try {
-    return await syncNow();
+    return await Promise.race([syncNow(), givenUp]);
   } catch (error) {
     return {
       kind: 'failed',
       reason: 'error',
       message: error instanceof Error ? error.message : 'Sync failed.',
     };
+  } finally {
+    cancel();
   }
 }
 
@@ -177,6 +220,7 @@ const PHASES = {
   unreachable: 'offline',
   // The remote kept moving: the next sync tries again, and nothing is wrong meanwhile.
   rejected: 'idle',
+  locked: 'error',
   error: 'error',
 } as const;
 
@@ -186,8 +230,14 @@ function statusAfter(before: SyncStatus, result: SyncResult, clock: Clock): Sync
       phase: 'idle',
       conflicts: result.conflicts.length,
       lastSyncedAt: clock.now(),
-      message: null,
+      message: result.warnings.length === 0 ? null : result.warnings.join(' '),
+      deletions: [],
     };
-  if (result.kind === 'off') return { ...before, phase: 'off', message: result.message };
-  return { ...before, phase: PHASES[result.reason], message: result.message };
+  const waiting = { ...before, message: result.message, deletions: [] };
+  if (result.kind === 'off') return { ...waiting, phase: 'off' };
+  if (result.kind === 'blocked') return { ...waiting, phase: 'blocked' };
+  if (result.kind === 'needs-confirmation') {
+    return { ...waiting, phase: 'needs-confirmation', deletions: result.deletions };
+  }
+  return { ...waiting, phase: PHASES[result.reason] };
 }

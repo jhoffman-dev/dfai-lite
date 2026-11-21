@@ -1,4 +1,5 @@
 import { FAVORITES_PATH } from '../../domain/favorites/index.ts';
+import { TrashRefusedError } from '../ports/index.ts';
 import { VaultSession, type VaultChange } from '../session/index.ts';
 import { FixedClock, MemoryVaultFiles } from '../testing/index.ts';
 import {
@@ -251,6 +252,25 @@ describe('deleting a note', () => {
     expect(deps.session.index.resolve('Mara Quill')).toBeNull();
     expect(deps.session.favorites).toEqual([]);
     expect(deps.files.peek(FAVORITES_PATH)).toBe('[]\n');
+  });
+});
+
+describe('deleting a note that changed, or that the Trash refuses', () => {
+  it('deletes nothing when the note changed on disk since it was seen, and reads it afresh', async () => {
+    const deps = await opened();
+    deps.files.edit(MARA, 'Claude added a line.');
+    await expect(deleteNote(deps, { path: MARA })).rejects.toThrow(/not deleted/);
+    expect(deps.files.peek(MARA)).toBe('Claude added a line.');
+    expect(deps.session.file(MARA)?.text).toBe('Claude added a line.');
+  });
+
+  it('says so when the Trash refuses, and deletes for good only when asked', async () => {
+    const deps = await opened();
+    deps.files.trashRefuses = true;
+    await expect(deleteNote(deps, { path: MARA })).rejects.toBeInstanceOf(TrashRefusedError);
+    expect(deps.files.peek(MARA)).toBe('Leads payroll. #person');
+    await deleteNote(deps, { path: MARA, permanently: true });
+    expect(deps.files.peek(MARA)).toBeUndefined();
   });
 });
 

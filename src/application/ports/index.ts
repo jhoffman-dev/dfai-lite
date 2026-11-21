@@ -12,7 +12,9 @@ export {
 export {
   FileChangedError,
   FileExistsError,
+  TrashRefusedError,
   type StoredFile,
+  type Unsyncable,
   type VaultFiles,
   type VaultSnapshot,
 } from './vault-files.ts';

@@ -16,4 +16,11 @@ export {
   type ConflictStep,
   type GitFailureKind,
 } from './sync-rules.ts';
+export {
+  deletionsToConfirm,
+  icloudStubs,
+  MASS_DELETION_NOTES,
+  MASS_DELETION_SHARE,
+  withIgnoreBlock,
+} from './sync-guards.ts';
 export { MAX_UNSYNCED_MS, PULL_EVERY_MS, PUSH_DELAY_MS, pushDueIn } from './sync-schedule.ts';

@@ -5,11 +5,11 @@ import {
   type GitConflict,
 } from '../../domain/sync/index.ts';
 import { isTextFile, type VaultPath } from '../../domain/vault/index.ts';
-import type { GitPort, VaultFiles } from '../ports/index.ts';
+import { FileChangedError, type GitPort, type VaultFiles } from '../ports/index.ts';
 import type { VaultSession } from '../session/index.ts';
 import { runOk } from './git-steps.ts';
 
-/** A file both Macs changed: this Mac's version stayed at `path`, the other's went to `copy`. */
+/** A file both sides changed: this Mac's version stayed at `path`, another went to `copy`. */
 export interface SyncConflict {
   readonly path: VaultPath;
   readonly copy: VaultPath;
@@ -19,55 +19,91 @@ interface SettleDeps {
   readonly git: GitPort;
   readonly files: VaultFiles;
   readonly session: VaultSession;
+  /** This Mac's name: text written into a file while its merge settled is kept under it. */
+  readonly mac: string;
 }
 
 /**
- * Settles every file a merge left in conflict, so no note is left holding
- * conflict markers and no text is lost (as DFAI does):
+ * Settles every file the merge this sync just ran left in conflict, so no
+ * note is left holding conflict markers and no text is lost (as DFAI does):
  *
  * - both changed it: this Mac's version stays at the path, the other's is
- *   saved beside it as `<name> (conflict from <Mac>).md`;
+ *   saved beside it as `<name> (conflict from <Mac>)`, a file that is not
+ *   text byte for byte;
  * - one side deleted it and the other changed it: the changed file stays
  *   (git left it in the folder), since a delete never beats an edit;
  * - `_index/`: left for the caller to write afresh from the merged notes.
  *
- * A file that is not text keeps this Mac's side; the other's stays in the
- * merge's history. The caller stages and commits afterwards.
+ * `marked` is what each text file held the moment git stopped: if a file
+ * holds anything else when it is settled (someone typed into it), that text
+ * is kept as a further copy before this Mac's version goes back.
  */
 export async function settleConflicts(
   deps: SettleDeps,
-  conflicts: readonly GitConflict[],
+  {
+    conflicts,
+    marked,
+  }: { conflicts: readonly GitConflict[]; marked: ReadonlyMap<VaultPath, string | null> },
 ): Promise<SyncConflict[]> {
   const other = await otherMac(deps.git);
   const taken = new Set(deps.session.takenPaths());
   const copies: SyncConflict[] = [];
+  const copyFor = (path: VaultPath, mac: string) => {
+    const copy = conflictCopyPath({ path, mac, taken });
+    taken.add(copy);
+    copies.push({ path, copy });
+    return copy;
+  };
   for (const conflict of conflicts) {
     if (conflictStep(conflict) !== 'keep-both') continue;
-    const copy = await keepBoth(deps, { path: conflict.path, other, taken });
-    if (copy !== null) {
-      taken.add(copy);
-      copies.push({ path: conflict.path, copy });
-    }
+    const { path } = conflict;
+    if (isTextFile(path))
+      await keepBothTexts(deps, { path, marked: marked.get(path) ?? null, other, copyFor });
+    else await keepBothFiles(deps, { path, copy: copyFor(path, other) });
   }
   return copies;
 }
 
-/** Writes this Mac's side over the file git marked up, and the other's beside it; says where. */
-async function keepBoth(
-  { git, files }: SettleDeps,
-  { path, other, taken }: { path: VaultPath; other: string; taken: ReadonlySet<VaultPath> },
-): Promise<VaultPath | null> {
-  if (!isTextFile(path)) {
-    await runOk(git, { kind: 'checkoutOurs', path }, `keep this Mac’s ${path}`);
-    return null;
-  }
+type CopyFor = (path: VaultPath, mac: string) => VaultPath;
+
+async function keepBothTexts(
+  { git, files, mac }: SettleDeps,
+  {
+    path,
+    marked,
+    other,
+    copyFor,
+  }: { path: VaultPath; marked: string | null; other: string; copyFor: CopyFor },
+): Promise<void> {
   const ours = await runOk(git, { kind: 'showSide', side: 'ours', path }, `read ${path}`);
   const theirs = await runOk(git, { kind: 'showSide', side: 'theirs', path }, `read ${path}`);
-  await files.write({ path, text: ours, expected: await files.read(path) });
-  if (ours === theirs) return null;
-  const copy = conflictCopyPath({ path, mac: other, taken });
-  await files.write({ path: copy, text: theirs, expected: null });
-  return copy;
+  if (ours !== theirs)
+    await files.write({ path: copyFor(path, other), text: theirs, expected: null });
+  let expected = marked;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await files.write({ path, text: ours, expected });
+      return;
+    } catch (error) {
+      if (!(error instanceof FileChangedError)) throw error;
+      // Someone wrote into the file since git did: keep what they wrote before putting ours back.
+      const written = await files.read(path);
+      if (written !== null && written !== ours) {
+        await files.write({ path: copyFor(path, mac), text: written, expected: null });
+      }
+      expected = written;
+    }
+  }
+  throw new FileChangedError(`${path} kept changing while it was settled.`);
+}
+
+/** This Mac's side stays at the path; the other's is written beside it from git's own copy, byte for byte. */
+async function keepBothFiles(
+  { git }: SettleDeps,
+  { path, copy }: { path: VaultPath; copy: VaultPath },
+): Promise<void> {
+  await runOk(git, { kind: 'checkoutOurs', path }, `keep this Mac’s ${path}`);
+  await runOk(git, { kind: 'saveSide', side: 'theirs', path, to: copy }, `save the other ${path}`);
 }
 
 /** The Mac the other side came from, as its last commit says; "another Mac" when it does not. */

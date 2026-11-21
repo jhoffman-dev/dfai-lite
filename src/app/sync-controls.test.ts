@@ -1,4 +1,5 @@
 import {
+  createDeletionApprovals,
   deleteNote,
   openVault,
   saveNoteText,
@@ -11,7 +12,13 @@ import { connectSync } from './sync-controls.ts';
 
 const PLAN = 'Projects/Larkspur Payroll.md';
 const COPY = 'Projects/Larkspur Payroll (conflict 2026-11-21).md';
-const IDLE: SyncStatus = { phase: 'idle', conflicts: 0, lastSyncedAt: null, message: null };
+const IDLE: SyncStatus = {
+  phase: 'idle',
+  conflicts: 0,
+  lastSyncedAt: null,
+  message: null,
+  deletions: [],
+};
 
 class FakeScheduler implements SyncScheduler {
   current = IDLE;
@@ -55,7 +62,7 @@ async function setup(files: Record<string, string> = { [PLAN]: 'Parallel run.' }
   await openVault({ files: vaultFiles, session });
   const scheduler = new FakeScheduler();
   const page = new FakePage();
-  const controls = connectSync({ scheduler, session, page });
+  const controls = connectSync({ scheduler, session, page, approvals: createDeletionApprovals() });
   return { deps: { files: vaultFiles, session }, session, scheduler, page, controls };
 }
 

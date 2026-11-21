@@ -16,6 +16,8 @@ export interface DesktopControls {
   changeVault(): Promise<void>;
   /** Where the vault syncs; null when it is not a repository with a remote. */
   remote(): Promise<RemoteInfo | null>;
+  /** Asks a yes-or-no question in the Mac's own alert; true for `yes`. */
+  confirm(question: { message: string; yes: string }): Promise<boolean>;
   /** Makes `accelerator` the capture key and keeps it; rejects when the Mac refuses it. */
   setCaptureHotkey(accelerator: string): Promise<void>;
 }

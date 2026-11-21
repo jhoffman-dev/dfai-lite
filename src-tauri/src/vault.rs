@@ -1,26 +1,23 @@
-//! The vault's files: read all in one call, and guarded writes, renames and
-//! deletes, every one confined to the chosen vault folder.
+//! The vault's files: read all in one call, guarded writes, renames and
+//! deletes, every one confined to the chosen vault folder, and the scan for
+//! what git must not be given.
 
 use std::fs;
-use std::io::{ErrorKind, Write};
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::Serialize;
 use tauri::{AppHandle, State};
 
+use crate::files::{self, TEMP_SUFFIX};
 use crate::lock;
+use crate::paths::{inside, APP_FOLDER};
 use crate::watcher::{self, VaultWatcher};
 
-/// The error prefix TypeScript reads as "the file is not the text you last saw".
-const CHANGED: &str = "changed:";
-/// The error prefix TypeScript reads as "a file is already at that path".
-const EXISTS: &str = "exists:";
-/// A write goes to this name beside the file first, then is renamed over it.
-pub const TEMP_SUFFIX: &str = ".dfai-lite-tmp";
-/// The one dot folder that is read: the app's own synced files.
-const APP_FOLDER: &str = ".dfai-lite";
+/// The ignore file the sync keeps its own block in, at the vault's top.
+const IGNORE_FILE: &str = ".gitignore";
+/// GitHub refuses a push holding a file this large.
+const TOO_LARGE_BYTES: u64 = 100 * 1024 * 1024;
 
 /// The vault folder chosen in the app, canonical. Every path is under it.
 #[derive(Default)]
@@ -47,28 +44,13 @@ pub struct VaultSnapshot {
     other_paths: Vec<String>,
 }
 
-/// `relative` under `root`, or why not: plain `/`-separated parts, none of
-/// them empty, `.`, `..` or `.git`, and none that is a symbolic link, so no
-/// path the webview sends can reach outside the vault or into git's own files.
-pub fn inside(root: &Path, relative: &str) -> Result<PathBuf, String> {
-    let refused = || format!("{relative:?} is not a path inside the vault");
-    if relative.is_empty() || relative.contains(['\0', '\\']) || relative.starts_with('/') {
-        return Err(refused());
-    }
-    let mut path = root.to_path_buf();
-    for part in relative.split('/') {
-        if part.is_empty() || part == "." || part == ".." || part == ".git" {
-            return Err(refused());
-        }
-        path.push(part);
-        let is_link = path
-            .symlink_metadata()
-            .is_ok_and(|meta| meta.file_type().is_symlink());
-        if is_link {
-            return Err(refused());
-        }
-    }
-    Ok(path)
+/// What `git add --all` must not be given: files over GitHub's limit, and
+/// folders that are git repositories of their own.
+#[derive(Serialize, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Unsyncable {
+    too_large: Vec<String>,
+    nested_repos: Vec<String>,
 }
 
 /// A folder the walk never enters: git's, packages, and dot folders but the app's own.
@@ -112,90 +94,59 @@ fn walk(folder: &Path, prefix: &str, found: &mut VaultSnapshot) -> Result<(), St
     Ok(())
 }
 
-/// The file's text, or None when there is no file.
-pub fn read(root: &Path, path: &str) -> Result<Option<String>, String> {
-    match fs::read_to_string(inside(root, path)?) {
-        Ok(text) => Ok(Some(text)),
-        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(format!("cannot read {path}: {error}")),
-    }
+/// Files over GitHub's limit and nested repositories, anywhere but in git's own folder.
+pub fn unsyncable(root: &Path) -> Unsyncable {
+    let mut found = Unsyncable::default();
+    scan(root, "", &mut found);
+    found.too_large.sort();
+    found.nested_repos.sort();
+    found
 }
 
-/// Writes `text` at `path` only while the file holds `expected`; with no
-/// `expected`, only when there is no file there yet (never over one).
-pub fn write(root: &Path, path: &str, text: &str, expected: Option<&str>) -> Result<(), String> {
-    let target = inside(root, path)?;
-    let Some(expected) = expected else {
-        return create_new(&target, path, text);
+fn scan(folder: &Path, prefix: &str, found: &mut Unsyncable) {
+    // An unreadable folder holds nothing git could be given either.
+    let Ok(entries) = fs::read_dir(folder) else {
+        return;
     };
-    if read(root, path)?.as_deref() != Some(expected) {
-        return Err(format!("{CHANGED} {path} changed since it was read"));
-    }
-    let temp = target.with_file_name(format!(
-        "{}{TEMP_SUFFIX}",
-        target.file_name().unwrap_or_default().to_string_lossy()
-    ));
-    fs::write(&temp, text).map_err(|error| format!("cannot write {path}: {error}"))?;
-    fs::rename(&temp, &target).map_err(|error| format!("cannot write {path}: {error}"))
-}
-
-fn create_new(target: &Path, path: &str, text: &str) -> Result<(), String> {
-    if let Some(parent) = target.parent() {
-        fs::create_dir_all(parent).map_err(|error| format!("cannot make a folder: {error}"))?;
-    }
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(target)
-        .map_err(|error| match error.kind() {
-            ErrorKind::AlreadyExists => format!("{EXISTS} a file is already at {path}"),
-            _ => format!("cannot create {path}: {error}"),
-        })?;
-    file.write_all(text.as_bytes())
-        .map_err(|error| format!("cannot write {path}: {error}"))
-}
-
-/// Moves `from` to `to`, never over another file. A change of case alone
-/// (`a.md` to `A.md`) is the same file on a Mac's disk, and is allowed.
-pub fn rename(root: &Path, from: &str, to: &str) -> Result<(), String> {
-    let source = inside(root, from)?;
-    let target = inside(root, to)?;
-    let source_meta = source
-        .symlink_metadata()
-        .map_err(|error| format!("cannot move {from}: {error}"))?;
-    if let Ok(target_meta) = target.symlink_metadata() {
-        let same = target_meta.ino() == source_meta.ino() && target_meta.dev() == source_meta.dev();
-        if !same {
-            return Err(format!("{EXISTS} a file is already at {to}"));
+    for entry in entries.flatten() {
+        let Ok(meta) = entry.path().symlink_metadata() else {
+            continue;
+        };
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let path = format!("{prefix}{name}");
+        if meta.is_dir() {
+            if prefix.is_empty() && name == ".git" {
+                continue;
+            }
+            if entry.path().join(".git").symlink_metadata().is_ok() {
+                found.nested_repos.push(path);
+            } else {
+                scan(&entry.path(), &format!("{path}/"), found);
+            }
+        } else if meta.is_file() && meta.len() > TOO_LARGE_BYTES {
+            found.too_large.push(path);
         }
     }
-    if let Some(parent) = target.parent() {
-        fs::create_dir_all(parent).map_err(|error| format!("cannot make a folder: {error}"))?;
+}
+
+/// Refuses the disk's root, the home folder and anything holding it: the
+/// vault would be every file on the Mac.
+fn vault_folder(folder: &str, home: Option<&Path>) -> Result<PathBuf, String> {
+    let canonical = Path::new(folder)
+        .canonicalize()
+        .map_err(|error| format!("cannot open {folder}: {error}"))?;
+    if !canonical.is_dir() {
+        return Err(format!("{folder} is not a folder"));
     }
-    fs::rename(&source, &target).map_err(|error| format!("cannot move {from}: {error}"))
-}
-
-/// Moves the file to the Trash; deletes it where there is no Trash to use.
-pub fn delete(root: &Path, path: &str) -> Result<(), String> {
-    let target = inside(root, path)?;
-    if to_trash(&target).is_ok() {
-        return Ok(());
+    let holds_home = home
+        .and_then(|home| home.canonicalize().ok())
+        .is_some_and(|home| home.starts_with(&canonical));
+    if canonical.parent().is_none() || holds_home {
+        return Err(format!(
+            "{folder} holds your whole home folder; choose the folder your notes are in"
+        ));
     }
-    fs::remove_file(&target).map_err(|error| format!("cannot delete {path}: {error}"))
-}
-
-#[cfg(target_os = "macos")]
-fn to_trash(target: &Path) -> Result<(), trash::Error> {
-    use trash::macos::{DeleteMethod, TrashContextExtMacos};
-    // The Finder method asks for permission to script Finder; this one does not.
-    let mut context = trash::TrashContext::default();
-    context.set_delete_method(DeleteMethod::NsFileManager);
-    context.delete(target)
-}
-
-#[cfg(not(target_os = "macos"))]
-fn to_trash(target: &Path) -> Result<(), trash::Error> {
-    trash::delete(target)
+    Ok(canonical)
 }
 
 /// Opens the folder as the vault, and starts watching it.
@@ -206,12 +157,8 @@ pub fn open_vault(
     watching: State<'_, VaultWatcher>,
     folder: String,
 ) -> Result<(), String> {
-    let canonical = Path::new(&folder)
-        .canonicalize()
-        .map_err(|error| format!("cannot open {folder}: {error}"))?;
-    if !canonical.is_dir() {
-        return Err(format!("{folder} is not a folder"));
-    }
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    let canonical = vault_folder(&folder, home.as_deref())?;
     watcher::watch(app, &watching, canonical.clone())?;
     *lock(&root.0) = Some(canonical);
     Ok(())
@@ -226,8 +173,16 @@ pub async fn read_vault(root: State<'_, VaultRoot>) -> Result<VaultSnapshot, Str
 }
 
 #[tauri::command]
+pub async fn find_unsyncable(root: State<'_, VaultRoot>) -> Result<Unsyncable, String> {
+    let root = root.get()?;
+    tauri::async_runtime::spawn_blocking(move || unsyncable(&root))
+        .await
+        .map_err(|error| format!("the vault scan did not finish: {error}"))
+}
+
+#[tauri::command]
 pub fn read_file(root: State<'_, VaultRoot>, path: String) -> Result<Option<String>, String> {
-    read(&root.get()?, &path)
+    files::read_text(&inside(&root.get()?, &path)?, &path)
 }
 
 #[tauri::command]
@@ -237,66 +192,53 @@ pub fn write_file(
     text: String,
     expected: Option<String>,
 ) -> Result<(), String> {
-    write(&root.get()?, &path, &text, expected.as_deref())
+    let target = inside(&root.get()?, &path)?;
+    files::write_guarded(&target, &path, &text, expected.as_deref())
 }
 
 #[tauri::command]
 pub fn rename_file(root: State<'_, VaultRoot>, from: String, to: String) -> Result<(), String> {
-    rename(&root.get()?, &from, &to)
+    let root = root.get()?;
+    files::rename_no_replace(&inside(&root, &from)?, &inside(&root, &to)?, &to)
 }
 
 #[tauri::command]
-pub fn delete_file(root: State<'_, VaultRoot>, path: String) -> Result<(), String> {
-    delete(&root.get()?, &path)
+pub fn delete_file(
+    root: State<'_, VaultRoot>,
+    path: String,
+    expected: Option<String>,
+    permanently: bool,
+) -> Result<(), String> {
+    let target = inside(&root.get()?, &path)?;
+    files::delete_guarded(&target, &path, expected.as_deref(), permanently)
+}
+
+/// The vault's top `.gitignore`: the one dot file the app writes, through its own pair of commands.
+#[tauri::command]
+pub fn read_ignore_file(root: State<'_, VaultRoot>) -> Result<Option<String>, String> {
+    files::read_text(&root.get()?.join(IGNORE_FILE), IGNORE_FILE)
+}
+
+#[tauri::command]
+pub fn write_ignore_file(
+    root: State<'_, VaultRoot>,
+    text: String,
+    expected: Option<String>,
+) -> Result<(), String> {
+    let target = root.get()?.join(IGNORE_FILE);
+    if target
+        .symlink_metadata()
+        .is_ok_and(|meta| meta.file_type().is_symlink())
+    {
+        return Err(format!("{IGNORE_FILE} is a link"));
+    }
+    files::write_guarded(&target, IGNORE_FILE, &text, expected.as_deref())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_support::temp_folder;
-    use std::os::unix::fs::symlink;
-
-    #[test]
-    fn a_plain_relative_path_is_inside() {
-        let root = temp_folder();
-        assert_eq!(
-            inside(&root, "Inbox/Mara Quill.md"),
-            Ok(root.join("Inbox").join("Mara Quill.md"))
-        );
-        assert!(inside(&root, "-x.md").is_ok());
-        assert!(inside(&root, "Notes/résumé ✓.md").is_ok());
-    }
-
-    #[test]
-    fn a_path_that_could_escape_is_refused() {
-        let root = temp_folder();
-        for path in [
-            "",
-            "/etc/passwd",
-            "../outside.md",
-            "Inbox/../../outside.md",
-            "Inbox//x.md",
-            "./x.md",
-            ".git/config",
-            "Inbox/.git/x",
-            "a\\b.md",
-            "nul\0.md",
-        ] {
-            assert!(inside(&root, path).is_err(), "{path:?} was let through");
-        }
-    }
-
-    #[test]
-    fn a_symbolic_link_anywhere_on_the_path_is_refused() {
-        let root = temp_folder();
-        let outside = temp_folder();
-        symlink(&outside, root.join("Linked")).unwrap();
-        symlink(outside.join("x.md"), root.join("note.md")).unwrap();
-        assert!(inside(&root, "Linked/x.md").is_err());
-        assert!(inside(&root, "note.md").is_err());
-        assert!(write(&root, "Linked/x.md", "escaped", None).is_err());
-        assert!(!outside.join("x.md").exists());
-    }
 
     #[test]
     fn the_snapshot_reads_notes_and_lists_the_rest_skipping_git_and_dot_folders() {
@@ -309,6 +251,7 @@ mod tests {
             (".obsidian/x.md", "skip"),
             ("node_modules/x.md", "skip"),
             ("Images/plan.png", "png"),
+            ("Inbox/.a.md.1.2.dfai-lite-tmp", "half"),
         ] {
             let file = root.join(path);
             fs::create_dir_all(file.parent().unwrap()).unwrap();
@@ -329,37 +272,6 @@ mod tests {
     }
 
     #[test]
-    fn a_write_needs_the_text_last_seen_and_a_create_never_overwrites() {
-        let root = temp_folder();
-        write(&root, "Inbox/Larkspur.md", "one", None).unwrap();
-        let again = write(&root, "Inbox/Larkspur.md", "two", None).unwrap_err();
-        assert!(again.starts_with(EXISTS), "{again}");
-        let stale = write(&root, "Inbox/Larkspur.md", "two", Some("zero")).unwrap_err();
-        assert!(stale.starts_with(CHANGED), "{stale}");
-        write(&root, "Inbox/Larkspur.md", "two", Some("one")).unwrap();
-        assert_eq!(
-            read(&root, "Inbox/Larkspur.md"),
-            Ok(Some("two".to_string()))
-        );
-        let gone = write(&root, "Inbox/Missing.md", "x", Some("y")).unwrap_err();
-        assert!(gone.starts_with(CHANGED), "{gone}");
-    }
-
-    #[test]
-    fn a_rename_never_overwrites_but_may_change_case() {
-        let root = temp_folder();
-        write(&root, "a.md", "a", None).unwrap();
-        write(&root, "b.md", "b", None).unwrap();
-        assert!(rename(&root, "a.md", "b.md")
-            .unwrap_err()
-            .starts_with(EXISTS));
-        rename(&root, "a.md", "Moved/A.md").unwrap();
-        assert_eq!(read(&root, "Moved/A.md"), Ok(Some("a".to_string())));
-        rename(&root, "Moved/A.md", "Moved/a.md").unwrap();
-        assert_eq!(read(&root, "Moved/a.md"), Ok(Some("a".to_string())));
-    }
-
-    #[test]
     fn two_thousand_notes_read_in_one_call_well_under_a_second() {
         let root = temp_folder();
         let body = "Payroll notes with [[Mara Quill]] and #project/active.\n".repeat(40);
@@ -376,12 +288,39 @@ mod tests {
         assert_eq!(found.notes.len(), 2_000);
         // Generous, so a slow CI runner never flakes; on a Mac it is a few tens of ms.
         assert!(took.as_millis() < 1_000, "read 2,000 notes in {took:?}");
-        println!("read 2,000 notes in {took:?}");
     }
 
     #[test]
-    fn a_missing_file_reads_as_none() {
+    fn the_scan_finds_nested_repositories_and_files_over_the_limit() {
         let root = temp_folder();
-        assert_eq!(read(&root, "nothing.md"), Ok(None));
+        fs::create_dir_all(root.join(".git")).unwrap();
+        fs::create_dir_all(root.join("Code/tool/.git")).unwrap();
+        fs::write(root.join("Code/tool/x.md"), "x").unwrap();
+        let big = fs::File::create(root.join("video.mov")).unwrap();
+        big.set_len(TOO_LARGE_BYTES + 1).unwrap();
+        fs::write(root.join("small.md"), "x").unwrap();
+        assert_eq!(
+            unsyncable(&root),
+            Unsyncable {
+                too_large: vec!["video.mov".into()],
+                nested_repos: vec!["Code/tool".into()],
+            }
+        );
+    }
+
+    #[test]
+    fn the_disk_root_and_the_home_folder_are_refused_as_a_vault() {
+        let home = temp_folder();
+        let notes = home.join("Notes");
+        fs::create_dir_all(&notes).unwrap();
+        let home_text = home.to_string_lossy().into_owned();
+        assert!(vault_folder("/", Some(&home)).is_err());
+        assert!(vault_folder(&home_text, Some(&home)).is_err());
+        let parent = home.parent().unwrap().to_string_lossy().into_owned();
+        assert!(vault_folder(&parent, Some(&home)).is_err());
+        assert_eq!(
+            vault_folder(&notes.to_string_lossy(), Some(&home)),
+            Ok(notes.canonicalize().unwrap())
+        );
     }
 }

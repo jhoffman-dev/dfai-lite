@@ -8,6 +8,7 @@ import {
   reorderFavorite,
   tagKey,
   toggleFavoriteNote,
+  TrashRefusedError,
   type RenameResult,
   type SettingsStore,
   type UiPrefs,
@@ -52,10 +53,13 @@ export function createNoteActions({
   deps,
   ui,
   settings,
+  confirm,
 }: {
   deps: VaultDeps;
   ui: UiStore;
   settings: SettingsStore;
+  /** A yes-or-no question for the person (the Mac's alert); absent where nothing can refuse. */
+  confirm?: (question: { message: string; yes: string }) => Promise<boolean>;
 }): NoteActions {
   const notice = (message: string) => ui.setState({ notice: message });
   const report = (error: unknown) =>
@@ -87,7 +91,14 @@ export function createNoteActions({
       return result;
     },
     async remove(path, { wasOpen } = { wasOpen: false }) {
-      await deleteNote(deps, { path });
+      try {
+        await deleteNote(deps, { path });
+      } catch (error) {
+        if (!(error instanceof TrashRefusedError) || confirm === undefined) throw error;
+        const message = `The Trash would not take “${path}”. Delete it for good? Its history in git keeps it once synced.`;
+        if (!(await confirm({ message, yes: 'Delete permanently' }))) return;
+        await deleteNote(deps, { path, permanently: true });
+      }
       if (wasOpen) navigate({ kind: 'home' }, { replace: true });
     },
     async renameFolder(from, to) {

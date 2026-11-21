@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { useApp } from '../services.ts';
 import '../shell/dialog.css';
-import { describeSyncStatus } from '../sync/sync-chip.tsx';
+import { describeSyncStatus, syncStatusDetail } from '../sync/sync-chip.tsx';
 import type { SyncControls } from '../sync/sync-status.ts';
 import type { DesktopControls, RemoteInfo } from './desktop-controls.ts';
 import { acceleratorOf, shortcutLabel } from './hotkey.ts';
@@ -23,11 +23,9 @@ function SyncSection({ sync, desktop }: { sync: SyncControls; desktop: DesktopCo
   }, [desktop, status.kind]);
   const { label } = describeSyncStatus(status);
   const reason =
-    status.kind === 'error' || status.kind === 'off'
-      ? status.message
-      : status.kind === 'needs-sign-in'
-        ? 'git’s login was refused. Run `git fetch` in the vault folder in Terminal to sign in again.'
-        : null;
+    status.kind === 'needs-sign-in'
+      ? 'git’s login was refused. Run `git fetch` in the vault folder in Terminal to sign in again.'
+      : syncStatusDetail(status);
   return (
     <section className="dialog-field" aria-label="Sync">
       <span>Sync</span>
@@ -41,6 +39,11 @@ function SyncSection({ sync, desktop }: { sync: SyncControls; desktop: DesktopCo
         </p>
       )}
       <div className="dialog-actions">
+        {status.kind === 'needs-confirmation' ? (
+          <button type="button" className="quiet-button" onClick={() => sync.confirmDeletions()}>
+            Sync the deletions
+          </button>
+        ) : null}
         <button
           type="button"
           className="quiet-button"

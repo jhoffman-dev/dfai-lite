@@ -21,12 +21,26 @@ export type GitCommand =
   | { readonly kind: 'merge'; readonly message: string }
   /** `push --quiet` to the upstream: never forced. */
   | { readonly kind: 'push' }
-  /** `rev-parse -q --verify MERGE_HEAD`: succeeds while a merge waits to be committed. */
-  | { readonly kind: 'mergeInProgress' }
+  /** `rev-parse -q --verify <name>`: succeeds while that merge, cherry-pick, revert or rebase waits. */
+  | {
+      readonly kind: 'refExists';
+      readonly name: 'MERGE_HEAD' | 'CHERRY_PICK_HEAD' | 'REVERT_HEAD' | 'REBASE_HEAD';
+    }
   /** `cat-file blob :2:<path>` (ours) or `:3:<path>` (theirs): one side of a conflicted file. */
   | { readonly kind: 'showSide'; readonly side: 'ours' | 'theirs'; readonly path: VaultPath }
+  /** `cat-file blob :2|3:<path>`, byte for byte, into a new file `to` (never over one). */
+  | {
+      readonly kind: 'saveSide';
+      readonly side: 'ours' | 'theirs';
+      readonly path: VaultPath;
+      readonly to: VaultPath;
+    }
   /** `checkout --ours -- <path>`: this Mac's side of a conflicted file that is not text. */
   | { readonly kind: 'checkoutOurs'; readonly path: VaultPath }
+  /** `mv -- <from> <to>`, names that differ only in case: so other Macs get the new case. */
+  | { readonly kind: 'moveCase'; readonly from: VaultPath; readonly to: VaultPath }
+  /** `ls-files -z`: every tracked path. */
+  | { readonly kind: 'trackedFiles' }
   /** `log -1 --format=%B @{upstream} --`: the other Macs' last commit message. */
   | { readonly kind: 'upstreamMessage' }
   /** `ls-remote --get-url`: where the branch syncs to. */

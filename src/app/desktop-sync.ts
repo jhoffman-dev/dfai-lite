@@ -1,9 +1,11 @@
 import {
+  createDeletionApprovals,
   createSyncNow,
   createSyncScheduler,
   type GitPort,
   type SyncNow,
   type VaultDeps,
+  type WriteGate,
 } from '../application/index.ts';
 import { systemClock, systemTimers } from '../adapters/clock/index.ts';
 import { buildAiIndex } from '../domain/ai-index/index.ts';
@@ -27,15 +29,24 @@ const windowPage = {
 export function wireSync({
   deps,
   git,
+  gate,
   flush,
 }: {
+  /** The vault's files as sync uses them: not behind `gate`, which sync holds. */
   deps: VaultDeps;
   git: GitPort;
+  gate: WriteGate;
   flush: () => Promise<void>;
 }): SyncControls & { start(): void } {
+  const approvals = createDeletionApprovals();
   let syncNow: Promise<SyncNow> | null = null;
   const firstSyncNow = async () =>
-    createSyncNow({ ...deps, git, mac: await git.macName(), derivedFiles: buildAiIndex, flush });
+    createSyncNow({
+      ...deps,
+      ...{ git, gate, approvals, flush },
+      mac: await git.macName(),
+      derivedFiles: buildAiIndex,
+    });
   const scheduler = createSyncScheduler({
     syncNow: async () => (await (syncNow ??= firstSyncNow()))(),
     timers: systemTimers,
@@ -43,7 +54,7 @@ export function wireSync({
     pushDelayMs: PUSH_DELAY_MS,
     pullEveryMs: PULL_EVERY_MS,
   });
-  return connectSync({ scheduler, session: deps.session, page: windowPage });
+  return connectSync({ scheduler, session: deps.session, page: windowPage, approvals });
 }
 
 /** Where the vault syncs: the remote's address and the upstream branch; null when there is none. */

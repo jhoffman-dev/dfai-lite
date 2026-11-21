@@ -1,12 +1,15 @@
 import {
   applyExternalChanges,
+  createWriteGate,
+  gatedVaultFiles,
   type SettingsStore,
   type VaultDeps,
   type VaultFiles,
 } from '../application/index.ts';
-import { systemClock } from '../adapters/clock/index.ts';
+import { systemClock, systemTimers } from '../adapters/clock/index.ts';
 import { createFileSettingsStore } from '../adapters/settings/index.ts';
 import {
+  askYesNo,
   bringWindowForward,
   openTauriVaultFiles,
   pickFolder,
@@ -64,20 +67,29 @@ async function composeDesktop({
   choose: () => Promise<void>;
 }): Promise<Boot> {
   const { session, search } = await openSession(files);
-  const deps: VaultDeps = { files, session };
+  // Sync uses the files as they are; everything else waits behind the gate while it commits or merges.
+  const gate = createWriteGate({ timers: systemTimers });
+  const gated = gatedVaultFiles(files, gate);
+  const deps: VaultDeps = { files: gated, session };
   const pendingEdits = createPendingEdits();
-  const sync = wireSync({ deps, git: tauriGit, flush: pendingEdits.flushAll });
+  const sync = wireSync({
+    deps: { files, session },
+    git: tauriGit,
+    gate,
+    flush: pendingEdits.flushAll,
+  });
   const desktop: DesktopControls = {
     vaultPath,
     changeVault: choose,
     remote: () => remoteInfo(tauriGit),
+    confirm: askYesNo,
     async setCaptureHotkey(accelerator) {
       await setGlobalShortcut(accelerator, quickCapture);
       settings.save({ ...settings.load(), captureHotkey: accelerator });
     },
   };
   const services: AppServices = {
-    ...{ files, session, search, settings, sync, desktop, pendingEdits },
+    ...{ files: gated, session, search, settings, sync, desktop, pendingEdits },
     clock: systemClock,
   };
   const start = () => {

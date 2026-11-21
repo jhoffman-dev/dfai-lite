@@ -1,4 +1,4 @@
-import { FileChangedError, FileExistsError } from '../../application/index.ts';
+import { FileChangedError, FileExistsError, TrashRefusedError } from '../../application/index.ts';
 import { hostError } from './index.ts';
 
 describe('the host’s errors', () => {
@@ -7,6 +7,9 @@ describe('the host’s errors', () => {
       FileChangedError,
     );
     expect(hostError('exists: a file is already at Inbox/a.md')).toBeInstanceOf(FileExistsError);
+    expect(hostError('trash: the Trash would not take Inbox/a.md')).toBeInstanceOf(
+      TrashRefusedError,
+    );
     const other = hostError('cannot read Inbox/a.md: denied');
     expect(other).not.toBeInstanceOf(FileChangedError);
     expect(other.message).toBe('cannot read Inbox/a.md: denied');

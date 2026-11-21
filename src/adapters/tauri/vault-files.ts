@@ -3,6 +3,8 @@ import { listen } from '@tauri-apps/api/event';
 import {
   FileChangedError,
   FileExistsError,
+  TrashRefusedError,
+  type Unsyncable,
   type VaultFiles,
   type VaultSnapshot,
 } from '../../application/index.ts';
@@ -12,6 +14,7 @@ export function hostError(error: unknown): Error {
   const message = typeof error === 'string' ? error : String(error);
   if (message.startsWith('changed:')) return new FileChangedError(message.slice(8).trim());
   if (message.startsWith('exists:')) return new FileExistsError(message.slice(7).trim());
+  if (message.startsWith('trash:')) return new TrashRefusedError(message.slice(6).trim());
   return new Error(message);
 }
 
@@ -37,7 +40,11 @@ export async function openTauriVaultFiles(folder: string): Promise<VaultFiles> {
     read: (path) => call<string | null>('read_file', { path }),
     write: ({ path, text, expected }) => call('write_file', { path, text, expected }),
     rename: (from, to) => call('rename_file', { from, to }),
-    remove: (path) => call('delete_file', { path }),
+    remove: ({ path, expected, permanently }) =>
+      call('delete_file', { path, expected, permanently }),
+    readIgnoreFile: () => call<string | null>('read_ignore_file'),
+    writeIgnoreFile: ({ text, expected }) => call('write_ignore_file', { text, expected }),
+    findUnsyncable: () => call<Unsyncable>('find_unsyncable'),
     watch(listener) {
       const unlisten = listen<string[]>(VAULT_CHANGED, (event) => listener(event.payload));
       return () => void unlisten.then((stop) => stop());

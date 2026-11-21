@@ -2,7 +2,10 @@
 //! files inside the chosen vault, watches it, and runs fixed-shape `git`
 //! commands there. It decides nothing; the rules are in TypeScript.
 
+mod files;
 mod git;
+mod menu;
+mod paths;
 mod settings;
 mod vault;
 mod watcher;
@@ -11,6 +14,8 @@ use std::sync::{Mutex, MutexGuard};
 
 pub fn run() {
     tauri::Builder::default()
+        .menu(menu::build)
+        .on_menu_event(menu::on_event)
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(vault::VaultRoot::default())
@@ -22,6 +27,9 @@ pub fn run() {
             vault::write_file,
             vault::rename_file,
             vault::delete_file,
+            vault::read_ignore_file,
+            vault::write_ignore_file,
+            vault::find_unsyncable,
             git::git_run,
             git::mac_name,
             settings::read_settings,

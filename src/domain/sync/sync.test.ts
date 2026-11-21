@@ -1,5 +1,8 @@
 import {
   conflictCopyPath,
+  deletionsToConfirm,
+  icloudStubs,
+  withIgnoreBlock,
   conflictStep,
   editConflictCopyPath,
   gitFailureKind,
@@ -140,6 +143,7 @@ describe('sync rules', () => {
     [128, "fatal: '/tmp/gone.git' does not appear to be a git repository", 'unreachable'],
     [128, 'fatal: unable to access: Could not resolve host: example.com', 'unreachable'],
     [1, ' ! [rejected]        main -> main (fetch first)', 'rejected'],
+    [128, "fatal: Unable to create '/v/.git/index.lock': File exists.", 'locked'],
     [1, 'fatal: something else', 'error'],
   ] as const)('a failure with code %s and %j is %s', (code, stderr, kind) => {
     expect(gitFailureKind({ code, stderr })).toBe(kind);
@@ -153,5 +157,38 @@ describe('the sync schedule', () => {
     expect(pushDueIn({ now: 290_000, firstUnsyncedAt: 0 })).toBe(10_000);
     expect(pushDueIn({ now: 400_000, firstUnsyncedAt: 0 })).toBe(0);
     expect(pushDueIn({ now: 0, firstUnsyncedAt: 50_000 })).toBe(30_000);
+  });
+});
+
+describe('sync guards', () => {
+  const notes = (count: number, folder = 'Bulk') =>
+    Array.from({ length: count }, (_, at) => `${folder}/Note ${at}.md`);
+
+  it('asks before deleting more than 20 notes and more than a tenth of them', () => {
+    expect(deletionsToConfirm({ deleted: notes(21), tracked: notes(100) })).toHaveLength(21);
+    expect(deletionsToConfirm({ deleted: notes(20), tracked: notes(30) })).toEqual([]);
+    expect(deletionsToConfirm({ deleted: notes(25), tracked: notes(1000) })).toEqual([]);
+    const indexOnly = notes(30, '_index/folders');
+    expect(deletionsToConfirm({ deleted: indexOnly, tracked: indexOnly })).toEqual([]);
+  });
+
+  it('finds iCloud’s stand-ins for files it moved off the Mac', () => {
+    expect(icloudStubs(['People/.Mara Quill.md.icloud', 'a.md', 'x.icloud'])).toEqual([
+      'People/.Mara Quill.md.icloud',
+    ]);
+  });
+
+  it('adds its ignore block once, rewrites only its own lines, and keeps the person’s', () => {
+    const first = withIgnoreBlock('drafts/', { skipped: [], nested: [] });
+    expect(first.startsWith('drafts/\n\n# >>> DFAI Lite')).toBe(true);
+    expect(first).toContain('\n.env\n');
+    expect(withIgnoreBlock(first, { skipped: [], nested: [] })).toBe(first);
+    const second = withIgnoreBlock(`${first}notes.tmp\n`, {
+      skipped: ['Media/big #1.mov'],
+      nested: ['Code/tool'],
+    });
+    expect(second.startsWith('drafts/\n')).toBe(true);
+    expect(second).toContain('/Media/big\\ \\#1.mov\n/Code/tool/\n# <<< DFAI Lite\nnotes.tmp\n');
+    expect(withIgnoreBlock(null, { skipped: [], nested: [] })).toMatch(/^# >>> DFAI Lite/);
   });
 });

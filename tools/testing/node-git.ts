@@ -1,12 +1,13 @@
 // The git port through Node's child_process, for the real-git sync tests:
 // the same fixed argument shapes, prefix and quiet environment as the Rust
 // host (src-tauri/src/git.rs), test-only.
-import { execFile } from 'node:child_process';
-import { dirname } from 'node:path';
+import { execFile, spawn } from 'node:child_process';
+import { open } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import type { GitCommand, GitPort, GitResult } from '../../src/application/index.ts';
 
-/** As `FIXED_PREFIX` in src-tauri/src/git.rs. */
-const FIXED_PREFIX = [
+/** As `FIXED_PREFIX` in src-tauri/src/git.rs; both are checked against src-tauri/git-shapes.json. */
+export const FIXED_PREFIX = [
   ...['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false'],
   ...['-c', 'core.quotePath=false', '-c', 'protocol.ext.allow=never'],
   ...['-c', 'color.ui=never', '-c', 'commit.gpgSign=false', '-c', 'merge.ff=true'],
@@ -31,12 +32,17 @@ export function argsOf(command: GitCommand): string[] {
       return ['merge', '--no-edit', '--no-stat', `--message=${command.message}`, '@{upstream}'];
     case 'push':
       return ['push', '--quiet'];
-    case 'mergeInProgress':
-      return ['rev-parse', '-q', '--verify', 'MERGE_HEAD'];
+    case 'refExists':
+      return ['rev-parse', '-q', '--verify', command.name];
     case 'showSide':
+    case 'saveSide':
       return ['cat-file', 'blob', `:${command.side === 'ours' ? 2 : 3}:${command.path}`];
     case 'checkoutOurs':
       return ['checkout', '--ours', '--', command.path];
+    case 'moveCase':
+      return ['mv', '--', command.from, command.to];
+    case 'trackedFiles':
+      return ['ls-files', '-z'];
     case 'upstreamMessage':
       return ['log', '-1', '--format=%B', '@{upstream}', '--'];
     case 'remoteUrl':
@@ -78,7 +84,28 @@ export class NodeGit implements GitPort {
 
   run(command: GitCommand): Promise<GitResult> {
     this.ran.push(command);
+    if (command.kind === 'saveSide') return this.saveSide(command.to, argsOf(command));
     return runGit(this.cwd, argsOf(command), this.env);
+  }
+
+  /** As the host does: git's stdout straight into a new file, byte for byte. */
+  private async saveSide(to: string, args: readonly string[]): Promise<GitResult> {
+    const file = await open(join(this.cwd, ...to.split('/')), 'wx');
+    try {
+      const child = spawn('git', [...FIXED_PREFIX, ...args], {
+        cwd: this.cwd,
+        env: this.env,
+        stdio: ['ignore', file.fd, 'pipe'],
+      });
+      let stderr = '';
+      child.stderr?.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+      const code = await new Promise<number>((resolve) =>
+        child.on('close', (exit) => resolve(exit ?? 1)),
+      );
+      return { code, stdout: '', stderr };
+    } finally {
+      await file.close();
+    }
   }
 
   async macName(): Promise<string> {
