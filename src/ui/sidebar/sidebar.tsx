@@ -4,6 +4,7 @@ import type { VaultPath } from '../../domain/vault/index.ts';
 import type { Route } from '../routing/route.ts';
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
+import { IS_MAC, keyFor } from '../shell/shortcuts.ts';
 import { useVault } from '../state/vault-store.ts';
 import { SyncChip } from '../sync/sync-chip.tsx';
 import { FavoritesSection } from './favorites-section.tsx';
@@ -13,8 +14,6 @@ import { MoveDialog } from './move-dialog.tsx';
 import { RenameFolderDialog } from './rename-folder-dialog.tsx';
 import { RowMenu } from './row-menu.tsx';
 import './sidebar.css';
-
-const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
 /** The sidebar: new note and search on top, favourites, the folder tree, and sync in the footer. */
 export function Sidebar({ route }: { route: Route }) {
@@ -70,6 +69,15 @@ export function Sidebar({ route }: { route: Route }) {
       </div>
       <footer className="sidebar-footer">
         {services.sync === null ? null : <SyncChip sync={services.sync} />}
+        <button
+          type="button"
+          className="quiet-button sidebar-shortcuts"
+          aria-label="Keyboard shortcuts"
+          title={`Keyboard shortcuts (${keyFor('help.shortcuts')})`}
+          onClick={() => ui.setState({ shortcutsOpen: true })}
+        >
+          <Icon name="keyboard" />
+        </button>
         <button
           type="button"
           className="quiet-button sidebar-settings"

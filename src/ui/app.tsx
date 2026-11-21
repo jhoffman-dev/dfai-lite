@@ -8,6 +8,7 @@ import { useRoute } from './routing/use-route.ts';
 import { SearchPalette } from './search/search-palette.tsx';
 import { AppContext, useApp, type AppServices } from './services.ts';
 import { Icon } from './shell/icons.tsx';
+import { ShortcutsDialog } from './shell/shortcuts-dialog.tsx';
 import { useShortcuts } from './shell/use-shortcuts.ts';
 import { useStartRoute } from './shell/use-start-route.ts';
 import { Sidebar } from './sidebar/sidebar.tsx';
@@ -37,6 +38,7 @@ function Shell() {
   const route = useRoute();
   const paletteOpen = useUi((state) => state.paletteOpen);
   const settingsOpen = useUi((state) => state.settingsOpen);
+  const shortcutsOpen = useUi((state) => state.shortcutsOpen);
   const drawerOpen = useUi((state) => state.drawerOpen);
   useShortcuts();
   useWorkspaceSync();
@@ -93,6 +95,9 @@ function Shell() {
         <Suspense fallback={null}>
           <SettingsDialog onClose={() => ui.setState({ settingsOpen: false })} />
         </Suspense>
+      ) : null}
+      {shortcutsOpen ? (
+        <ShortcutsDialog onClose={() => ui.setState({ shortcutsOpen: false })} />
       ) : null}
       <Notice />
     </div>

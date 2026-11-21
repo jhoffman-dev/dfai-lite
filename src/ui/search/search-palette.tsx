@@ -17,7 +17,11 @@ type PaletteRow =
       readonly title: string;
       readonly snippet: string;
     }
-  | { readonly kind: 'create'; readonly name: string };
+  | { readonly kind: 'create'; readonly name: string }
+  | { readonly kind: 'shortcuts' };
+
+/** Typed alone, it lists the keyboard shortcuts instead of searching. */
+const HELP_QUERY = '?';
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -39,6 +43,7 @@ function usePaletteRows(query: string): PaletteRow[] {
   return useMemo(() => {
     const typed = query.trim();
     if (typed === '') return [];
+    if (typed === HELP_QUERY) return [{ kind: 'shortcuts' }];
     const index = services.session.index;
     const names = rankNoteSuggestions({
       query: typed,
@@ -61,7 +66,7 @@ function usePaletteRows(query: string): PaletteRow[] {
 
 /** ⌘K: one field that switches to a note by name, searches the text, or makes the note. */
 export function SearchPalette({ onClose }: { onClose: () => void }) {
-  const { actions } = useApp();
+  const { actions, ui } = useApp();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const rows = usePaletteRows(query);
@@ -71,7 +76,8 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const choose = (row: PaletteRow | undefined, openIn: OpenIn) => {
     if (row === undefined) return;
     onClose();
-    if (row.kind === 'create') actions.followLink(row.name, openIn).catch(actions.report);
+    if (row.kind === 'shortcuts') ui.setState({ shortcutsOpen: true });
+    else if (row.kind === 'create') actions.followLink(row.name, openIn).catch(actions.report);
     else actions.openNote(row.path, openIn);
   };
 
@@ -99,7 +105,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           aria-expanded={rows.length > 0}
           aria-controls="palette-results"
           aria-activedescendant={rows.length > 0 ? `palette-row-${current}` : undefined}
-          placeholder="Find or create a note…"
+          placeholder="Find or create a note… (? for shortcuts)"
           autoFocus
           value={query}
           onChange={(event) => {
@@ -111,7 +117,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         <ul id="palette-results" className="palette-results" role="listbox" aria-label="Results">
           {rows.map((row, at) => (
             <li
-              key={row.kind === 'create' ? 'create' : `${row.kind}:${row.path}`}
+              key={'path' in row ? `${row.kind}:${row.path}` : row.kind}
               id={`palette-row-${at}`}
               role="option"
               aria-selected={at === current}
@@ -120,7 +126,9 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
               onClick={(event) => choose(row, openInFor(event))}
               onAuxClick={(event) => event.button === 1 && choose(row, 'new-tab')}
             >
-              {row.kind === 'create' ? (
+              {row.kind === 'shortcuts' ? (
+                <span className="palette-title">Keyboard shortcuts</span>
+              ) : row.kind === 'create' ? (
                 <span className="palette-title">Create note “{row.name}”</span>
               ) : (
                 <>

@@ -15,6 +15,7 @@ const PATHS = {
   more: 'M3.5 8h.01M8 8h.01M12.5 8h.01',
   close: 'M4.5 4.5l7 7m0-7-7 7',
   split: 'M2.5 3h11v10h-11ZM8 3v10',
+  keyboard: 'M1.5 4h13v8h-13ZM4 6.5h1M7.5 6.5h1M11 6.5h1M4.5 9.5h7',
 } as const;
 
 export type IconName = keyof typeof PATHS;
