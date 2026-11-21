@@ -1,7 +1,7 @@
 name: check
 
-# The whole gate (CLAUDE.md): Linux only, about two minutes. The Mac app is
-# built on a Mac, never here.
+# The whole gate (CLAUDE.md): Linux only, about two minutes, jobs in
+# parallel. The Mac app is built on a Mac, never here.
 on:
   push:
     branches: [main]
@@ -36,7 +36,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Typecheck, lint, format, unit tests, build
+      - name: Typecheck, lint, format, unit and real-git sync tests, build
         run: pnpm check
 
       - name: Chromium for the smoke
@@ -44,3 +44,58 @@ jobs:
 
       - name: The core loop, end to end
         run: pnpm e2e
+
+  # The Rust host, only when src-tauri/ changed. Decided inside the job, so
+  # the job always reports (a required check never waits on a skipped job).
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Did src-tauri change?
+        id: changed
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          base="${PR_BASE:-$PUSH_BEFORE}"
+          # No usable base (a new branch, a force-push): check it all.
+          if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$base" HEAD | grep -q '^src-tauri/'; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rust=false" >> "$GITHUB_OUTPUT"
+            echo "src-tauri/ did not change: nothing to check."
+          fi
+
+      - if: steps.changed.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - if: steps.changed.outputs.rust == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+
+      - name: Tauri's Linux build libraries
+        if: steps.changed.outputs.rust == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev libssl-dev
+
+      - name: Format, clippy, tests
+        if: steps.changed.outputs.rust == 'true'
+        working-directory: src-tauri
+        run: |
+          # Tauri embeds the web build at compile time; an empty one is enough here.
+          mkdir -p ../dist
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test

@@ -11,7 +11,7 @@ import type { StoredFile } from '../ports/index.ts';
 /** What changed in the session; listeners re-read what they show. */
 export type VaultChange =
   | { readonly kind: 'loaded' }
-  /** A file was created, or its text or sync flags changed. */
+  /** A file was created, or its text changed. */
   | { readonly kind: 'written'; readonly path: VaultPath }
   | { readonly kind: 'deleted'; readonly path: VaultPath }
   | { readonly kind: 'renamed'; readonly from: VaultPath; readonly to: VaultPath };
@@ -43,12 +43,13 @@ const NO_FAVORITES: ParsedFavorites = { kind: 'ok', favorites: [] };
  * favourites, kept in step and announced to listeners. The UI's store
  * subscribes here; nothing here knows about React.
  *
- * Use-cases change it (`apply…`) after the `NoteStore` has the change, so
- * the session never shows what the device has not kept. `version` grows by
- * one with every change, for snapshot-based subscribers.
+ * Use-cases change it (`apply…`) after the disk has the change, so the
+ * session never shows what the Mac has not kept. `version` grows by one
+ * with every change, for snapshot-based subscribers.
  */
 export class VaultSession {
   private files = new Map<VaultPath, StoredFile>();
+  private others: readonly VaultPath[] = [];
   private vaultIndex = new VaultIndex();
   private parsedFavorites: ParsedFavorites = NO_FAVORITES;
   private tree: FolderNode | null = null;
@@ -93,7 +94,19 @@ export class VaultSession {
     return () => this.listeners.delete(listener);
   }
 
-  load(files: Iterable<StoredFile>): void {
+  /** The vault's files that are not read as text (images, PDFs), as last loaded. */
+  otherPaths(): readonly VaultPath[] {
+    return this.others;
+  }
+
+  /** Every path in the vault, text files and the rest: what a new file's name must not take. */
+  takenPaths(): VaultPath[] {
+    return [...this.files.keys(), ...this.others];
+  }
+
+  /** `otherPaths`: the vault's files that are not read as text (images, PDFs). */
+  load(files: Iterable<StoredFile>, otherPaths: readonly VaultPath[] = []): void {
+    this.others = otherPaths;
     this.files = new Map();
     for (const file of files) this.files.set(file.path, file);
     this.vaultIndex = VaultIndex.build(this.files.values());

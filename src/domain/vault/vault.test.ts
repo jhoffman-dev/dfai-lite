@@ -4,6 +4,8 @@ import {
   flattenFolderTree,
   folderOf,
   isHiddenPath,
+  isTextFile,
+  isVaultContent,
   isVisibleNote,
   noteNameProblem,
   noteTitle,
@@ -66,6 +68,24 @@ describe('what is hidden', () => {
     expect(isHiddenPath('Projects/_index.md')).toBe(false);
     expect(isVisibleNote('Resources/diagram.png')).toBe(false);
     expect(isVisibleNote('Inbox/Idea.md')).toBe(true);
+  });
+});
+
+describe('what the app reads from the folder', () => {
+  it('reads notes and its own JSON as text, anywhere but other dot folders', () => {
+    expect(isTextFile('People/Mara Quill.md')).toBe(true);
+    expect(isTextFile('_index/README.md')).toBe(true);
+    expect(isTextFile('.dfai-lite/favorites.json')).toBe(true);
+    expect(isTextFile('Images/plan.png')).toBe(false);
+    expect(isTextFile('.obsidian/workspace.md')).toBe(false);
+    expect(isTextFile('People')).toBe(false);
+  });
+
+  it('leaves git, editors’ dot files and packages out of the vault', () => {
+    expect(isVaultContent('Images/plan.png')).toBe(true);
+    expect(isVaultContent('.git/index')).toBe(false);
+    expect(isVaultContent('Inbox/.DS_Store')).toBe(false);
+    expect(isVaultContent('tools/node_modules/x.md')).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { GraphPage } from './graph-page/graph-page.tsx';
 import { NotePane, preloadEditor } from './note/note-pane.tsx';
 import type { Route } from './routing/route.ts';
@@ -12,7 +12,6 @@ import { Sidebar } from './sidebar/sidebar.tsx';
 import { createNoteActions } from './state/note-actions.ts';
 import { createUiStore, useUi } from './state/ui-store.ts';
 import { createVaultStore, useVault } from './state/vault-store.ts';
-import type { SyncControls } from './sync/sync-status.ts';
 import { TagsPage } from './tags/tags-page.tsx';
 import './theme.css';
 import './app.css';
@@ -21,33 +20,22 @@ import './shell/dialog.css';
 const SettingsDialog = lazy(() => import('./settings/settings-dialog.tsx'));
 
 function contextFor(services: AppServices): AppContextValue {
-  const deps = { store: services.noteStore, session: services.session };
+  const deps = { files: services.files, session: services.session };
   const ui = createUiStore({ preview: services.settings.load().ui.preview });
   const vault = createVaultStore(services.session);
   const actions = createNoteActions({ deps, ui, settings: services.settings });
   return { services, deps, vault, ui, actions };
 }
 
-/** Fetching the vault on the first sync, or a vault with no notes yet. */
-function EmptyVault({ sync }: { sync: SyncControls }) {
-  const status = useSyncExternalStore(sync.subscribe, sync.getStatus);
-  return (
-    <div className="app-empty" role="status">
-      {status.kind === 'syncing'
-        ? 'Fetching your notes from GitHub…'
-        : 'No notes yet. Start one with New note.'}
-    </div>
-  );
-}
-
 function Home() {
   const { actions, services } = useApp();
   const empty = useVault((vault) => vault.tree.noteCount === 0);
-  if (empty && services.sync !== null) return <EmptyVault sync={services.sync} />;
+  const newKey = services.desktop === null ? '⌥N' : '⌘N';
   return (
     <div className="app-empty">
       <p>
-        Press <kbd>⌥N</kbd> or <kbd>Ctrl N</kbd> to start a note, <kbd>⌘K</kbd> to find one.
+        {empty ? 'No notes yet. ' : null}
+        Press <kbd>{newKey}</kbd> to start a note, <kbd>⌘K</kbd> to find one.
       </p>
       <button
         type="button"
@@ -130,9 +118,9 @@ function Shell() {
             <Icon name="search" />
           </button>
         </div>
-        {services.sync !== null ? null : (
+        {services.desktop !== null ? null : (
           <div className="app-banner" role="note">
-            <span>Sample vault — connect a GitHub repository in Settings.</span>
+            <span>Sample vault — the Mac app opens your own notes folder.</span>
             <button
               type="button"
               className="quiet-button"

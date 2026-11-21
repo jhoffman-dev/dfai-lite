@@ -7,9 +7,10 @@ export interface OpenedVault {
   readonly favoritesProblem: string | null;
 }
 
-/** Loads every file this device holds into the session and builds the index. No network. */
+/** Reads the whole vault from disk, in one call, into the session and builds the index. No git. */
 export async function openVault(deps: VaultDeps): Promise<OpenedVault> {
-  deps.session.load(await deps.store.list());
+  const { notes, otherPaths } = await deps.files.readAll();
+  deps.session.load(notes, otherPaths);
   return {
     noteCount: deps.session.index.paths().length,
     favoritesProblem: deps.session.favoritesProblem,

@@ -1,5 +1,6 @@
-export { writeFile, type VaultDeps } from './vault-deps.ts';
+export { refreshPaths, writeFile, type VaultDeps } from './vault-deps.ts';
 export { openVault, type OpenedVault } from './open-vault.ts';
+export { applyExternalChanges, reloadVault } from './external-changes.ts';
 export { createNoteFromLink, createQuickNote } from './create-note.ts';
 export { saveNoteText, type SaveNoteRequest, type SaveNoteResult } from './save-note.ts';
 export { renameNote, type RenameResult } from './rename-note.ts';

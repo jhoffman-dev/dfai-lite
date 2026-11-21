@@ -19,7 +19,14 @@ export {
   forbiddenCharacter,
   noteNameProblem,
 } from './file-name.ts';
-export { APP_FOLDER, INDEX_FOLDER, isHiddenPath, isVisibleNote } from './visibility.ts';
+export {
+  APP_FOLDER,
+  INDEX_FOLDER,
+  isHiddenPath,
+  isTextFile,
+  isVaultContent,
+  isVisibleNote,
+} from './visibility.ts';
 export { DEFAULT_NOTE_NAME, INBOX_FOLDER, uniqueNotePath } from './new-note.ts';
 export {
   buildFolderTree,

@@ -8,8 +8,8 @@ import {
 } from '../../application/index.ts';
 import {
   FixedClock,
-  MemoryNoteStore,
   MemorySettingsStore,
+  MemoryVaultFiles,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
@@ -39,22 +39,23 @@ export async function renderApp({
   files = TEST_VAULT,
   preview = true,
 }: { files?: Readonly<Record<VaultPath, string>>; preview?: boolean } = {}) {
-  const noteStore = MemoryNoteStore.of(files);
+  const vaultFiles = MemoryVaultFiles.of(files);
   const session = new VaultSession();
   const search = new SimpleSearchEngine();
-  await openVault({ store: noteStore, session });
+  await openVault({ files: vaultFiles, session });
   search.index(
     session.index.paths().map((path) => ({ path, text: session.file(path)?.text ?? '' })),
   );
   const initial: Settings = { ...DEFAULT_SETTINGS, ui: { ...DEFAULT_SETTINGS.ui, preview } };
   const services: AppServices = {
-    noteStore,
+    files: vaultFiles,
     session,
     search,
     settings: new MemorySettingsStore(initial),
     clock: new FixedClock(),
     sync: null,
-    reconnect: () => undefined,
+    desktop: null,
+    pendingEdits: { add: () => () => undefined },
   };
   return { services, ...render(<App services={services} />) };
 }

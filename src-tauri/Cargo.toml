@@ -1,0 +1,35 @@
+[package]
+name = "dfai-lite"
+version = "0.1.0"
+description = "DFAI Lite: fast local markdown notes, synced with git"
+authors = ["James Hoffman"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "dfai_lite_lib"
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+# Kept small on purpose (CLAUDE.md): a cold compile in CI is most of the
+# `rust` job. Tauri and its plugins move with their npm halves in
+# package.json: the CLI refuses a build whose major.minor differ.
+[dependencies]
+tauri = { version = "~2.12.7", features = [] }
+tauri-plugin-dialog = "~2.8.4"
+tauri-plugin-global-shortcut = "~2.4.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+notify = "8.2.2"
+# A deleted note goes to the Trash. No default features: they are chrono and
+# Windows COM settings this app has no use for.
+trash = { version = "5.4.0", default-features = false }
+
+# No debug info for dependencies: the target folder is GBs, and the disk is small.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

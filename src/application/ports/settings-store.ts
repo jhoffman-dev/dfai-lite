@@ -1,13 +1,6 @@
 import type { VaultPath } from '../../domain/vault/index.ts';
 
-/** The GitHub repository and branch the vault syncs with. */
-export interface RepoSettings {
-  readonly owner: string;
-  readonly name: string;
-  readonly branch: string;
-}
-
-/** How this device shows the app. Device-local: never synced. */
+/** How this Mac shows the app. Device-local: never synced. New fields are added, never renamed. */
 export interface UiPrefs {
   readonly theme: 'system' | 'light' | 'dark';
   readonly expandedFolders: readonly VaultPath[];
@@ -24,20 +17,28 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
   preview: false,
 };
 
+/** The key that makes a new note from anywhere on the Mac, as Tauri names keys. */
+export const DEFAULT_CAPTURE_HOTKEY = 'Alt+Command+N';
+
 export interface Settings {
-  /** Null until a repository is connected: the app then runs on a vault in memory. */
-  readonly repo: RepoSettings | null;
-  /** The GitHub token. A secret: never logged, never in a URL, an error or a commit. */
-  readonly token: string | null;
+  /** The vault folder on this Mac; null until one is chosen. Unused in the browser. */
+  readonly vaultPath: string | null;
+  /** The global quick-capture key, e.g. `Alt+Command+N`; empty for none. */
+  readonly captureHotkey: string;
   readonly ui: UiPrefs;
 }
 
-export const DEFAULT_SETTINGS: Settings = { repo: null, token: null, ui: DEFAULT_UI_PREFS };
+export const DEFAULT_SETTINGS: Settings = {
+  vaultPath: null,
+  captureHotkey: DEFAULT_CAPTURE_HOTKEY,
+  ui: DEFAULT_UI_PREFS,
+};
 
 /**
- * This device's settings (localStorage in the app). Synchronous, because the
- * app reads them before its first paint. `load` never throws: missing or
- * unreadable settings load as {@link DEFAULT_SETTINGS}, field by field.
+ * This device's settings (a file in the app's config folder on the Mac,
+ * localStorage in the browser). Synchronous, because the app reads them
+ * before its first paint. `load` never throws: missing or unreadable
+ * settings load as {@link DEFAULT_SETTINGS}, field by field.
  */
 export interface SettingsStore {
   load(): Settings;

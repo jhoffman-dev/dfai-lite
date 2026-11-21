@@ -56,6 +56,31 @@ function editorBridge(app: AppContextValue, { autosave, opened }: NoteSaver): Ed
   };
 }
 
+/**
+ * A number that changes when the note changed on disk (Claude, git, another
+ * editor) while nothing typed here waits to be saved: the editor, keyed by
+ * it, opens afresh on the new text. With typing waiting, the editor keeps
+ * it, and its save forks to a conflict copy instead of writing over.
+ */
+function useFollowDisk(app: AppContextValue, path: VaultPath, saver: NoteSaver): number {
+  const { session } = app.services;
+  const [revision, setRevision] = useState(0);
+  useEffect(
+    () =>
+      session.subscribe((change) => {
+        if (change.kind !== 'loaded' && !(change.kind === 'written' && change.path === path)) {
+          return;
+        }
+        const text = session.file(path)?.text;
+        if (text !== undefined && text !== saver.basedOn() && saver.autosave.isIdle()) {
+          setRevision((count) => count + 1);
+        }
+      }),
+    [session, path, saver],
+  );
+  return revision;
+}
+
 /** Saves what is waiting when the page is hidden or closed, and when the note is left. */
 function useFlushOnLeave(autosave: Autosave): void {
   useEffect(() => {
@@ -95,6 +120,9 @@ export function NotePane({ path }: { path: VaultPath }) {
   const [saver] = useState(() => createNoteSaver(app, path));
   const { autosave } = saver;
   useFlushOnLeave(autosave);
+  // Sync writes what is typed before it commits.
+  useEffect(() => services.pendingEdits.add(autosave.flush), [services, autosave]);
+  const revision = useFollowDisk(app, path, saver);
   const bridge = useMemo(() => editorBridge(app, saver), [app, saver]);
   const preview = useUi((state) => state.preview);
   const wantsEditor = useUi(
@@ -150,7 +178,12 @@ export function NotePane({ path }: { path: VaultPath }) {
           </Suspense>
         ) : (
           <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
-            <NoteEditor initialText={file.text} autoFocus={focusEditor} bridge={bridge} />
+            <NoteEditor
+              key={revision}
+              initialText={file.text}
+              autoFocus={focusEditor}
+              bridge={bridge}
+            />
           </Suspense>
         )}
       </div>

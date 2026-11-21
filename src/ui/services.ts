@@ -1,28 +1,38 @@
 import { createContext, useContext } from 'react';
 import type {
   Clock,
-  NoteStore,
   SearchEngine,
   SettingsStore,
   VaultDeps,
+  VaultFiles,
   VaultSession,
 } from '../application/index.ts';
+import type { DesktopControls } from './settings/desktop-controls.ts';
 import type { NoteActions } from './state/note-actions.ts';
 import type { SyncControls } from './sync/sync-status.ts';
 import type { UiStore } from './state/ui-store.ts';
 import type { VaultStore } from './state/vault-store.ts';
 
+/**
+ * Typing not saved yet, by every open editor: sync writes it before it
+ * commits. An editor adds its flush while open and takes it away on close.
+ */
+export interface PendingEdits {
+  add(flush: () => Promise<void>): () => void;
+}
+
 /** What the composition root hands the UI: the open session and the ports it reads and writes. */
 export interface AppServices {
-  readonly noteStore: NoteStore;
+  readonly files: VaultFiles;
   readonly session: VaultSession;
   readonly settings: SettingsStore;
   readonly clock: Clock;
   readonly search: SearchEngine;
-  /** Null until a repository is connected and the sync scheduler is wired. */
+  /** Null in a browser, on the sample vault: nothing syncs there. */
   readonly sync: SyncControls | null;
-  /** Starts again on the settings just saved: another repository is another vault. */
-  readonly reconnect: () => void;
+  /** The Mac app's own controls (vault folder, hotkey); null in a browser. */
+  readonly desktop: DesktopControls | null;
+  readonly pendingEdits: PendingEdits;
 }
 
 /** The services plus the stores the components read slices of. */

@@ -6,7 +6,7 @@ test('the core loop: new note, link, favourite, search, tags, graph', async ({ p
   const sidebar = page.getByRole('navigation', { name: 'Sidebar' });
   await expect(sidebar).toBeVisible();
   await expect(
-    page.getByText('Sample vault — connect a GitHub repository in Settings.'),
+    page.getByText('Sample vault — the Mac app opens your own notes folder.'),
   ).toBeVisible();
 
   // One click, and the caret is already in a new note.

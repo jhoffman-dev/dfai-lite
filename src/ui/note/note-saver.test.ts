@@ -1,8 +1,8 @@
-import { openVault, VaultSession, type StoredFile } from '../../application/index.ts';
+import { applyExternalChanges, openVault, VaultSession } from '../../application/index.ts';
 import {
   FixedClock,
-  MemoryNoteStore,
   MemorySettingsStore,
+  MemoryVaultFiles,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
 import { parseRoute } from '../routing/route.ts';
@@ -15,34 +15,35 @@ import { createNoteSaver } from './note-saver.ts';
 const PLAN = 'Projects/Larkspur Payroll.md';
 
 async function setup() {
-  const noteStore = MemoryNoteStore.of({ [PLAN]: 'Parallel run.' });
+  const files = MemoryVaultFiles.of({ [PLAN]: 'Parallel run.' });
   const session = new VaultSession();
-  await openVault({ store: noteStore, session });
-  const deps = { store: noteStore, session };
+  const deps = { files, session };
+  await openVault(deps);
   const ui = createUiStore({ preview: false });
   const settings = new MemorySettingsStore();
   const app: AppContextValue = {
     services: {
-      noteStore,
+      files,
       session,
       settings,
       clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
       search: new SimpleSearchEngine(),
       sync: null,
-      reconnect: () => undefined,
+      desktop: null,
+      pendingEdits: { add: () => () => undefined },
     },
     deps,
     ui,
     vault: createVaultStore(session),
     actions: createNoteActions({ deps, ui, settings }),
   };
-  return { app, session, ui };
+  return { app, session, ui, deps };
 }
 
-/** What a sync does when it pulls another device's edit: the note changes, clean. */
-function pulledEdit(session: VaultSession, text: string): void {
-  const file: StoredFile = { path: PLAN, text, baseSha: 'remote', dirty: false };
-  session.applyWrite(file);
+/** What a sync (or Claude) does: the note changes on disk, and the session hears. */
+async function editOnDisk(deps: { files: MemoryVaultFiles; session: VaultSession }, text: string) {
+  deps.files.edit(PLAN, text);
+  await applyExternalChanges(deps, [PLAN]);
 }
 
 describe('saving a note from the editor', () => {
@@ -58,10 +59,10 @@ describe('saving a note from the editor', () => {
   });
 
   it('keeps both when a sync changed the note while typing, and opens the copy', async () => {
-    const { app, session, ui } = await setup();
+    const { app, session, ui, deps } = await setup();
     const saver = createNoteSaver(app, PLAN);
     saver.opened('Parallel run.');
-    pulledEdit(session, 'Parallel run, edited on the laptop.');
+    await editOnDisk(deps, 'Parallel run, edited on the laptop.');
     saver.autosave.schedule(() => 'Parallel run, typed here.');
     await saver.autosave.flush();
 
@@ -74,7 +75,7 @@ describe('saving a note from the editor', () => {
     expect(route.kind === 'note' && session.file(route.path)?.text).toBe(
       'Parallel run, typed here.',
     );
-    expect(ui.getState().notice).toMatch(/changed on another device/);
+    expect(ui.getState().notice).toMatch(/changed elsewhere/);
   });
 
   it('bases the next save on the last one, so its own saves never look like a sync', async () => {

@@ -1,10 +1,10 @@
 import { FAVORITES_PATH } from '../../domain/favorites/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
-import { MemoryNoteStore } from '../../application/testing/index.ts';
+import { MemoryVaultFiles } from '../../application/testing/index.ts';
 
 /**
- * A small fictional vault: what `pnpm dev` and the e2e smoke run on when no
- * repository is connected. Every name in it is made up.
+ * A small fictional vault: what the app runs on in a browser (`pnpm dev` and
+ * the e2e smoke), where there is no vault folder. Every name in it is made up.
  */
 export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
   'Inbox/Ideas for the offsite.md':
@@ -30,11 +30,11 @@ export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
   'Resources/Weekly review.md':
     'A checklist for the Friday review. #process\n\n- Empty the Inbox.\n- Check [[Larkspur Payroll]] next steps.\n- Plan next week.\n',
   'Welcome.md':
-    'Welcome to DFAI Lite, a fast notes app over a GitHub repository. #help\n\nLinks look like [[Larkspur Payroll]], tags like #idea. Following a link to a note that does not exist, such as [[Materials list]], creates it.\n',
+    'Welcome to DFAI Lite, fast notes in a folder of markdown files on your Mac. #help\n\nLinks look like [[Larkspur Payroll]], tags like #idea. Following a link to a note that does not exist, such as [[Materials list]], creates it.\n',
   [FAVORITES_PATH]: '[\n  "Projects/Larkspur Payroll.md",\n  "Welcome.md"\n]\n',
 };
 
-/** A fresh in-memory store holding the sample vault, every file clean. */
-export function sampleNoteStore(): MemoryNoteStore {
-  return MemoryNoteStore.of(SAMPLE_VAULT);
+/** A fresh vault folder in memory holding the sample vault. */
+export function sampleVaultFiles(): MemoryVaultFiles {
+  return MemoryVaultFiles.of(SAMPLE_VAULT);
 }

@@ -1,162 +1,166 @@
-import { useState, useSyncExternalStore, type FormEvent } from 'react';
-import type { Settings } from '../../application/index.ts';
+import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { useApp } from '../services.ts';
 import '../shell/dialog.css';
 import { describeSyncStatus } from '../sync/sync-chip.tsx';
 import type { SyncControls } from '../sync/sync-status.ts';
+import type { DesktopControls, RemoteInfo } from './desktop-controls.ts';
+import { acceleratorOf, shortcutLabel } from './hotkey.ts';
 
-interface RepoForm {
-  readonly repository: string;
-  readonly branch: string;
-  readonly token: string;
-}
-
-function formOf(settings: Settings): RepoForm {
-  return {
-    repository: settings.repo === null ? '' : `${settings.repo.owner}/${settings.repo.name}`,
-    branch: settings.repo?.branch ?? 'main',
-    token: settings.token ?? '',
-  };
-}
-
-/** `owner/name` split, or null when it is not that shape. */
-function parseRepository(text: string): { owner: string; name: string } | null {
-  const match = /^\s*([\w.-]+)\/([\w.-]+)\s*$/.exec(text);
-  return match === null ? null : { owner: match[1] ?? '', name: match[2] ?? '' };
-}
-
-/** The GitHub repository the vault syncs with, and the token that reaches it. */
-/** Whether `next` reaches another remote, or the same one another way: a new start either way. */
-function connectionChanged(before: Settings, next: Settings): boolean {
-  return JSON.stringify([before.repo, before.token]) !== JSON.stringify([next.repo, next.token]);
-}
-
-/** Where sync stands, in words, with the reason it stopped. Never the token. */
-function SyncLine({ sync }: { sync: SyncControls }) {
+/** Where sync stands, in words, with the reason it stopped or is off, and where it syncs to. */
+function SyncSection({ sync, desktop }: { sync: SyncControls; desktop: DesktopControls }) {
   const status = useSyncExternalStore(sync.subscribe, sync.getStatus);
+  const [remote, setRemote] = useState<RemoteInfo | null | 'loading'>('loading');
+  useEffect(() => {
+    let current = true;
+    desktop
+      .remote()
+      .then((found) => current && setRemote(found))
+      // Where it syncs is a nicety here; the status line already says what went wrong.
+      .catch(() => current && setRemote(null));
+    return () => {
+      current = false;
+    };
+  }, [desktop, status.kind]);
   const { label } = describeSyncStatus(status);
   const reason =
-    status.kind === 'error'
+    status.kind === 'error' || status.kind === 'off'
       ? status.message
       : status.kind === 'needs-sign-in'
-        ? 'GitHub refused the token: check it has Contents read and write on this repository.'
+        ? 'git’s login was refused. Run `git fetch` in the vault folder in Terminal to sign in again.'
         : null;
   return (
-    <p className="dialog-hint" role="status">
-      Sync: {label}
-      {reason === null ? '' : ` — ${reason}`}
-    </p>
+    <section className="dialog-field" aria-label="Sync">
+      <span>Sync</span>
+      <p className="dialog-hint" role="status">
+        {label}
+        {reason === null ? '' : ` — ${reason}`}
+      </p>
+      {remote === 'loading' || remote === null ? null : (
+        <p className="dialog-hint">
+          {remote.url} · {remote.branch}
+        </p>
+      )}
+      <div className="dialog-actions">
+        <button
+          type="button"
+          className="quiet-button"
+          disabled={status.kind === 'syncing'}
+          onClick={() => sync.syncNow()}
+        >
+          Sync now
+        </button>
+      </div>
+    </section>
   );
 }
 
+/** The global key that makes a new note from anywhere: press the keys to record them. */
+function HotkeySection({ desktop }: { desktop: DesktopControls }) {
+  const { services } = useApp();
+  const [saved, setSaved] = useState(() => services.settings.load().captureHotkey);
+  const [problem, setProblem] = useState<string | null>(null);
+  const apply = (accelerator: string) => {
+    desktop
+      .setCaptureHotkey(accelerator)
+      .then(() => {
+        setSaved(accelerator);
+        setProblem(null);
+      })
+      .catch((error: unknown) =>
+        setProblem(
+          `The Mac would not take that key: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+  };
+  const record = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Tab' || event.key === 'Escape') return;
+    event.preventDefault();
+    const accelerator = acceleratorOf(event);
+    if (accelerator !== null) apply(accelerator);
+  };
+  return (
+    <label className="dialog-field">
+      <span>New note from anywhere</span>
+      <input
+        className="text-input"
+        readOnly
+        value={shortcutLabel(saved)}
+        aria-describedby="hotkey-hint"
+        onKeyDown={record}
+      />
+      <p id="hotkey-hint" className="dialog-hint">
+        Click the box and press the keys. Works while the app is open, even behind other windows.{' '}
+        {saved === '' ? null : (
+          <button type="button" className="quiet-button" onClick={() => apply('')}>
+            Turn off
+          </button>
+        )}
+      </p>
+      {problem === null ? null : (
+        <p className="dialog-hint" role="alert">
+          {problem}
+        </p>
+      )}
+    </label>
+  );
+}
+
+function VaultSection({ desktop }: { desktop: DesktopControls }) {
+  const { actions } = useApp();
+  return (
+    <section className="dialog-field" aria-label="Notes folder">
+      <span>Notes folder</span>
+      <p className="dialog-hint">{desktop.vaultPath}</p>
+      <div className="dialog-actions">
+        <button
+          type="button"
+          className="quiet-button"
+          onClick={() => desktop.changeVault().catch(actions.report)}
+        >
+          Change…
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Settings: the notes folder, sync, and the capture key. In a browser, only what it is. */
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { services } = useApp();
-  const [form, setForm] = useState(() => formOf(services.settings.load()));
-  const [problem, setProblem] = useState<string | null>(null);
-  const field = (key: keyof RepoForm) => ({
-    value: form[key],
-    onChange: (event: { target: { value: string } }) =>
-      setForm({ ...form, [key]: event.target.value }),
-  });
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const blank = form.repository.trim() === '';
-    const repo = parseRepository(form.repository);
-    if (!blank && repo === null) {
-      setProblem('Write the repository as owner/name, for example mara-quill/notes.');
-      return;
-    }
-    save({
-      repo: repo === null ? null : { ...repo, branch: form.branch.trim() || 'main' },
-      token: form.token.trim() === '' ? null : form.token.trim(),
-    });
-  };
-
-  const save = (connection: Pick<Settings, 'repo' | 'token'>) => {
-    const before = services.settings.load();
-    const next: Settings = { ...before, ...connection };
-    services.settings.save(next);
-    onClose();
-    if (connectionChanged(before, next)) services.reconnect();
-  };
-
-  const disconnect = () => save({ repo: services.settings.load().repo, token: null });
-
+  const { desktop, sync } = services;
   return (
     <div
       className="dialog-scrim"
       onPointerDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <form
+      <div
         className="dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
-        onSubmit={submit}
         onKeyDown={(event) => event.key === 'Escape' && onClose()}
       >
         <h2 id="settings-title" className="dialog-title">
           Settings
         </h2>
-        <label className="dialog-field">
-          <span>GitHub repository</span>
-          <input
-            className="text-input"
-            placeholder="owner/name"
-            autoFocus
-            {...field('repository')}
-          />
-        </label>
-        <label className="dialog-field">
-          <span>Branch</span>
-          <input className="text-input" placeholder="main" {...field('branch')} />
-        </label>
-        <label className="dialog-field">
-          <span>Personal access token</span>
-          <input className="text-input" type="password" autoComplete="off" {...field('token')} />
-        </label>
-        <p className="dialog-hint">
-          A fine-grained token with Contents read and write on that one repository. It stays in this
-          browser and is sent only to GitHub.
-        </p>
-        {services.sync === null ? null : <SyncLine sync={services.sync} />}
-        {services.sync === null ? null : (
+        {desktop === null ? (
           <p className="dialog-hint">
-            Disconnecting forgets the token. The notes stay in this browser until its site data is
-            cleared, and come back when you connect again.
+            This is the sample vault, in memory. The Mac app opens your own folder of notes and
+            syncs it with git.
           </p>
-        )}
-        {problem === null ? null : (
-          <p className="dialog-hint" role="alert">
-            {problem}
-          </p>
+        ) : (
+          <>
+            <VaultSection desktop={desktop} />
+            {sync === null ? null : <SyncSection sync={sync} desktop={desktop} />}
+            <HotkeySection desktop={desktop} />
+          </>
         )}
         <div className="dialog-actions">
-          <button
-            type="button"
-            className="quiet-button"
-            disabled={services.sync === null}
-            title={
-              services.sync === null ? 'Sync starts once a repository is connected' : undefined
-            }
-            onClick={() => services.sync?.syncNow()}
-          >
-            Sync now
-          </button>
-          {services.sync === null ? null : (
-            <button type="button" className="quiet-button" onClick={disconnect}>
-              Disconnect
-            </button>
-          )}
-          <button type="button" className="quiet-button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary-button">
-            Save
+          <button type="button" className="primary-button" autoFocus onClick={onClose}>
+            Done
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

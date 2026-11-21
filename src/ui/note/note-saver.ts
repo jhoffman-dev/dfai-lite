@@ -8,6 +8,8 @@ export interface NoteSaver {
   readonly autosave: Autosave;
   /** The editor opened on `text`: saves are based on it, so a sync's edit underneath is noticed. */
   opened(text: string): void;
+  /** The text the editor opened on or last saved. */
+  basedOn(): string;
 }
 
 /**
@@ -23,7 +25,7 @@ export function createNoteSaver(app: AppContextValue, path: VaultPath): NoteSave
     basedOnText = text;
     if (result.kind !== 'forked') return;
     ui.setState({
-      notice: `“${noteTitle(path)}” changed on another device while you typed. Your text is in “${noteTitle(result.path)}”.`,
+      notice: `“${noteTitle(path)}” changed elsewhere while you typed. Your text is in “${noteTitle(result.path)}”.`,
     });
     navigate({ kind: 'note', path: result.path }, { replace: true });
   };
@@ -32,5 +34,6 @@ export function createNoteSaver(app: AppContextValue, path: VaultPath): NoteSave
     opened: (text) => {
       basedOnText = text;
     },
+    basedOn: () => basedOnText,
   };
 }

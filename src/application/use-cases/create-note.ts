@@ -10,8 +10,7 @@ export async function createQuickNote(
   deps: VaultDeps,
   { text = '', folder = INBOX_FOLDER }: { text?: string; folder?: VaultPath } = {},
 ): Promise<VaultPath> {
-  const taken = [...deps.session.allFiles()].map((file) => file.path);
-  const path = uniqueNotePath({ folder, taken });
+  const path = uniqueNotePath({ folder, taken: deps.session.takenPaths() });
   await writeFile(deps, path, text);
   return path;
 }

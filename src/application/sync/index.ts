@@ -1,15 +1,14 @@
-export type {
-  BlobHasher,
-  DerivedFiles,
-  PathText,
-  SyncConflict,
-  SyncDeps,
-  SyncFailure,
-  SyncNow,
-  SyncResult,
+export {
+  createSyncNow,
+  MAX_PUSH_ATTEMPTS,
+  type SyncDeps,
+  type SyncFailure,
+  type SyncNow,
+  type SyncOff,
+  type SyncResult,
 } from './sync-now.ts';
-export { createSyncNow, MAX_SYNC_ATTEMPTS } from './create-sync-now.ts';
-export { RemoteBranchMissingError, RemoteChangedError } from './errors.ts';
+export type { SyncConflict } from './settle-conflicts.ts';
+export type { DerivedFiles } from './write-index.ts';
 export {
   createSyncScheduler,
   type SyncPhase,

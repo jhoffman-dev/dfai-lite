@@ -1,13 +1,13 @@
-import { conflictCopyPath, isoDate } from '../../domain/sync/index.ts';
+import { editConflictCopyPath, isoDate } from '../../domain/sync/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
-import type { Clock } from '../ports/index.ts';
-import { writeFile, type VaultDeps } from './vault-deps.ts';
+import { FileChangedError, type Clock } from '../ports/index.ts';
+import { refreshPaths, writeFile, type VaultDeps } from './vault-deps.ts';
 
 /**
  * One save of a note's text. With `basedOnText` (the text the editor loaded
  * or last saved) the save can tell when the note changed underneath the
- * editor, a sync having pulled another device's edit; `clock` then dates
- * the copy the editor's text goes to.
+ * editor (a sync, Claude, another editor); `clock` then dates the copy the
+ * editor's text goes to.
  */
 export type SaveNoteRequest =
   | { readonly path: VaultPath; readonly text: string; readonly basedOnText?: undefined }
@@ -24,14 +24,15 @@ export type SaveNoteResult =
   | { readonly kind: 'forked'; readonly path: VaultPath; readonly keptPath: VaultPath };
 
 /**
- * Keeps a note's new text: stored, marked dirty for the next sync, and read
- * into the index (that note only). Text that is already there changes nothing.
- * The caller debounces typing; this is one save.
+ * Keeps a note's new text on disk and reads it into the index (that note
+ * only). Text that is already there changes nothing. The caller debounces
+ * typing; this is one save.
  *
  * If the note's text is neither what the editor started from nor what it
  * saves now, someone else's edit arrived meanwhile: writing over it would
- * lose that edit silently on the next push, so the editor's text is saved as
- * a conflict copy beside it instead.
+ * lose that edit, so the editor's text is saved as a conflict copy beside it
+ * instead. The same holds when the disk changed and the session has not
+ * heard yet: the write is refused, the note is read afresh, and the edit forks.
  */
 export async function saveNoteText(
   deps: VaultDeps,
@@ -41,14 +42,27 @@ export async function saveNoteText(
   const stored = deps.session.file(path)?.text;
   if (stored === text) return { kind: 'saved', path };
   if (request.basedOnText !== undefined && stored !== undefined && stored !== request.basedOnText) {
-    const copy = conflictCopyPath({
-      path,
-      date: isoDate(request.clock.now()),
-      taken: [...deps.session.allFiles()].map((file) => file.path),
-    });
-    await writeFile(deps, copy, text);
-    return { kind: 'forked', path: copy, keptPath: path };
+    return fork(deps, request);
   }
-  await writeFile(deps, path, text);
+  try {
+    await writeFile(deps, path, text);
+  } catch (error) {
+    if (!(error instanceof FileChangedError) || request.basedOnText === undefined) throw error;
+    await refreshPaths(deps, [path]);
+    return fork(deps, request);
+  }
   return { kind: 'saved', path };
+}
+
+async function fork(
+  deps: VaultDeps,
+  { path, text, clock }: { path: VaultPath; text: string; clock: Clock },
+): Promise<SaveNoteResult> {
+  const copy = editConflictCopyPath({
+    path,
+    date: isoDate(clock.now()),
+    taken: deps.session.takenPaths(),
+  });
+  await writeFile(deps, copy, text);
+  return { kind: 'forked', path: copy, keptPath: path };
 }

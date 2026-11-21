@@ -1,1 +1,1 @@
-export { SAMPLE_VAULT, sampleNoteStore } from './sample-vault.ts';
+export { SAMPLE_VAULT, sampleVaultFiles } from './sample-vault.ts';

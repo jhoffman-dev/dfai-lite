@@ -16,6 +16,8 @@ export function chipStatus(status: SchedulerStatus, conflictCopies: number): Syn
       return { kind: 'offline' };
     case 'needs-sign-in':
       return { kind: 'needs-sign-in' };
+    case 'off':
+      return { kind: 'off', message: status.message ?? 'Sync is off.' };
     case 'error':
       return { kind: 'error', message: status.message ?? 'Sync stopped.' };
     case 'idle':
@@ -26,14 +28,12 @@ export function chipStatus(status: SchedulerStatus, conflictCopies: number): Syn
 }
 
 /**
- * Whether a change was made here, by a person, and so is worth a push. Sync
- * writes what it pulls clean, so a pulled note never re-arms a push; a
- * delete or rename while a sync runs is that sync's own.
+ * Whether a change is worth a push: any change to the vault (typed here, or
+ * made by Claude or another editor), except what a sync writes itself while
+ * it runs, and the vault being read whole.
  */
-function madeHere(change: VaultChange, session: VaultSession, syncing: boolean): boolean {
-  if (change.kind === 'loaded') return false;
-  if (change.kind === 'written') return session.file(change.path)?.dirty === true;
-  return !syncing;
+function worthAPush(change: VaultChange, syncing: boolean): boolean {
+  return change.kind !== 'loaded' && !syncing;
 }
 
 /**
@@ -76,7 +76,7 @@ export function connectSync({
 
   session.subscribe((change) => {
     recount(change);
-    if (madeHere(change, session, scheduler.status().phase === 'syncing')) {
+    if (worthAPush(change, scheduler.status().phase === 'syncing')) {
       scheduler.noteChanged();
     }
   });

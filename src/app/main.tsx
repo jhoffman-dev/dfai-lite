@@ -1,16 +1,21 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '../ui/app.tsx';
-import { composeApp, deviceAdapters } from './composition.ts';
+import { Welcome } from '../ui/welcome/welcome.tsx';
+import { boot } from './composition.ts';
 
 const root = document.getElementById('root');
 if (root === null) throw new Error('index.html has no #root to mount the app in.');
 
-const { services, start } = await composeApp(await deviceAdapters());
+const started = await boot();
 
 createRoot(root).render(
   <StrictMode>
-    <App services={services} />
+    {started.kind === 'app' ? (
+      <App services={started.services} />
+    ) : (
+      <Welcome problem={started.problem} onChoose={started.choose} />
+    )}
   </StrictMode>,
 );
-start();
+if (started.kind === 'app') started.start();

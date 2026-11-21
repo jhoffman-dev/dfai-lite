@@ -1,3 +1,4 @@
+import { pushDueIn } from '../../domain/sync/index.ts';
 import type { Clock } from '../ports/index.ts';
 import type { SyncNow, SyncResult } from './sync-now.ts';
 
@@ -8,18 +9,19 @@ export interface SyncTimers {
 }
 
 /**
- * What sync is doing, for the status line. `offline`: GitHub could not be
- * reached. `needs-sign-in`: the token was refused. `error`: anything else,
- * said in `message`. Each lasts until a sync succeeds.
+ * What sync is doing, for the status line. `offline`: the remote could not
+ * be reached. `needs-sign-in`: git's login was refused. `off`: the vault is
+ * not a repository with a remote, said in `message`. `error`: anything
+ * else, said in `message`. Each lasts until a sync succeeds.
  */
-export type SyncPhase = 'idle' | 'syncing' | 'offline' | 'needs-sign-in' | 'error';
+export type SyncPhase = 'idle' | 'syncing' | 'offline' | 'needs-sign-in' | 'off' | 'error';
 
 export interface SyncStatus {
   readonly phase: SyncPhase;
   /** Conflict copies the last successful sync made (each is a file in the vault to merge). */
   readonly conflicts: number;
   readonly lastSyncedAt: Date | null;
-  /** Why the last sync failed, or null when it did not. Never holds the token. */
+  /** Why the last sync failed or is off, or null when it did not. */
   readonly message: string | null;
 }
 
@@ -28,7 +30,10 @@ export interface SyncScheduler {
   start(): Promise<void>;
   /** Cancels every timer. A sync already running finishes. */
   stop(): void;
-  /** A note changed here: push `pushDelayMs` after the last such call. */
+  /**
+   * The vault changed: push `pushDelayMs` after the last such call, and no
+   * later than `maxUnsyncedMs` after the first one since a sync began.
+   */
   noteChanged(): void;
   /** Sync now: the app came back online, or into view. */
   wake(): Promise<void>;
@@ -42,6 +47,8 @@ export interface SyncSchedulerDeps {
   readonly clock: Clock;
   readonly pushDelayMs: number;
   readonly pullEveryMs: number;
+  /** Changes that keep coming are pushed at least this often (DFAI: five minutes). */
+  readonly maxUnsyncedMs?: number;
   /**
    * Where an error thrown by a status listener goes, so one broken listener
    * cannot stop sync. Rethrown on its own (to the global error handler) by default.
@@ -70,6 +77,7 @@ export function createSyncScheduler(deps: SyncSchedulerDeps): SyncScheduler {
   let again = false;
   let cancelPush: (() => void) | null = null;
   let cancelPull: (() => void) | null = null;
+  let firstUnsyncedAt: number | null = null;
 
   const publish = (next: SyncStatus) => {
     current = next;
@@ -88,6 +96,8 @@ export function createSyncScheduler(deps: SyncSchedulerDeps): SyncScheduler {
   };
 
   const runOnce = async () => {
+    // This sync takes every change so far; a change from here on waits its own turn.
+    firstUnsyncedAt = null;
     publish({ ...current, phase: 'syncing' });
     publish(statusAfter(current, await settled(deps.syncNow), deps.clock));
   };
@@ -127,7 +137,15 @@ export function createSyncScheduler(deps: SyncSchedulerDeps): SyncScheduler {
     noteChanged() {
       if (stopped) return;
       cancelPush?.();
-      cancelPush = deps.timers.after(deps.pushDelayMs, () => {
+      const now = deps.clock.now().getTime();
+      const dueIn = pushDueIn({
+        now,
+        firstUnsyncedAt,
+        pushDelayMs: deps.pushDelayMs,
+        ...(deps.maxUnsyncedMs === undefined ? {} : { maxUnsyncedMs: deps.maxUnsyncedMs }),
+      });
+      firstUnsyncedAt ??= now;
+      cancelPush = deps.timers.after(dueIn, () => {
         cancelPush = null;
         void sync();
       });
@@ -157,9 +175,8 @@ async function settled(syncNow: SyncNow): Promise<SyncResult> {
 const PHASES = {
   auth: 'needs-sign-in',
   unreachable: 'offline',
-  moved: 'idle',
-  'branch-missing': 'error',
-  'remote-changed': 'error',
+  // The remote kept moving: the next sync tries again, and nothing is wrong meanwhile.
+  rejected: 'idle',
   error: 'error',
 } as const;
 
@@ -171,5 +188,6 @@ function statusAfter(before: SyncStatus, result: SyncResult, clock: Clock): Sync
       lastSyncedAt: clock.now(),
       message: null,
     };
+  if (result.kind === 'off') return { ...before, phase: 'off', message: result.message };
   return { ...before, phase: PHASES[result.reason], message: result.message };
 }
