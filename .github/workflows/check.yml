@@ -1,0 +1,46 @@
+name: check
+
+# The whole gate (CLAUDE.md): Linux only, about two minutes. The Mac app is
+# built on a Mac, never here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 11
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck, lint, format, unit tests, build
+        run: pnpm check
+
+      - name: Chromium for the smoke
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: The core loop, end to end
+        run: pnpm e2e
