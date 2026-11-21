@@ -23,9 +23,6 @@ tauri-plugin-global-shortcut = "~2.4.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 notify = "8.2.2"
-# A deleted note goes to the Trash. No default features: they are chrono and
-# Windows COM settings this app has no use for.
-trash = { version = "5.4.0", default-features = false }
 # O_NOFOLLOW, renamex_np(RENAME_EXCL) and killing git's process group. Already
 # in the tree under tauri; this only makes it a direct dependency.
 libc = "0.2.191"
@@ -33,6 +30,10 @@ libc = "0.2.191"
 # Turning off macOS's smart quotes and dashes in the web view (text_input.rs).
 # Already in the tree under wry, at these versions.
 [target.'cfg(target_os = "macos")'.dependencies]
+# A deleted note goes to the Trash. Mac only: its Linux side does not build
+# without default features, and the app does not run there. No default
+# features: they are chrono and Windows COM settings this app has no use for.
+trash = { version = "5.4.0", default-features = false }
 objc2 = "0.6.5"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSDictionary", "NSString", "NSUserDefaults", "NSValue"] }
 

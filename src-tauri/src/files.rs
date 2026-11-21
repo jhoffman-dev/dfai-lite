@@ -156,17 +156,19 @@ pub fn delete_guarded(
 }
 
 #[cfg(target_os = "macos")]
-fn to_trash(target: &Path) -> Result<(), trash::Error> {
+fn to_trash(target: &Path) -> Result<(), String> {
     use trash::macos::{DeleteMethod, TrashContextExtMacos};
     // The Finder method asks for permission to script Finder; this one does not.
     let mut context = trash::TrashContext::default();
     context.set_delete_method(DeleteMethod::NsFileManager);
-    context.delete(target)
+    context.delete(target).map_err(|error| error.to_string())
 }
 
+/// The app runs on the Mac only. Elsewhere (the Linux check) there is no Trash
+/// to use, so a delete is refused the way a full or missing Trash refuses it.
 #[cfg(not(target_os = "macos"))]
-fn to_trash(target: &Path) -> Result<(), trash::Error> {
-    trash::delete(target)
+fn to_trash(_target: &Path) -> Result<(), String> {
+    Err("there is no Trash on this system".to_string())
 }
 
 #[cfg(test)]
