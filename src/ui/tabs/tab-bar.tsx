@@ -2,10 +2,8 @@ import { useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent }
 import { noteTitle } from '../../application/index.ts';
 import type { Pane, Tab, TabView } from '../panes/layout.ts';
 import { Icon } from '../shell/icons.tsx';
+import { draggedTabId, isTabDrag, startTabDrag } from './tab-drag.ts';
 import './tabs.css';
-
-/** A dragged tab, as the drop target reads it. */
-const TAB_DRAG = 'application/x-dfai-lite-tab';
 
 export function tabTitle(view: TabView): string {
   switch (view.kind) {
@@ -72,7 +70,7 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
   };
 
   const onDragOver = (event: DragEvent, target: string | null) => {
-    if (!event.dataTransfer.types.includes(TAB_DRAG)) return;
+    if (!isTabDrag(event.dataTransfer)) return;
     event.preventDefault();
     if (target === null) return setDropAt(null);
     const box = event.currentTarget.getBoundingClientRect();
@@ -80,7 +78,7 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
   };
 
   const onDrop = (event: DragEvent) => {
-    const dragged = event.dataTransfer.getData(TAB_DRAG);
+    const dragged = draggedTabId(event.dataTransfer);
     if (dragged === '') return;
     event.preventDefault();
     event.stopPropagation();
@@ -126,10 +124,7 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
               onMenu(tab.id, { x: event.clientX, y: event.clientY });
             }}
             onKeyDown={(event) => onKeyDown(event, at)}
-            onDragStart={(event) => {
-              event.dataTransfer.setData(TAB_DRAG, tab.id);
-              event.dataTransfer.effectAllowed = 'move';
-            }}
+            onDragStart={(event) => startTabDrag(event.dataTransfer, { tabId: tab.id, paneIndex })}
             onDragOver={(event) => {
               event.stopPropagation();
               onDragOver(event, tab.id);

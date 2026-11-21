@@ -5,6 +5,7 @@ import {
   cycleTab,
   focusPane,
   jumpToTab,
+  shiftTab,
   toggleSplit,
 } from '../panes/layout.ts';
 import { isNarrow } from '../panes/narrow.ts';
@@ -39,11 +40,14 @@ export function createCommands({ actions, ui, layout, workspace }: AppContextVal
     'tab.next': () => workspace.arrange((current) => cycleTab(current, 1)),
     'tab.previous': () => workspace.arrange((current) => cycleTab(current, -1)),
     'tab.jump': (position) => workspace.arrange((current) => jumpToTab(current, position)),
+    'tab.moveLeft': () => workspace.arrange((current) => shiftTab(current, -1)),
+    'tab.moveRight': () => workspace.arrange((current) => shiftTab(current, 1)),
     'pane.toggleSplit': () => {
       if (!isNarrow()) workspace.arrange(toggleSplit);
     },
     'pane.focusLeft': () => workspace.arrange((current) => focusPane(current, 0)),
     'pane.focusRight': () => workspace.arrange((current) => focusPane(current, 1)),
+    'help.shortcuts': () => ui.setState({ paletteOpen: false, shortcutsOpen: true }),
   };
   return (command, arg = 0) => run[command](arg);
 }

@@ -88,6 +88,35 @@ describe('tabs', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
+  it('moves the active tab left and right from the keyboard', async () => {
+    await renderApp();
+    await go('#/note/Welcome.md');
+    fireEvent.click(treeRow('Larkspur Payroll'), { ctrlKey: true });
+    fireEvent.click(treeRow('Garden shed'), { ctrlKey: true });
+    fireEvent.keyDown(window, { code: 'ArrowLeft', metaKey: true, altKey: true, shiftKey: true });
+    expect(tabs()).toEqual(['Welcome', 'Garden shed', 'Larkspur Payroll']);
+    fireEvent.keyDown(window, { code: 'PageDown', ctrlKey: true, shiftKey: true });
+    expect(tabs()).toEqual(['Welcome', 'Larkspur Payroll', 'Garden shed']);
+    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Garden shed');
+  });
+
+  it('lists the keyboard shortcuts from the sidebar, ⌘/ and the palette', async () => {
+    await renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
+    const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    expect(within(dialog).getByText('Move the tab right')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).toBeNull();
+
+    fireEvent.keyDown(window, { code: 'Slash', metaKey: true });
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).toBeNull();
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    await userEvent.type(screen.getByRole('combobox'), '?{Enter}');
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+  });
+
   it('restores the saved tabs, dropping one whose note is gone', async () => {
     const layout = memoryLayoutStorage({
       panes: [

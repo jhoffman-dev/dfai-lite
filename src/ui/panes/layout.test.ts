@@ -5,6 +5,7 @@ import {
   closeTab,
   currentTab,
   cycleTab,
+  dropOnPane,
   initialLayout,
   jumpToTab,
   moveTab,
@@ -13,6 +14,7 @@ import {
   restoreLayout,
   retargetNote,
   setSplit,
+  shiftTab,
   splitRight,
   toggleSplit,
   type Layout,
@@ -163,6 +165,40 @@ describe('moving tabs', () => {
     expect(shape(moveToOtherPane(two, currentTab(two).id))).toEqual([[`*${PLAN}`], [`*${MARA}`]]);
     const one = open(initialLayout(), PLAN);
     expect(moveToOtherPane(one, currentTab(one).id)).toBe(one);
+  });
+  it('shifts the active tab left or right in its pane, stopping at the ends', () => {
+    const three = open(open(open(initialLayout(), PLAN), MARA, 'new-tab'), SHED, 'new-tab');
+    const left = shiftTab(three, -1);
+    expect(shape(left)).toEqual([[PLAN, `*${SHED}`, MARA]]);
+    expect(shape(shiftTab(shiftTab(left, -1), -1))).toEqual([[`*${SHED}`, PLAN, MARA]]);
+    expect(shiftTab(three, 1)).toBe(three);
+  });
+});
+
+describe('dropping a tab on a pane', () => {
+  it('moves it to the end of the other pane', () => {
+    const two = open(open(initialLayout(), PLAN), MARA, 'new-tab');
+    const split = open(two, SHED, 'side');
+    const mara = split.panes[0]?.tabs[1]?.id ?? '';
+    const layout = dropOnPane(split, { tabId: mara, toPane: 1, side: 'left' });
+    expect(shape(layout)).toEqual([[`*${PLAN}`], [SHED, `*${MARA}`]]);
+    expect(dropOnPane(split, { tabId: mara, toPane: 0, side: 'right' })).toBe(split);
+  });
+
+  it('splits when dropped on the right half of a single pane, not the left', () => {
+    const two = open(open(initialLayout(), PLAN), MARA, 'new-tab');
+    const mara = currentTab(two).id;
+    expect(shape(dropOnPane(two, { tabId: mara, toPane: 0, side: 'right' }))).toEqual([
+      [`*${PLAN}`],
+      [`*${MARA}`],
+    ]);
+    expect(dropOnPane(two, { tabId: mara, toPane: 0, side: 'left' })).toBe(two);
+  });
+
+  it('shows the only tab on both sides rather than empty the left pane', () => {
+    const one = open(initialLayout(), PLAN);
+    const layout = dropOnPane(one, { tabId: currentTab(one).id, toPane: 0, side: 'right' });
+    expect(shape(layout)).toEqual([[`*${PLAN}`], [`*${PLAN}`]]);
   });
 });
 

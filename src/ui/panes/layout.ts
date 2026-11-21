@@ -279,6 +279,51 @@ export function cycleTab(layout: Layout, step: 1 | -1): Layout {
   return next === undefined ? layout : activate(layout, next.id);
 }
 
+/** Moves the active tab one place left (`step` -1) or right (1) in its pane; no wrapping. */
+export function shiftTab(layout: Layout, step: 1 | -1): Layout {
+  const pane = activePaneOf(layout);
+  const at = pane.tabs.findIndex((tab) => tab.id === pane.activeTab);
+  const to = at + step;
+  if (at < 0 || to < 0 || to >= pane.tabs.length) return layout;
+  return moveTab(layout, { tabId: pane.activeTab, toPane: layout.activePane, index: to });
+}
+
+/** Where on a pane's content a dragged tab is held: its left or right half. */
+export type DropSide = 'left' | 'right';
+
+/**
+ * What a tab dragged over a pane's content would do there: `pane`, move into
+ * that pane (it is the other one); `split`, open a pane on the right (one
+ * pane, right half); or nothing.
+ */
+export function paneDropFor(
+  layout: Layout,
+  { fromPane, toPane, side }: { fromPane: number; toPane: number; side: DropSide },
+): 'pane' | 'split' | null {
+  if (layout.panes.length > 1) return fromPane === toPane ? null : 'pane';
+  return side === 'right' && layout.panes.length < MAX_PANES ? 'split' : null;
+}
+
+/**
+ * Drops a dragged tab on a pane's content: into the other pane at its end, or
+ * into a new pane on the right. The only tab of a single pane is not moved
+ * but shown on both sides, as "Split right" does.
+ */
+export function dropOnPane(
+  layout: Layout,
+  { tabId, toPane, side }: { tabId: string; toPane: number; side: DropSide },
+): Layout {
+  const fromPane = paneIndexOf(layout, tabId);
+  if (fromPane < 0) return layout;
+  const drop = paneDropFor(layout, { fromPane, toPane, side });
+  if (drop === 'pane') {
+    return moveTab(layout, { tabId, toPane, index: layout.panes[toPane]?.tabs.length ?? 0 });
+  }
+  if (drop === null) return layout;
+  if ((layout.panes[fromPane]?.tabs.length ?? 0) === 1) return splitRight(layout, tabId);
+  return moveTab(layout, { tabId, toPane: layout.panes.length, index: 0 });
+}
+
 /** ⌘1–8 go to that tab; ⌘9 to the last, as in a browser. */
 export function jumpToTab(layout: Layout, position: number): Layout {
   const { tabs } = activePaneOf(layout);

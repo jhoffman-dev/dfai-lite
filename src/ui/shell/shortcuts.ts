@@ -17,9 +17,31 @@ export type Command =
   | 'tab.next'
   | 'tab.previous'
   | 'tab.jump'
+  | 'tab.moveLeft'
+  | 'tab.moveRight'
   | 'pane.toggleSplit'
   | 'pane.focusLeft'
-  | 'pane.focusRight';
+  | 'pane.focusRight'
+  | 'help.shortcuts';
+
+/** What each command does, in words: the keyboard shortcuts list reads these. */
+export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
+  'note.new': 'New note',
+  'palette.open': 'Find or create a note',
+  'note.togglePreview': 'Switch between reading and editing',
+  'note.rename': 'Rename the note',
+  'tab.new': 'New tab',
+  'tab.close': 'Close the tab',
+  'tab.next': 'Next tab',
+  'tab.previous': 'Previous tab',
+  'tab.jump': 'Go to tab 1–8 (9: the last)',
+  'tab.moveLeft': 'Move the tab left',
+  'tab.moveRight': 'Move the tab right',
+  'pane.toggleSplit': 'Split right, or unsplit an empty pane',
+  'pane.focusLeft': 'Go to the left pane',
+  'pane.focusRight': 'Go to the right pane',
+  'help.shortcuts': 'Keyboard shortcuts',
+};
 
 /** A key and the exact modifiers held with it: any not named must be up. */
 export interface Chord {
@@ -60,9 +82,15 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, code: 'Tab' }, command: 'tab.next' },
   { chord: { mod: true, shift: true, code: 'Tab' }, command: 'tab.previous' },
   ...digits,
+  { chord: { mod: true, alt: true, shift: true, code: 'ArrowLeft' }, command: 'tab.moveLeft' },
+  { chord: { mod: true, alt: true, shift: true, code: 'ArrowRight' }, command: 'tab.moveRight' },
+  // The browser and VS Code way, for a keyboard that has the keys.
+  { chord: { mod: true, shift: true, code: 'PageUp' }, command: 'tab.moveLeft' },
+  { chord: { mod: true, shift: true, code: 'PageDown' }, command: 'tab.moveRight' },
   { chord: { mod: true, code: 'Backslash' }, command: 'pane.toggleSplit' },
   { chord: { mod: true, alt: true, code: 'ArrowLeft' }, command: 'pane.focusLeft' },
   { chord: { mod: true, alt: true, code: 'ArrowRight' }, command: 'pane.focusRight' },
+  { chord: { mod: true, code: 'Slash' }, command: 'help.shortcuts' },
 ];
 
 interface KeyLike {
@@ -86,4 +114,66 @@ function matches(chord: Chord, event: KeyLike): boolean {
 /** The shortcut a key press is, if any. */
 export function shortcutFor(event: KeyLike): Shortcut | null {
   return SHORTCUTS.find((shortcut) => matches(shortcut.chord, event)) ?? null;
+}
+
+/** Whether this is an Apple machine, where `mod` is ⌘ and keys print as symbols. */
+export const IS_MAC =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+const KEY_NAMES: Readonly<Record<string, string>> = {
+  ArrowLeft: '←',
+  ArrowRight: '→',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Backslash: '\\',
+  Slash: '/',
+  Tab: 'Tab',
+  PageUp: 'Page Up',
+  PageDown: 'Page Down',
+};
+
+/** The key a chord names, as printed on the keycap: `KeyN` is N, `Digit1` is 1. */
+function keyName(chord: Chord): string {
+  const code = chord.code ?? '';
+  if (code in KEY_NAMES) return KEY_NAMES[code] ?? code;
+  const letter = /^(?:Key|Digit)(.)$/.exec(code)?.[1];
+  if (letter !== undefined) return letter;
+  const key = chord.key ?? code;
+  return key.length === 1 ? key.toUpperCase() : key;
+}
+
+/** A chord as people read it: ⌘⌥⇧← on a Mac, Ctrl+Alt+Shift+← elsewhere. */
+export function chordLabel(chord: Chord, mac: boolean): string {
+  const held = [
+    chord.mod === true ? (mac ? '⌘' : 'Ctrl') : null,
+    chord.alt === true ? (mac ? '⌥' : 'Alt') : null,
+    chord.shift === true ? (mac ? '⇧' : 'Shift') : null,
+  ].filter((name) => name !== null);
+  return [...held, keyName(chord)].join(mac ? '' : '+');
+}
+
+/** The first key for a command, for a tooltip: "New tab (⌘T)". */
+export function keyFor(command: Command, mac: boolean = IS_MAC): string {
+  const shortcut = SHORTCUTS.find((candidate) => candidate.command === command);
+  return shortcut === undefined ? '' : chordLabel(shortcut.chord, mac);
+}
+
+export interface ShortcutEntry {
+  readonly command: Command;
+  readonly title: string;
+  /** Every chord that runs the command, in table order; a run of 1–9 is shown as one range. */
+  readonly keys: readonly string[];
+}
+
+/** The shortcut table as a list to read, one entry per command, in the table's order. */
+export function shortcutList(mac: boolean): ShortcutEntry[] {
+  const keysOf = new Map<Command, string[]>();
+  for (const { chord, command } of SHORTCUTS) {
+    keysOf.set(command, [...(keysOf.get(command) ?? []), chordLabel(chord, mac)]);
+  }
+  return [...keysOf].map(([command, keys]) => ({
+    command,
+    title: COMMAND_TITLES[command],
+    keys: keys.length > 3 ? [`${keys[0] ?? ''} … ${keys[keys.length - 1] ?? ''}`] : keys,
+  }));
 }

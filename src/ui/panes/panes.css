@@ -44,6 +44,28 @@
   margin-right: var(--space-2);
 }
 
+.pane-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Where a dragged tab would land: the whole pane, or the right half it would split into. */
+.pane-drop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--focus) 8%, transparent);
+  border: 2px solid color-mix(in srgb, var(--focus) 60%, transparent);
+  border-radius: var(--radius-control);
+}
+
+.pane-drop.is-split {
+  left: 50%;
+}
+
 .pane-panel {
   flex: 1;
   min-height: 0;

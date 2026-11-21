@@ -4,6 +4,7 @@ import { NotePane } from '../note/note-pane.tsx';
 import { useApp } from '../services.ts';
 import { Home } from '../shell/home.tsx';
 import { Icon } from '../shell/icons.tsx';
+import { keyFor } from '../shell/shortcuts.ts';
 import { RowMenu, type MenuItem } from '../sidebar/row-menu.tsx';
 import { TabBar, panelElementId, tabElementId } from '../tabs/tab-bar.tsx';
 import { TagsPage } from '../tags/tags-page.tsx';
@@ -24,6 +25,7 @@ import {
 } from './layout.ts';
 import { useLayout } from './layout-store.ts';
 import { useNarrow } from './narrow.ts';
+import { usePaneDrop } from './use-pane-drop.ts';
 import './panes.css';
 
 /** The note the graph centres its local view on: the active pane's, else the other pane's. */
@@ -97,6 +99,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
   const focused = useLayout((layout) => layout.activePane === index);
   const split = useLayout((layout) => layout.panes.length > 1);
   const { menu, setMenu, close, items } = useTabMenu(canSplit);
+  const drop = usePaneDrop(index, canSplit);
   if (pane === undefined) return null;
   const tab = activeTabOf(pane);
   const arrange = workspace.arrange;
@@ -126,7 +129,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
           type="button"
           className="quiet-button pane-action"
           aria-label="New tab"
-          title="New tab (⌘T)"
+          title={`New tab (${keyFor('tab.new')})`}
           onClick={() => {
             workspace.open(BLANK, 'new-tab', { replace: true });
             ui.setState({ paletteOpen: true });
@@ -139,20 +142,25 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
             type="button"
             className="quiet-button pane-action"
             aria-label="Split right"
-            title="Split right (⌘\)"
+            title={`Split right (${keyFor('pane.toggleSplit')})`}
             onClick={() => arrange((current) => splitRight(current))}
           >
             <Icon name="split" />
           </button>
         ) : null}
       </div>
-      <div
-        className="pane-panel"
-        id={panelElementId(index)}
-        role="tabpanel"
-        aria-labelledby={tabElementId(tab.id)}
-      >
-        <TabContent tab={tab} focused={focused} />
+      <div className="pane-body" {...drop.handlers}>
+        <div
+          className="pane-panel"
+          id={panelElementId(index)}
+          role="tabpanel"
+          aria-labelledby={tabElementId(tab.id)}
+        >
+          <TabContent tab={tab} focused={focused} />
+        </div>
+        {drop.zone === null ? null : (
+          <div className={`pane-drop is-${drop.zone}`} aria-hidden="true" />
+        )}
       </div>
       {menu === null ? null : (
         <RowMenu label="Tab actions" at={menu.at} onClose={close} items={items(menu.tabId)} />
