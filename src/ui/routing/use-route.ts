@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { formatRoute, parseRoute, type Route } from './route.ts';
 
-/** Fired when the route changes without a `hashchange` (a replaced history entry). */
+/** Fired when the app moves the route itself: `pushState` and `replaceState` fire no `hashchange`. */
 const REPLACED = 'lite:route-replaced';
 
 function subscribe(listener: () => void): () => void {
@@ -24,17 +24,33 @@ export function useRoute(): Route {
   return useMemo(() => parseRoute(hash), [hash]);
 }
 
+/** What a history entry remembers beside its hash: the tab that showed it. */
+export interface RouteEntry {
+  readonly tab: string;
+}
+
+/** The tab the current history entry was made in, if the app made it. */
+export function currentEntry(): RouteEntry | null {
+  const state: unknown = window.history.state;
+  if (typeof state !== 'object' || state === null) return null;
+  const tab = (state as Record<string, unknown>)['tab'];
+  return typeof tab === 'string' ? { tab } : null;
+}
+
 /**
- * Goes to `route`. `replace` swaps the history entry instead of adding one:
- * for redirects (`#/new` becoming the note it made) that back should skip.
+ * Goes to `route`, shown in tab `entry.tab`. `replace` swaps the history
+ * entry instead of adding one: for redirects (`#/new` becoming the note it
+ * made) and tab switches, which back should skip.
  */
-export function navigate(route: Route, { replace = false }: { replace?: boolean } = {}): void {
+export function navigate(
+  route: Route,
+  { replace = false, entry = null }: { replace?: boolean; entry?: RouteEntry | null } = {},
+): void {
   const hash = formatRoute(route);
-  if (!replace) {
-    if (window.location.hash !== hash) window.location.hash = hash;
-    return;
-  }
+  if (window.location.hash === hash && currentEntry()?.tab === entry?.tab) return;
+  // The query is dropped: `?new` asked once, and a reload must not ask again.
   const url = `${window.location.pathname}${hash}`;
-  window.history.replaceState(window.history.state, '', url);
+  if (replace) window.history.replaceState(entry, '', url);
+  else window.history.pushState(entry, '', url);
   window.dispatchEvent(new Event(REPLACED));
 }

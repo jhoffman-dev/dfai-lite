@@ -1,79 +1,22 @@
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { GraphPage } from './graph-page/graph-page.tsx';
-import { NotePane, preloadEditor } from './note/note-pane.tsx';
-import type { Route } from './routing/route.ts';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { createAppContext } from './app-context.ts';
+import { preloadEditor } from './note/note-pane.tsx';
+import { browserLayoutStorage, type LayoutStorage } from './panes/layout-storage.ts';
+import { PanesView } from './panes/panes-view.tsx';
+import { useWorkspaceSync } from './panes/use-workspace-sync.ts';
 import { useRoute } from './routing/use-route.ts';
 import { SearchPalette } from './search/search-palette.tsx';
-import { AppContext, useApp, type AppContextValue, type AppServices } from './services.ts';
+import { AppContext, useApp, type AppServices } from './services.ts';
 import { Icon } from './shell/icons.tsx';
 import { useShortcuts } from './shell/use-shortcuts.ts';
 import { useStartRoute } from './shell/use-start-route.ts';
 import { Sidebar } from './sidebar/sidebar.tsx';
-import { createNoteActions } from './state/note-actions.ts';
-import { createUiStore, useUi } from './state/ui-store.ts';
-import { createVaultStore, useVault } from './state/vault-store.ts';
-import type { SyncControls } from './sync/sync-status.ts';
-import { TagsPage } from './tags/tags-page.tsx';
+import { useUi } from './state/ui-store.ts';
 import './theme.css';
 import './app.css';
 import './shell/dialog.css';
 
 const SettingsDialog = lazy(() => import('./settings/settings-dialog.tsx'));
-
-function contextFor(services: AppServices): AppContextValue {
-  const deps = { store: services.noteStore, session: services.session };
-  const ui = createUiStore({ preview: services.settings.load().ui.preview });
-  const vault = createVaultStore(services.session);
-  const actions = createNoteActions({ deps, ui, settings: services.settings });
-  return { services, deps, vault, ui, actions };
-}
-
-/** Fetching the vault on the first sync, or a vault with no notes yet. */
-function EmptyVault({ sync }: { sync: SyncControls }) {
-  const status = useSyncExternalStore(sync.subscribe, sync.getStatus);
-  return (
-    <div className="app-empty" role="status">
-      {status.kind === 'syncing'
-        ? 'Fetching your notes from GitHub…'
-        : 'No notes yet. Start one with New note.'}
-    </div>
-  );
-}
-
-function Home() {
-  const { actions, services } = useApp();
-  const empty = useVault((vault) => vault.tree.noteCount === 0);
-  if (empty && services.sync !== null) return <EmptyVault sync={services.sync} />;
-  return (
-    <div className="app-empty">
-      <p>
-        Press <kbd>⌥N</kbd> or <kbd>Ctrl N</kbd> to start a note, <kbd>⌘K</kbd> to find one.
-      </p>
-      <button
-        type="button"
-        className="primary-button"
-        onClick={() => actions.newNote().catch(actions.report)}
-      >
-        New note
-      </button>
-    </div>
-  );
-}
-
-function MainPane({ route }: { route: Route }) {
-  const { services } = useApp();
-  switch (route.kind) {
-    case 'note':
-      return <NotePane key={route.path} path={route.path} />;
-    case 'tags':
-      return <TagsPage tag={route.tag} />;
-    case 'graph':
-      return <GraphPage activePath={services.settings.load().ui.lastOpenPath} />;
-    case 'home':
-    case 'new':
-      return <Home />;
-  }
-}
 
 function Notice() {
   const { ui } = useApp();
@@ -95,7 +38,8 @@ function Shell() {
   const paletteOpen = useUi((state) => state.paletteOpen);
   const settingsOpen = useUi((state) => state.settingsOpen);
   const drawerOpen = useUi((state) => state.drawerOpen);
-  useShortcuts(route);
+  useShortcuts();
+  useWorkspaceSync();
   // The editor's code loads straight after the first paint, so ⌘N never waits for it.
   useEffect(() => {
     preloadEditor().catch(actions.report);
@@ -142,7 +86,7 @@ function Shell() {
             </button>
           </div>
         )}
-        <MainPane route={route} />
+        <PanesView />
       </main>
       {paletteOpen ? <SearchPalette onClose={() => ui.setState({ paletteOpen: false })} /> : null}
       {settingsOpen ? (
@@ -155,9 +99,18 @@ function Shell() {
   );
 }
 
-/** The app: the sidebar, the main pane the route chooses, and the palette and dialogs over them. */
-export function App({ services }: { services: AppServices }) {
-  const [context] = useState(() => contextFor(services));
+/**
+ * The app: the sidebar, the panes of tabs, and the palette and dialogs over
+ * them. The tabs are kept per device in `layoutStorage` (this browser's, by default).
+ */
+export function App({
+  services,
+  layoutStorage = browserLayoutStorage(() => window.localStorage),
+}: {
+  services: AppServices;
+  layoutStorage?: LayoutStorage;
+}) {
+  const [context] = useState(() => createAppContext(services, layoutStorage));
   useEffect(() => context.vault.connect(), [context]);
   return (
     <AppContext.Provider value={context}>

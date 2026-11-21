@@ -52,7 +52,7 @@ describe('GraphView', () => {
     const node = container.querySelector('[data-node="People/Mara Quill.md"]') as Element;
     fireEvent.pointerDown(node, { clientX: 10, clientY: 10 });
     fireEvent.pointerUp(container.querySelector('svg') as Element, { clientX: 10, clientY: 10 });
-    expect(onOpenNote).toHaveBeenCalledWith('People/Mara Quill.md');
+    expect(onOpenNote).toHaveBeenCalledWith('People/Mara Quill.md', 'active');
   });
 
   it('limits the local graph to the open note and its neighbours, one or two steps out', () => {
@@ -85,7 +85,7 @@ describe('GraphView', () => {
     const list = screen.getByRole('list', { name: 'Notes in the graph' });
     expect(list.querySelectorAll(':scope > li')).toHaveLength(5);
     fireEvent.click(screen.getByRole('button', { name: 'Loose idea' }));
-    expect(onOpenNote).toHaveBeenCalledWith('Inbox/Loose idea.md');
+    expect(onOpenNote).toHaveBeenCalledWith('Inbox/Loose idea.md', 'active');
   });
 
   it('draws only the most linked notes past the cap, and says so', () => {

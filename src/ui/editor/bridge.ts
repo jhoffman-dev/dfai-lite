@@ -1,4 +1,5 @@
 import type { NoteSuggestion } from '../../domain/links/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
 
 /**
  * What the editor asks of the app, in one object the extensions read through
@@ -13,11 +14,13 @@ export interface EditorBridge {
   resolves(target: string): boolean;
   /** Makes the note a link names (no navigation); for the picker's "Create" row. */
   createLinkedNote(target: string): void;
-  followLink(target: string): void;
-  openTag(name: string): void;
+  followLink(target: string, openIn: OpenIn): void;
+  openTag(name: string, openIn: OpenIn): void;
   /** The editor was built on `text`. */
   opened(text: string): void;
   /** The text changed: the editor hands a reader, not the text, so a keystroke reads nothing. */
   changed(read: () => string): void;
   blurred(): void;
+  /** The editor is gone (its tab hidden, or the note read instead): save what waits. */
+  closed(): void;
 }

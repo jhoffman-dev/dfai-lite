@@ -1,35 +1,22 @@
-import { useEffect } from 'react';
-import type { Route } from '../routing/route.ts';
+import { useEffect, useMemo } from 'react';
 import { useApp } from '../services.ts';
+import { createCommands } from './commands.ts';
+import { shortcutFor } from './shortcuts.ts';
 
-/**
- * The app's keys, caught before the editor sees them:
- * ⌘/Ctrl-N and Alt-N (a browser tab keeps ⌘N for itself) make a note,
- * ⌘/Ctrl-K searches, ⌘/Ctrl-E reads or edits, F2 renames the open note.
- */
-export function useShortcuts(route: Route): void {
-  const { actions, ui } = useApp();
+/** The app's keys (`shortcuts.ts`), caught before the editor sees them. */
+export function useShortcuts(): void {
+  const app = useApp();
+  const run = useMemo(() => createCommands(app), [app]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const mod = event.metaKey || event.ctrlKey;
-      // `code`, not `key`: Alt-N types "˜" on a Mac keyboard.
-      const n = event.code === 'KeyN' && !event.shiftKey;
-      if ((mod && n) || (event.altKey && !mod && n)) {
-        actions.newNote().catch(actions.report);
-      } else if (mod && event.key.toLowerCase() === 'k') {
-        ui.setState({ paletteOpen: true });
-      } else if (mod && event.key.toLowerCase() === 'e' && route.kind === 'note') {
-        actions.togglePreview();
-      } else if (event.key === 'F2' && route.kind === 'note') {
-        ui.setState({ pendingFocus: { path: route.path, target: 'title' } });
-      } else {
-        return;
-      }
+      const shortcut = shortcutFor(event);
+      if (shortcut === null) return;
       event.preventDefault();
       event.stopPropagation();
+      run(shortcut.command, shortcut.arg);
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [actions, ui, route]);
+  }, [run]);
 }

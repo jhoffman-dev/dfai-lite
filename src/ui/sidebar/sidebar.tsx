@@ -87,7 +87,6 @@ export function Sidebar({ route }: { route: Route }) {
           items={menuItemsFor(menu, {
             actions,
             favorites,
-            activePath,
             title: noteTitle,
             askMove: setMoving,
             askRenameFolder: setRenamingFolder,

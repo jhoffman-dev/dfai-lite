@@ -1,0 +1,67 @@
+/* The main area: one pane, or two side by side with a divider. Each pane is a
+   column (tab bar, then its content), and the content scrolls on its own. */
+
+.panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.panes.is-split {
+  --divider: 5px;
+  grid-template-columns:
+    minmax(0, calc((100% - var(--divider)) * var(--split, 0.5)))
+    var(--divider)
+    minmax(0, 1fr);
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.pane-header {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.pane-action {
+  flex: none;
+  align-self: center;
+  margin: 0 2px;
+  padding: 4px;
+  color: var(--ink-3);
+}
+
+.pane-header .pane-action:last-child {
+  margin-right: var(--space-2);
+}
+
+.pane-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.pane-divider {
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+.pane-divider:hover,
+.pane-divider:focus-visible {
+  background: var(--hover);
+}

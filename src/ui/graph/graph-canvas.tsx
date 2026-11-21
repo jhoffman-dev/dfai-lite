@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import type { GraphNode, VaultGraph } from '../../domain/index/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
 import { neighboursOf, nodeRadius } from './graph-scope.ts';
 import { useForceLayout, type Point } from './use-force-layout.ts';
 
@@ -31,7 +33,7 @@ export function GraphCanvas({
 }: {
   graph: VaultGraph;
   activePath: string | null;
-  onOpenNote: (path: string) => void;
+  onOpenNote: (path: string, openIn: OpenIn) => void;
 }) {
   const { positions, drag } = useForceLayout(graph);
   // Null until the person pans or zooms: until then the whole graph is fitted to the stage.
@@ -174,7 +176,7 @@ function useGestures({
   setView: (view: View) => void;
   toGraph: (event: { clientX: number; clientY: number }) => Point;
   drag: (id: string, to: Point | null) => void;
-  onOpenNote: (path: string) => void;
+  onOpenNote: (path: string, openIn: OpenIn) => void;
 }) {
   const gesture = useRef<Gesture | null>(null);
   const capture = (event: PointerEvent<Element>) => {
@@ -217,7 +219,8 @@ function useGestures({
       if (now?.kind !== 'drag') return;
       if (now.moved) drag(now.node.id, null);
       // A ghost is a link target with no note yet: there is nothing to open.
-      else if (event.type === 'pointerup' && now.node.kind === 'note') onOpenNote(now.node.id);
+      else if (event.type === 'pointerup' && now.node.kind === 'note')
+        onOpenNote(now.node.id, openInFor(event));
     },
   };
 }

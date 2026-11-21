@@ -7,6 +7,9 @@ import type {
   VaultDeps,
   VaultSession,
 } from '../application/index.ts';
+import type { OpenNotes } from './note/open-notes.ts';
+import type { LayoutStore } from './panes/layout-store.ts';
+import type { Workspace } from './panes/workspace.ts';
 import type { NoteActions } from './state/note-actions.ts';
 import type { SyncControls } from './sync/sync-status.ts';
 import type { UiStore } from './state/ui-store.ts';
@@ -31,6 +34,10 @@ export interface AppContextValue {
   readonly deps: VaultDeps;
   readonly vault: VaultStore;
   readonly ui: UiStore;
+  /** The panes and tabs: apart from the vault store, so neither re-renders the other. */
+  readonly layout: LayoutStore;
+  readonly workspace: Workspace;
+  readonly openNotes: OpenNotes;
   readonly actions: NoteActions;
 }
 

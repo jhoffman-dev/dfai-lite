@@ -1,6 +1,8 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { folderOf, rankNoteSuggestions } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
 import { useApp } from '../services.ts';
 import './search.css';
 
@@ -65,17 +67,20 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const rows = usePaletteRows(query);
   const current = Math.min(selected, rows.length - 1);
 
-  const choose = (row: PaletteRow | undefined) => {
+  // Enter opens in the active tab, ⌘/Ctrl-Enter in a new tab, ⌥-Enter in the other pane.
+  const choose = (row: PaletteRow | undefined, openIn: OpenIn) => {
     if (row === undefined) return;
     onClose();
-    if (row.kind === 'create') actions.followLink(row.name).catch(actions.report);
-    else actions.openNote(row.path);
+    if (row.kind === 'create') actions.followLink(row.name, openIn).catch(actions.report);
+    else actions.openNote(row.path, openIn);
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose();
-    else if (event.key === 'Enter') choose(rows[current]);
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    else if (event.key === 'Enter') {
+      const { metaKey, ctrlKey, altKey } = event;
+      choose(rows[current], openInFor({ button: 0, metaKey, ctrlKey, altKey }));
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       const step = event.key === 'ArrowDown' ? 1 : -1;
       setSelected((current + step + rows.length) % Math.max(rows.length, 1));
     } else return;
@@ -112,7 +117,8 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
               aria-selected={at === current}
               className={`palette-row is-${row.kind}`}
               onPointerMove={() => setSelected(at)}
-              onClick={() => choose(row)}
+              onClick={(event) => choose(row, openInFor(event))}
+              onAuxClick={(event) => event.button === 1 && choose(row, 'new-tab')}
             >
               {row.kind === 'create' ? (
                 <span className="palette-title">Create note “{row.name}”</span>

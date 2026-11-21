@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import type { VaultGraph } from '../../domain/index/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
 import { GraphCanvas } from './graph-canvas.tsx';
 import { GraphList } from './graph-list.tsx';
 import { scopeGraph, type GraphDepth } from './graph-scope.ts';
@@ -9,7 +10,7 @@ export interface GraphViewProps {
   readonly graph: VaultGraph;
   /** The note open now: highlighted, and the centre of the local graph. */
   readonly activePath: string | null;
-  readonly onOpenNote: (path: string) => void;
+  readonly onOpenNote: (path: string, openIn: OpenIn) => void;
 }
 
 type Showing = 'graph' | 'list';

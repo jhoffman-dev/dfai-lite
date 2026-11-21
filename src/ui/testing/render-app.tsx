@@ -14,6 +14,7 @@ import {
 } from '../../application/testing/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
 import { App } from '../app.tsx';
+import { memoryLayoutStorage, type LayoutStorage } from '../panes/layout-storage.ts';
 import type { AppServices } from '../services.ts';
 
 /** A small fictional vault for the component tests. */
@@ -34,11 +35,19 @@ export function giveElementsASize(): void {
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 260 });
 }
 
-/** Renders the whole app on `files`, in the rendered view unless told otherwise. */
+/**
+ * Renders the whole app on `files`, in the rendered view unless told
+ * otherwise. The tabs are kept in memory (`layout`), never in jsdom's storage.
+ */
 export async function renderApp({
   files = TEST_VAULT,
   preview = true,
-}: { files?: Readonly<Record<VaultPath, string>>; preview?: boolean } = {}) {
+  layout = memoryLayoutStorage(),
+}: {
+  files?: Readonly<Record<VaultPath, string>>;
+  preview?: boolean;
+  layout?: LayoutStorage;
+} = {}) {
   const noteStore = MemoryNoteStore.of(files);
   const session = new VaultSession();
   const search = new SimpleSearchEngine();
@@ -56,5 +65,5 @@ export async function renderApp({
     sync: null,
     reconnect: () => undefined,
   };
-  return { services, ...render(<App services={services} />) };
+  return { services, layout, ...render(<App services={services} layoutStorage={layout} />) };
 }

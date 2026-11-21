@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import type { GraphNode, VaultGraph } from '../../domain/index/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
 
 /**
  * The same graph as text, for the keyboard and a screen reader: every note in
@@ -13,7 +15,7 @@ export function GraphList({
 }: {
   graph: VaultGraph;
   activePath: string | null;
-  onOpenNote: (path: string) => void;
+  onOpenNote: (path: string, openIn: OpenIn) => void;
 }) {
   const byId = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph.nodes]);
   const links = useMemo(() => linksByNode(graph), [graph]);
@@ -24,7 +26,11 @@ export function GraphList({
     return (
       <li key={`${way}:${node.id}`}>
         {node.kind === 'note' ? (
-          <button type="button" className="graph__list-link" onClick={() => onOpenNote(node.id)}>
+          <button
+            type="button"
+            className="graph__list-link"
+            onClick={(event) => onOpenNote(node.id, openInFor(event))}
+          >
             <span className="graph__list-way">{way}</span> {node.title}
           </button>
         ) : (
@@ -48,7 +54,7 @@ export function GraphList({
                 type="button"
                 className="graph__list-note"
                 aria-current={node.id === activePath ? 'page' : undefined}
-                onClick={() => onOpenNote(node.id)}
+                onClick={(event) => onOpenNote(node.id, openInFor(event))}
               >
                 {node.title}
               </button>

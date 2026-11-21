@@ -10,9 +10,12 @@ import { useUi } from '../state/ui-store.ts';
  */
 export function NoteTitle({
   path,
+  focused,
   beforeRename,
 }: {
   path: VaultPath;
+  /** Whether this is the active pane's note: only it takes a requested focus. */
+  focused: boolean;
   /** Runs first, so nothing typed is still waiting to be saved under the old name. */
   beforeRename: () => Promise<void>;
 }) {
@@ -20,7 +23,8 @@ export function NoteTitle({
   const [name, setName] = useState(() => noteTitle(path));
   const input = useRef<HTMLInputElement>(null);
   const wantsFocus = useUi(
-    (state) => state.pendingFocus?.path === path && state.pendingFocus.target === 'title',
+    (state) =>
+      focused && state.pendingFocus?.path === path && state.pendingFocus.target === 'title',
   );
 
   useEffect(() => {
@@ -38,9 +42,8 @@ export function NoteTitle({
       return;
     }
     await beforeRename();
-    const result = await actions.rename(path, joinPath(folderOf(path), `${wanted}.md`), {
-      open: true,
-    });
+    // Every tab on the note follows the rename by itself.
+    const result = await actions.rename(path, joinPath(folderOf(path), `${wanted}.md`));
     if (result.kind === 'refused') setName(noteTitle(path));
   };
 

@@ -1,15 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { asksForNewNote, type Route } from '../routing/route.ts';
-import { navigate } from '../routing/use-route.ts';
 import { useApp } from '../services.ts';
 
 /**
  * Where the window goes by itself: `#/new` or `?new` make a note at once
- * (what a Shortcut or Dock icon opens), an empty hash reopens the note last
- * open on this device, and each note opened is remembered for next time.
+ * (what a Shortcut or Dock icon opens); otherwise the first hash meets the
+ * restored tabs (an empty hash shows the active tab, a note's hash opens it).
+ * Each note opened is remembered for a launch with no saved tabs.
  */
 export function useStartRoute(route: Route): void {
-  const { actions, services } = useApp();
+  const { actions, workspace } = useApp();
   const started = useRef(false);
   const making = useRef(false);
 
@@ -27,13 +27,8 @@ export function useStartRoute(route: Route): void {
         });
       return;
     }
-    if (first && route.kind === 'home') {
-      const last = services.settings.load().ui.lastOpenPath;
-      if (last !== null && services.session.file(last) !== null) {
-        navigate({ kind: 'note', path: last }, { replace: true });
-      }
-    }
-  }, [route, actions, services]);
+    if (first) workspace.followHash();
+  }, [route, actions, workspace]);
 
   const openPath = route.kind === 'note' ? route.path : null;
   useEffect(() => {

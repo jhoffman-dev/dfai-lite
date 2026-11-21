@@ -1,0 +1,110 @@
+/* A pane's tab bar: quiet, in the neutral chrome. The selected tab joins the
+   page below it; the others sit back in the bar. Many tabs scroll sideways. */
+
+.tab-bar {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab {
+  position: relative;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 72px;
+  max-width: 200px;
+  height: 34px;
+  padding: 0 4px 0 12px;
+  border-right: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: var(--text-meta);
+  cursor: default;
+  user-select: none;
+}
+
+.tab:hover {
+  background: var(--hover);
+  color: var(--ink-2);
+}
+
+.tab.is-selected {
+  background: var(--surface);
+  color: var(--ink);
+  /* Covers the bar's bottom hairline, so the tab and its page read as one. */
+  margin-bottom: -1px;
+}
+
+/* The active pane's tab carries a thin top edge; the other pane's does not. */
+.pane.is-focused .tab.is-selected::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--line-strong);
+}
+
+.panes.is-split .pane.is-focused .tab.is-selected::before {
+  background: var(--focus);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: transparent;
+  color: var(--ink-3);
+  opacity: 0;
+}
+
+.tab:hover .tab-close,
+.tab.is-selected .tab-close,
+.tab:focus-visible .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: var(--selected);
+  color: var(--ink);
+}
+
+.tab-close .icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* Where a dragged tab will land. */
+.tab.is-drop-before {
+  box-shadow: inset 2px 0 0 var(--focus);
+}
+
+.tab.is-drop-after {
+  box-shadow: inset -2px 0 0 var(--focus);
+}
+
+@media (hover: none) {
+  .tab-close {
+    opacity: 1;
+  }
+}
