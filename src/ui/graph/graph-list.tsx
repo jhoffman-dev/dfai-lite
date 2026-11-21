@@ -12,10 +12,12 @@ export function GraphList({
   graph,
   activePath,
   onOpenNote,
+  onFollowLink,
 }: {
   graph: VaultGraph;
   activePath: string | null;
   onOpenNote: (path: string, openIn: OpenIn) => void;
+  onFollowLink: (target: string, openIn: OpenIn) => void;
 }) {
   const byId = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph.nodes]);
   const links = useMemo(() => linksByNode(graph), [graph]);
@@ -34,9 +36,13 @@ export function GraphList({
             <span className="graph__list-way">{way}</span> {node.title}
           </button>
         ) : (
-          <span className="graph__list-link graph__list-link--ghost">
+          <button
+            type="button"
+            className="graph__list-link graph__list-link--ghost"
+            onClick={(event) => onFollowLink(node.title, openInFor(event))}
+          >
             <span className="graph__list-way">{way}</span> {node.title} (no note yet)
-          </span>
+          </button>
         )}
       </li>
     );
