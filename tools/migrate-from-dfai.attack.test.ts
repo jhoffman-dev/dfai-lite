@@ -21,7 +21,8 @@ async function tree(folder: string): Promise<Map<string, string>> {
     for (const entry of await readdir(at, { withFileTypes: true })) {
       const path = `${prefix}${entry.name}`;
       if (entry.isDirectory()) await walk(join(at, entry.name), `${path}/`);
-      else if (entry.isFile()) found.set(path, (await readFile(join(at, entry.name))).toString('hex'));
+      else if (entry.isFile())
+        found.set(path, (await readFile(join(at, entry.name))).toString('hex'));
       else found.set(path, 'link');
     }
   };
@@ -65,7 +66,9 @@ describe('migrate under attack', () => {
   it('copies a note in a nested folder named `_index`, or reports it', async () => {
     await put(source, 'Projects/_index/Plan.md', 'Mara Quill drafts the plan.\n');
     const mentioned = await reportMentions('Projects/_index/Plan.md');
-    const copied = await readFile(join(output, 'Projects/_index/Plan.md'), 'utf8').catch(() => null);
+    const copied = await readFile(join(output, 'Projects/_index/Plan.md'), 'utf8').catch(
+      () => null,
+    );
     expect(copied === 'Mara Quill drafts the plan.\n' || mentioned).toBe(true);
   });
 
@@ -83,7 +86,9 @@ describe('migrate under attack', () => {
     await put(elsewhere, 'Payroll notes.md', 'Larkspur Payroll runs on the 25th.\n');
     await symlink(elsewhere, join(source, 'Linked'));
     const mentioned = await reportMentions('Linked');
-    const copied = await readFile(join(output, 'Linked/Payroll notes.md'), 'utf8').catch(() => null);
+    const copied = await readFile(join(output, 'Linked/Payroll notes.md'), 'utf8').catch(
+      () => null,
+    );
     expect(copied !== null || mentioned).toBe(true);
   });
 
@@ -119,7 +124,10 @@ describe('migrate under attack', () => {
       'See [[Inbox/Meetings/Sync b#Notes|the second]] and ![[Sync a]].\n',
     );
     const report = await migrate(source, output);
-    const first = await readFile(join(output, 'Meetings/2026/09/2026-09-29 Weekly sync.md'), 'utf8');
+    const first = await readFile(
+      join(output, 'Meetings/2026/09/2026-09-29 Weekly sync.md'),
+      'utf8',
+    );
     const second = await readFile(
       join(output, 'Meetings/2026/09/2026-09-29 Weekly sync 2.md'),
       'utf8',

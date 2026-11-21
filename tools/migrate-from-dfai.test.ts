@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { listFiles } from './vault-files.ts';
@@ -147,11 +147,53 @@ describe('migrate', () => {
     expect(lines).toContain('  Projects/Larkspur rollout.md: type, created');
   });
 
+  it('accounts for every source file, brings skills and templates across, and writes the report', async () => {
+    await put(source, '.atlas/skills/brief/SKILL.md', '---\nname: brief\n---\nWrite a brief.\n');
+    await put(source, '.atlas/templates/Person.md', '---\ntype: person\nrole: ""\n---\nWho.\n');
+    await put(source, '.atlas/views/All tasks.md', 'A DFAI view.\n');
+    await put(source, '.git/HEAD', 'ref: refs/heads/main\n');
+    const report = await migrate(source, output);
+    const seen = Object.keys(FIXTURE).length + 4;
+    expect(report.totals).toEqual({ seen, converted: 6, copied: 2, skipped: 4 });
+    expect(await read('skills/brief/SKILL.md')).toBe('---\nname: brief\n---\nWrite a brief.\n');
+    expect(await read('Templates/Person.md')).toBe('Who.\n');
+    expect(report.counts.template).toBe(1);
+    expect(report.empty).toEqual([{ path: '.atlas/templates/Person.md', keys: ['role'] }]);
+    const lines = reportLines(report, output);
+    expect(lines[1]).toContain(`${seen} source files seen = 6 notes converted + 2 files copied`);
+    expect(lines[1]).toContain('Reconciled.');
+    expect(lines).toContain('    .git/ (1 files)');
+    expect(lines).toContain('    .atlas/views/All tasks.md');
+    expect(await read('MIGRATION-REPORT.md')).toContain(lines[1]);
+    const index = (await snapshot(join(output, '_index'))).keys();
+    for (const path of index) expect(await read(`_index/${path}`)).not.toContain('MIGRATION');
+  });
+
   it('refuses an output folder that is not empty, or is inside the source', async () => {
     await put(output, 'keep.md', 'mine');
     await expect(migrate(source, output)).rejects.toBeInstanceOf(MigrationRefused);
     await expect(migrate(source, join(source, 'out'))).rejects.toThrow(/inside the DFAI vault/);
     expect(await readFile(join(output, 'keep.md'), 'utf8')).toBe('mine');
+  });
+});
+
+/** DFAI's sample vault, when this machine has it: set `DFAI_SAMPLE_VAULT` to its folder (read only, copied first). */
+const SAMPLE_VAULT = process.env['DFAI_SAMPLE_VAULT'];
+
+describe.skipIf(SAMPLE_VAULT === undefined)('migrate on a copy of the DFAI sample vault', () => {
+  it('accounts for every file it holds and leaves the copy as it was', async () => {
+    await cp(SAMPLE_VAULT as string, join(root, 'sample'), {
+      recursive: true,
+      verbatimSymlinks: true,
+    });
+    const sample = join(root, 'sample');
+    const before = await snapshot(sample);
+    const report = await migrate(sample, join(root, 'sample-lite'));
+    const { totals } = report;
+    expect(totals.seen).toBe(before.size);
+    expect(totals.converted + totals.copied + totals.skipped).toBe(totals.seen);
+    expect(reportLines(report, output)[1]).toContain('Reconciled.');
+    expect(await snapshot(sample)).toEqual(before);
   });
 });
 

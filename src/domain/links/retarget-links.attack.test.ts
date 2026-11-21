@@ -14,7 +14,15 @@ function seeded(seed: number): () => number {
   };
 }
 
-const NAMES = ['Mara Quill', 'mara quill', 'Tobias Fenn', 'Café', 'Café', 'Larkspur Payroll', 'Ghost'];
+const NAMES = [
+  'Mara Quill',
+  'mara quill',
+  'Tobias Fenn',
+  'Café',
+  'Café',
+  'Larkspur Payroll',
+  'Ghost',
+];
 const FOLDERS = ['', 'People', 'Projects', 'Archive/Old', 'people'];
 
 function pick<T>(items: readonly T[], random: () => number): T {

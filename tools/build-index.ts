@@ -1,12 +1,18 @@
 // Writes `_index/` for a vault folder: `node tools/build-index.ts <vault dir>`.
 // It is what the vault's GitHub Action runs, so it has no dependencies and
 // uses only TypeScript that Node can strip (no enums, no parameter properties).
-import { stat } from 'node:fs/promises';
+import { lstat, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { INDEX_ROOT, buildAiIndex } from '../src/domain/ai-index/index.ts';
 import { isVisibleNote } from '../src/domain/vault/index.ts';
-import { listFiles, readMarkdown, removeFile, writeIfChanged } from './vault-files.ts';
+import {
+  UnsafePathRefused,
+  listFiles,
+  readMarkdown,
+  removeFile,
+  writeIfChanged,
+} from './vault-files.ts';
 
 export interface IndexRun {
   readonly notes: number;
@@ -17,6 +23,7 @@ export interface IndexRun {
 
 /** Regenerates `<vault>/_index/`: writes what changed, deletes what the index no longer has. */
 export async function buildIndex(vault: string): Promise<IndexRun> {
+  await assertIndexFolder(vault);
   const notes = await readMarkdown(vault);
   const files = buildAiIndex(notes);
   let written = 0;
@@ -40,6 +47,22 @@ export async function buildIndex(vault: string): Promise<IndexRun> {
   return { notes: indexed, files: files.length, written, removed };
 }
 
+/**
+ * Refuses an `_index` that is not a real folder inside the vault: through a
+ * link, writing and deleting stale files would land somewhere else entirely.
+ */
+async function assertIndexFolder(vault: string): Promise<void> {
+  const found = await lstat(resolve(vault, INDEX_ROOT)).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
+  if (found === null || (found.isDirectory() && !found.isSymbolicLink())) return;
+  const what = found.isSymbolicLink() ? 'a symbolic link' : 'not a folder';
+  throw new UnsafePathRefused(
+    `${INDEX_ROOT} in ${vault} is ${what}: refusing to write the index. Remove it and run again.`,
+  );
+}
+
 /** The one line a run prints. */
 export const runSummary = ({ notes, files, written, removed }: IndexRun): string =>
   `Indexed ${notes} notes into ${files} files in ${INDEX_ROOT}/: ${written} written, ${removed} removed.`;
@@ -55,8 +78,14 @@ async function main(args: readonly string[]): Promise<number> {
     console.error(`Not a folder: ${vault}`);
     return 2;
   }
-  console.log(runSummary(await buildIndex(vault)));
-  return 0;
+  try {
+    console.log(runSummary(await buildIndex(vault)));
+    return 0;
+  } catch (error) {
+    if (!(error instanceof UnsafePathRefused)) throw error;
+    console.error(error.message);
+    return 1;
+  }
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

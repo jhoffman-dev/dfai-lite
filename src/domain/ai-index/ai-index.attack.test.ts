@@ -47,7 +47,10 @@ describe('buildAiIndex under attack', () => {
     const notes: IndexFile[] = [];
     for (let at = 0; at < 900; at += 1) {
       const folder = ['People', 'Projects', 'Archive/2024', 'Meetings/2026/09'][at % 4];
-      notes.push({ path: `${folder}/Note ${at}.md`, text: `Note ${at} about [[Note ${at + 1}]].\n` });
+      notes.push({
+        path: `${folder}/Note ${at}.md`,
+        text: `Note ${at} about [[Note ${at + 1}]].\n`,
+      });
     }
     const first = buildAiIndex(notes);
     for (let round = 0; round < 3; round += 1) {
