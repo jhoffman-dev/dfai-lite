@@ -1,6 +1,6 @@
 import type { VaultIndex } from '../index/index.ts';
 import { buildTagTree, type TagTreeNode } from '../tags/index.ts';
-import { INDEX_ROOT, byCode, fileText, type IndexFile } from './text.ts';
+import { INDEX_ROOT, byCode, fileText, oneLine, type IndexFile } from './text.ts';
 
 /** A tag with more notes than this lists the first ones and says how to find the rest. */
 const MAX_PATHS_PER_TAG = 25;
@@ -42,5 +42,5 @@ function tagLine(index: VaultIndex, node: TagTreeNode, depth: number): string {
     paths.length > MAX_PATHS_PER_TAG
       ? ` | +${paths.length - MAX_PATHS_PER_TAG} more: search the repository for #${node.name}`
       : '';
-  return `${head}: ${shown}${more}`;
+  return oneLine(`${head}: ${shown}${more}`);
 }

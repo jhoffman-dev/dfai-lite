@@ -8,6 +8,14 @@ export const MAX_BYTES_PER_FILE = 48_000;
 /** The file for notes at the vault root, which no folder holds. */
 export const ROOT_FILE_NAME = '_root';
 
+/**
+ * The file stem for a real folder. The generated `_root` starts with one `_`;
+ * a folder whose name starts with `_` gets one more, so no folder lands on it.
+ * (`part-N` files never share a directory with folder files: a folder is
+ * either cut into parts or split by sub-folder.)
+ */
+const folderStem = (name: string): string => (name.startsWith('_') ? `_${name}` : name);
+
 /** A note's line, by its path. */
 export interface NoteEntry {
   readonly path: string;
@@ -41,7 +49,7 @@ export function folderFiles(entries: readonly NoteEntry[]): {
   const folders: FolderSummary[] = [];
   const { direct, nested } = groupByNextFolder('', entries);
   for (const [name, group] of nested) {
-    const file = `${INDEX_ROOT}/folders/${name}.md`;
+    const file = `${INDEX_ROOT}/folders/${folderStem(name)}.md`;
     files.push(...folderJob({ folder: name, entries: group, file, flat: false }));
     folders.push({ folder: name, count: group.length, file });
   }
@@ -62,7 +70,7 @@ function folderJob(job: FolderJob): IndexFile[] {
   const subJobs: FolderJob[] = [...nested].map(([name, group]) => ({
     folder: `${job.folder}/${name}`,
     entries: group,
-    file: `${stem}/${name}.md`,
+    file: `${stem}/${folderStem(name)}.md`,
     flat: false,
   }));
   if (direct.length > 0) {

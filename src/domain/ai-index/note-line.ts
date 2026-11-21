@@ -2,7 +2,7 @@ import type { VaultIndex } from '../index/index.ts';
 import { isConflictCopyPath } from '../sync/index.ts';
 import { findTags } from '../tags/index.ts';
 import { noteTitle, type VaultPath } from '../vault/index.ts';
-import { MAX_LINE_SUMMARY, cappedList, linkTo, truncated } from './text.ts';
+import { MAX_LINE_SUMMARY, cappedList, linkTo, oneLine, truncated } from './text.ts';
 
 const MAX_LINKS_OUT = 8;
 const MAX_BACKLINK_NAMES = 3;
@@ -26,7 +26,7 @@ export function noteLine(index: VaultIndex, path: VaultPath): string {
   if (isConflictCopyPath(path)) parts.push('! conflict copy');
   const summary = lineSummary(index.summary(path));
   if (summary !== '') parts.push(summary);
-  return parts.join(' | ');
+  return oneLine(parts.join(' | '));
 }
 
 /** The notes a note links to, each once, in the order written: a title, or the target as written. */
@@ -45,7 +45,7 @@ export function lineSummary(summary: string): string {
   for (const tag of [...findTags(summary)].reverse()) {
     plain = `${plain.slice(0, tag.start)}${plain.slice(tag.end)}`;
   }
-  const tidy = plain
+  const tidy = oneLine(plain)
     .replace(/\s+/g, ' ')
     .replace(/\s+([.,;:!?])/g, '$1')
     .trim();
