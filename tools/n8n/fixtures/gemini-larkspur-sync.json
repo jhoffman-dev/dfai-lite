@@ -1,0 +1,11 @@
+{
+  "subject": "Notes: “Larkspur rollout sync” Nov 20, 2026 10:00 PST",
+  "attendees": [
+    { "name": "Mara Quill", "email": "mara.quill@example.com" },
+    { "name": "Tobias Fenn", "email": "tobias.fenn@example.com" },
+    { "name": "", "email": "payroll-team@example.com" }
+  ],
+  "summaryMd": "## Summary\n\nMara and Tobias agreed to move Larkspur Payroll onto the new ledger behind a flag.\n\n## Decisions\n\n- Ship the ledger move behind a flag.\n\n## Next steps\n\n- [Mara Quill] Send the revised plan by Friday.\n- [Tobias Fenn] Put the ledger move behind a flag.\n\n## Details\n\n- Cut-over: the ledger is ready; Tobias wants a flag on it first.\n",
+  "transcriptMd": "📖 Transcript\nNov 20, 2026\nLarkspur rollout sync - Transcript\n### 00:00:00\nMara Quill: Morning. Shall we start with the ledger?\nTobias Fenn: Yes. It is ready, but I would like a flag on it first.\n### 00:09:44\nMara Quill: Fine by me. I will send the plan.\n### Transcription ended after 00:10:02\n",
+  "url": "https://docs.example.com/document/d/larkspur-sync"
+}
