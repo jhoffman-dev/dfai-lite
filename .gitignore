@@ -2,3 +2,7 @@ node_modules
 dist
 test-results
 playwright-report
+
+# Local Claude Code state; the agents and shared settings are committed.
+.claude/worktrees/
+.claude/settings.local.json
