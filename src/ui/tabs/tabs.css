@@ -32,10 +32,10 @@
 }
 
 .tab.is-selected {
+  /* Above the bar's bottom hairline (panes.css), so the tab and its page read as one. */
+  z-index: 1;
   background: var(--surface);
   color: var(--ink);
-  /* Covers the bar's bottom hairline, so the tab and its page read as one. */
-  margin-bottom: -1px;
 }
 
 /* The active pane's tab carries a thin top edge; the other pane's does not. */

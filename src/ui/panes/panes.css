@@ -9,7 +9,7 @@
 }
 
 .panes.is-split {
-  --divider: 5px;
+  --divider: 1px;
   grid-template-columns:
     minmax(0, calc((100% - var(--divider)) * var(--split, 0.5)))
     var(--divider)
@@ -25,11 +25,22 @@
 }
 
 .pane-header {
+  position: relative;
   display: flex;
   align-items: stretch;
   min-width: 0;
-  border-bottom: 1px solid var(--line);
   background: var(--bg);
+}
+
+/* The bar's bottom hairline, drawn over the tabs so the selected tab can cover
+   it (tabs.css) without the bar changing height. */
+.pane-header::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
 }
 
 .pane-action {
@@ -74,16 +85,32 @@
   overflow: auto;
 }
 
+/* A hairline to look at, with a wider band to grab: the band reaches over
+   both panes' edges and lights up while pointed at, dragged or focused. */
 .pane-divider {
   position: relative;
+  z-index: 2;
   cursor: col-resize;
   touch-action: none;
-  background: var(--bg);
-  border-left: 1px solid var(--line);
-  border-right: 1px solid var(--line);
+  background: var(--line);
+  outline: none;
 }
 
-.pane-divider:hover,
-.pane-divider:focus-visible {
-  background: var(--hover);
+.pane-divider::before,
+.pane-divider::after {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+}
+
+.pane-divider::after {
+  inset: 0 -1px;
+  background: transparent;
+  transition: background 120ms;
+}
+
+.pane-divider:hover::after,
+.pane-divider:active::after,
+.pane-divider:focus-visible::after {
+  background: var(--focus);
 }
