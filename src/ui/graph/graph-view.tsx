@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import type { VaultGraph } from '../../domain/index/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
 import { GraphCanvas } from './graph-canvas.tsx';
 import { GraphList } from './graph-list.tsx';
 import { scopeGraph, type GraphDepth } from './graph-scope.ts';
@@ -9,7 +10,9 @@ export interface GraphViewProps {
   readonly graph: VaultGraph;
   /** The note open now: highlighted, and the centre of the local graph. */
   readonly activePath: string | null;
-  readonly onOpenNote: (path: string) => void;
+  readonly onOpenNote: (path: string, openIn: OpenIn) => void;
+  /** A ghost (a link target with no note yet) was clicked: create the note and open it. */
+  readonly onFollowLink: (target: string, openIn: OpenIn) => void;
 }
 
 type Showing = 'graph' | 'list';
@@ -18,7 +21,7 @@ type Showing = 'graph' | 'list';
  * The graph page: how the vault's notes link — all of them, or those around
  * the open note — drawn as a force layout or listed, with a filter box.
  */
-export function GraphView({ graph, activePath, onOpenNote }: GraphViewProps) {
+export function GraphView({ graph, activePath, onOpenNote, onFollowLink }: GraphViewProps) {
   const [local, setLocal] = useState(false);
   const [depth, setDepth] = useState<GraphDepth>(1);
   const [query, setQuery] = useState('');
@@ -101,6 +104,7 @@ export function GraphView({ graph, activePath, onOpenNote }: GraphViewProps) {
         showing={showing}
         activePath={activePath}
         onOpenNote={onOpenNote}
+        onFollowLink={onFollowLink}
       />
     </section>
   );
@@ -111,14 +115,27 @@ function GraphBody({
   showing,
   activePath,
   onOpenNote,
+  onFollowLink,
 }: GraphViewProps & { readonly showing: Showing }) {
   if (showing === 'list') {
-    return <GraphList graph={graph} activePath={activePath} onOpenNote={onOpenNote} />;
+    return (
+      <GraphList
+        graph={graph}
+        activePath={activePath}
+        onOpenNote={onOpenNote}
+        onFollowLink={onFollowLink}
+      />
+    );
   }
   if (graph.nodes.length === 0) return <p className="graph__empty">No notes match.</p>;
   return (
     <div className="graph__stage">
-      <GraphCanvas graph={graph} activePath={activePath} onOpenNote={onOpenNote} />
+      <GraphCanvas
+        graph={graph}
+        activePath={activePath}
+        onOpenNote={onOpenNote}
+        onFollowLink={onFollowLink}
+      />
     </div>
   );
 }

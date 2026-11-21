@@ -20,7 +20,7 @@ export function MoveDialog({ path, onClose }: { path: VaultPath; onClose: () => 
     const target = folder.trim().replace(/^\/+|\/+$/g, '');
     const to = joinPath(target, `${noteTitle(path)}.md`);
     onClose();
-    if (to !== path) actions.rename(path, to, { open: false }).catch(actions.report);
+    if (to !== path) actions.rename(path, to).catch(actions.report);
   };
 
   return (

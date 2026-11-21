@@ -12,7 +12,7 @@ const started = await boot();
 createRoot(root).render(
   <StrictMode>
     {started.kind === 'app' ? (
-      <App services={started.services} />
+      <App services={started.services} layoutStorage={started.layoutStorage} />
     ) : (
       <Welcome problem={started.problem} onChoose={started.choose} />
     )}

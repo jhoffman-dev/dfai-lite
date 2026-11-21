@@ -20,7 +20,14 @@ export function GraphPage({ activePath }: { activePath: string | null }) {
     <div className="graph-page">
       <h1 className="page-title">Graph</h1>
       <Suspense fallback={<p className="tags-empty">Loading the graph…</p>}>
-        <GraphView graph={graph} activePath={activePath} onOpenNote={actions.openNote} />
+        <GraphView
+          graph={graph}
+          activePath={activePath}
+          onOpenNote={actions.openNote}
+          onFollowLink={(target, openIn) =>
+            actions.followLink(target, openIn).catch(actions.report)
+          }
+        />
       </Suspense>
     </div>
   );

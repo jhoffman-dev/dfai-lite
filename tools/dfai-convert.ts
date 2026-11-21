@@ -3,7 +3,7 @@
 import { noteSummary } from '../src/domain/index/index.ts';
 import { noteTags, tagKey } from '../src/domain/tags/index.ts';
 import { cleanNoteName, fileNameOf, folderOf, joinPath } from '../src/domain/vault/index.ts';
-import { readFrontmatter, type FrontmatterValue } from './frontmatter.ts';
+import { readFrontmatter, type FrontmatterValue, type UnconvertedLines } from './frontmatter.ts';
 
 /** What happened to a note, for the report's counts. */
 export type ConversionRule = 'plain' | 'frontmatter' | 'meeting' | 'person';
@@ -16,7 +16,17 @@ export interface ConvertedNote {
   readonly favorite: boolean;
   /** Properties left out of the new note, by key. */
   readonly dropped: readonly string[];
+  /** Properties with nothing in them (`[]`, `''`, no value), left out, by key. */
+  readonly empty: readonly string[];
+  /** Frontmatter the reader did not understand, kept verbatim in the note: by key, or the line. */
+  readonly unconverted: readonly string[];
+  /** Frontmatter comments: whole-line ones are in the unconverted block, ones after a value are dropped. */
+  readonly comments: number;
+  /** Whether a UTF-8 byte-order mark was taken off the front. */
+  readonly bom: boolean;
 }
+
+const BOM = '﻿';
 
 /** DFAI's bookkeeping: carries nothing a reader needs. */
 const BOOKKEEPING = /^(?:atlas_.*|type|id|created|modified)$/;
@@ -32,33 +42,69 @@ const MEETING_BOOKKEEPING = new Set([
 const MEETING_KEYS = new Set(['title', 'date', 'start', 'end', 'attendees', 'project']);
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-export function convertNote({ path, text }: { path: string; text: string }): ConvertedNote {
-  const { properties, body } = readFrontmatter(text);
+export function convertNote({ path, text: raw }: { path: string; text: string }): ConvertedNote {
+  const bom = raw.startsWith(BOM);
+  const text = bom ? raw.slice(BOM.length) : raw;
+  const { properties, body, unconverted, comments } = readFrontmatter(text);
+  const read = { bom, comments, unconverted: unconverted.map(({ label }) => label) };
   if (properties.size === 0 && body === text) {
-    return { path, text, rule: 'plain', favorite: false, dropped: [] };
+    return { path, text, rule: 'plain', favorite: false, dropped: [], empty: [], ...read };
   }
   const type = properties.get('type');
   const favorite = properties.get('favorite') === true;
+  const kept = unconvertedBlock(unconverted);
   if (type === 'meeting') {
-    const meeting = meetingNote(properties, body);
-    if (meeting !== null) return { ...meeting, favorite };
+    const meeting = meetingNote(properties, body, kept);
+    if (meeting !== null) return { ...meeting, favorite, ...read };
   }
-  const dropped = [...properties.keys()].filter((key) => BOOKKEEPING.test(key));
-  const kept = keptProperties(properties, (key) => !BOOKKEEPING.test(key));
+  const isKept = (key: string): boolean => !BOOKKEEPING.test(key);
+  const dropped = [...properties.keys()].filter((key) => !isKept(key));
+  const lines = keptProperties(properties, isKept);
   const newPath = type === 'person' ? joinPath('People', fileNameOf(path)) : path;
   return {
     path: newPath,
-    text: withHeader(body, tagsLine(properties.get('tags'), body), kept),
+    text: withHeader(body, [tagsLine(properties.get('tags'), body), lines.join('\n'), kept]),
     rule: type === 'person' ? 'person' : 'frontmatter',
     favorite,
     dropped,
+    empty: emptyKeys(properties, isKept),
+    ...read,
   };
+}
+
+/**
+ * The frontmatter the reader could not take apart, verbatim in a fenced block,
+ * so nothing a DFAI note carried is lost; '' when there is none.
+ */
+function unconvertedBlock(unconverted: readonly UnconvertedLines[]): string {
+  if (unconverted.length === 0) return '';
+  const lines = unconverted.flatMap(({ lines: written }) => written);
+  const longestRun = Math.max(0, ...lines.map((line) => /`+/.exec(line)?.[0].length ?? 0));
+  const fence = '`'.repeat(Math.max(3, longestRun + 1));
+  return [
+    'Unconverted DFAI properties, kept as they were written:',
+    '',
+    `${fence}yaml`,
+    ...lines,
+    fence,
+  ].join('\n');
+}
+
+/** Keys a reader would have seen that hold nothing, so the note leaves them out. */
+function emptyKeys(
+  properties: ReadonlyMap<string, FrontmatterValue>,
+  isKept: (key: string) => boolean,
+): string[] {
+  return [...properties]
+    .filter(([key, value]) => key !== 'favorite' && isKept(key) && displayValue(value) === '')
+    .map(([key]) => key);
 }
 
 function meetingNote(
   properties: ReadonlyMap<string, FrontmatterValue>,
   body: string,
-): Omit<ConvertedNote, 'favorite'> | null {
+  kept: string,
+): Omit<ConvertedNote, 'favorite' | 'bom' | 'unconverted' | 'comments'> | null {
   const date = properties.get('date');
   const title = properties.get('title');
   const match = typeof date === 'string' ? DATE.exec(date) : null;
@@ -84,12 +130,14 @@ function meetingNote(
   ]
     .filter((part) => part !== '')
     .join(' ');
-  const text = `${opening}\n\n${header.join('\n')}\n\n${body.replace(/^\s+/, '')}`;
+  const head = [opening, header.join('\n'), kept].filter((part) => part !== '').join('\n\n');
+  const text = `${head}\n\n${body.replace(/^\s+/, '')}`;
   return {
     path: `Meetings/${match[1]}/${match[2]}/${name}.md`,
     text: text.replace(/\n*$/, '\n'),
     rule: 'meeting',
     dropped,
+    empty: emptyKeys(properties, (key) => !BOOKKEEPING.test(key) && !MEETING_BOOKKEEPING.has(key)),
   };
 }
 
@@ -114,7 +162,7 @@ function attendeesLine(value: FrontmatterValue | undefined): string[] {
 }
 
 function aboutLine(value: FrontmatterValue | undefined): string[] {
-  const text = displayValue(value);
+  const text = displayValue(value).replace(/\s*\n\s*/g, ' ');
   if (text === '') return [];
   return [`- About: ${text.startsWith('[[') ? text : `[[${text}]]`}`];
 }
@@ -128,15 +176,23 @@ function keptProperties(
   for (const [key, value] of properties) {
     if (key === 'tags' || key === 'favorite' || !isKept(key)) continue;
     const text = displayValue(value);
-    if (text !== '') lines.push(`- ${key.charAt(0).toUpperCase()}${key.slice(1)}: ${text}`);
+    if (text === '') continue;
+    const label = `- ${key.charAt(0).toUpperCase()}${key.slice(1)}:`;
+    lines.push(text.includes('\n') ? multiLine(label, text) : `${label} ${text}`);
   }
   return lines;
+}
+
+/** A multi-line value as its label, then each line indented under it, so it reads as one list item. */
+function multiLine(label: string, text: string): string {
+  const lines = text.split('\n').map((line) => (line.trim() === '' ? '' : `  ${line}`));
+  return [label, ...lines].join('\n');
 }
 
 function displayValue(value: FrontmatterValue | undefined): string {
   if (value === undefined || value === null) return '';
   if (typeof value === 'boolean') return String(value);
-  if (typeof value === 'string') return value.replace(/\s*\n\s*/g, ' ');
+  if (typeof value === 'string') return value;
   return value
     .map((item) =>
       typeof item === 'string'
@@ -167,9 +223,12 @@ function tagsLine(value: FrontmatterValue | undefined, body: string): string {
   return tags.join(' ');
 }
 
-/** The body with the tags line and the property list after its first paragraph (so the note still opens with its sentence). */
-function withHeader(body: string, tags: string, properties: readonly string[]): string {
-  const blocks = [tags, properties.join('\n')].filter((block) => block !== '');
+/**
+ * The body with the header blocks (tags line, property list, unconverted
+ * frontmatter) after its first paragraph, so the note still opens with its sentence.
+ */
+function withHeader(body: string, header: readonly string[]): string {
+  const blocks = header.filter((block) => block !== '');
   const trimmed = body.replace(/^\s+/, '');
   if (blocks.length === 0) return trimmed;
   const lines = trimmed.split('\n');

@@ -180,8 +180,10 @@
   border-top: 1px solid var(--line);
 }
 
-.sidebar-settings {
+.sidebar-shortcuts {
   margin-left: auto;
+  padding: 4px;
+  color: var(--ink-3);
 }
 
 .row-menu {

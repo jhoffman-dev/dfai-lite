@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import type { GraphNode, VaultGraph } from '../../domain/index/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
+import { GraphLabels, type LabelledNode } from './graph-labels.tsx';
 import { neighboursOf, nodeRadius } from './graph-scope.ts';
 import { useForceLayout, type Point } from './use-force-layout.ts';
 
@@ -14,24 +17,30 @@ const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
 /** How far the pointer may move and still count as a click, not a drag. */
 const CLICK_SLOP = 4;
-/** Below this many notes every title is drawn; above it, only when zoomed in or pointed at. */
-const ALWAYS_LABELLED = 40;
+/** Up to this many notes every title is drawn; past it, only when zoomed in or pointed at. */
+const ALWAYS_LABELLED = 24;
+/** The zoom past which every title is drawn, however many notes there are. */
+const LABEL_ALL_ZOOM = 1.4;
 
 /**
  * The graph as a picture: notes as dots sized by how connected they are,
  * links as lines, link targets no note answers to as hollow ghosts. Drag the
  * ground to pan, the wheel to zoom, a note to move it; point at a note to
- * light its neighbours, click it to open it. Not keyboard-friendly by nature,
+ * light its neighbours, click it to open it (a ghost: create the note and
+open it); ⌘/Ctrl or middle click opens a new tab, ⌥ the other pane, as
+everywhere (`open-in.ts`). Not keyboard-friendly by nature,
  * so the view offers the same graph as a list.
  */
 export function GraphCanvas({
   graph,
   activePath,
   onOpenNote,
+  onFollowLink,
 }: {
   graph: VaultGraph;
   activePath: string | null;
-  onOpenNote: (path: string) => void;
+  onOpenNote: (path: string, openIn: OpenIn) => void;
+  onFollowLink: (target: string, openIn: OpenIn) => void;
 }) {
   const { positions, drag } = useForceLayout(graph);
   // Null until the person pans or zooms: until then the whole graph is fitted to the stage.
@@ -42,7 +51,17 @@ export function GraphCanvas({
   const view = chosen ?? fitView(positions, size);
   const neighbours = useMemo(() => neighboursOf(graph.edges), [graph.edges]);
   const lit = hovered === null ? null : new Set([hovered, ...(neighbours.get(hovered) ?? [])]);
-  const labelAll = graph.nodes.length <= ALWAYS_LABELLED || view.k >= 1.4;
+  const labelAll = graph.nodes.length <= ALWAYS_LABELLED || view.k >= LABEL_ALL_ZOOM;
+  const radiusOf = (id: string) => nodeRadius(neighbours.get(id)?.size ?? 0);
+  const labels: LabelledNode[] = graph.nodes
+    .map((node) => ({
+      node,
+      radius: radiusOf(node.id),
+      lit: lit?.has(node.id) === true,
+      active: node.id === activePath,
+      dim: lit !== null && !lit.has(node.id),
+    }))
+    .filter((label) => labelAll || label.lit || label.active);
 
   const toGraph = (event: { clientX: number; clientY: number }): Point => {
     const box = surface.current?.getBoundingClientRect();
@@ -62,7 +81,11 @@ export function GraphCanvas({
     setView({ k, x: view.x + at.x * (view.k - k), y: view.y + at.y * (view.k - k) });
   };
 
-  const handlers = useGestures({ view, setView, toGraph, drag, onOpenNote });
+  const open = (node: GraphNode, openIn: OpenIn) => {
+    if (node.kind === 'note') onOpenNote(node.id, openIn);
+    else onFollowLink(node.title, openIn);
+  };
+  const handlers = useGestures({ view, setView, toGraph, drag, open });
 
   return (
     <svg
@@ -99,14 +122,14 @@ export function GraphCanvas({
             key={node.id}
             node={node}
             at={positions.get(node.id)}
-            radius={nodeRadius(neighbours.get(node.id)?.size ?? 0)}
+            radius={radiusOf(node.id)}
             active={node.id === activePath}
             dim={lit !== null && !lit.has(node.id)}
-            labelled={labelAll || lit?.has(node.id) === true || node.id === activePath}
             onHover={(on) => setHovered(on ? node.id : null)}
             onPointerDown={(event) => handlers.startDrag(event, node)}
           />
         ))}
+        <GraphLabels labels={labels} positions={positions} zoom={view.k} />
       </g>
     </svg>
   );
@@ -131,7 +154,7 @@ function fitView(
     Math.min(...ys),
     Math.max(...ys),
   ];
-  // A label hangs under each dot, so the box is padded for it.
+  // A title hangs under each dot, so the box is padded for it.
   const width = right - left + 80;
   const height = bottom - top + 80;
   const k = Math.max(
@@ -168,13 +191,13 @@ function useGestures({
   setView,
   toGraph,
   drag,
-  onOpenNote,
+  open,
 }: {
   view: View;
   setView: (view: View) => void;
   toGraph: (event: { clientX: number; clientY: number }) => Point;
   drag: (id: string, to: Point | null) => void;
-  onOpenNote: (path: string) => void;
+  open: (node: GraphNode, openIn: OpenIn) => void;
 }) {
   const gesture = useRef<Gesture | null>(null);
   const capture = (event: PointerEvent<Element>) => {
@@ -189,6 +212,8 @@ function useGestures({
     },
     startDrag: (event: PointerEvent<SVGGElement>, node: GraphNode) => {
       event.stopPropagation();
+      // Only the main and middle buttons pick a note up; a right click is not a click on it.
+      if (event.button > 1) return;
       capture(event);
       // Hold the fitted view still: refitting while a note is dragged would move the ground under it.
       setView(view);
@@ -216,8 +241,7 @@ function useGestures({
       gesture.current = null;
       if (now?.kind !== 'drag') return;
       if (now.moved) drag(now.node.id, null);
-      // A ghost is a link target with no note yet: there is nothing to open.
-      else if (event.type === 'pointerup' && now.node.kind === 'note') onOpenNote(now.node.id);
+      else if (event.type === 'pointerup') open(now.node, openInFor(event));
     },
   };
 }
@@ -228,7 +252,6 @@ function Node({
   radius,
   active,
   dim,
-  labelled,
   onHover,
   onPointerDown,
 }: {
@@ -237,7 +260,6 @@ function Node({
   radius: number;
   active: boolean;
   dim: boolean;
-  labelled: boolean;
   onHover: (on: boolean) => void;
   onPointerDown: (event: PointerEvent<SVGGElement>) => void;
 }) {
@@ -260,12 +282,9 @@ function Node({
       onPointerDown={onPointerDown}
     >
       <circle className="graph__dot" r={radius} />
-      <title>{node.kind === 'ghost' ? `${node.title} (no note yet)` : node.title}</title>
-      {labelled && (
-        <text className="graph__label" y={radius + 13}>
-          {node.title}
-        </text>
-      )}
+      <title>
+        {node.kind === 'ghost' ? `${node.title} (no note yet: click to create)` : node.title}
+      </title>
     </g>
   );
 }

@@ -154,10 +154,6 @@
   stroke-width: 1.5;
 }
 
-.graph__node--ghost {
-  cursor: default;
-}
-
 .graph__node--ghost .graph__dot {
   fill: var(--graph-ground);
   stroke: var(--graph-node);
@@ -177,14 +173,27 @@
 
 .graph__label {
   fill: var(--graph-label);
-  font-size: 11px;
   text-anchor: middle;
+  dominant-baseline: hanging;
   pointer-events: none;
+  /* A halo of the ground colour, so the lines under a title do not cross it. */
+  stroke: var(--graph-ground);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  transition: opacity 120ms;
 }
 
-.graph__node--active .graph__label {
+.graph__label--lit,
+.graph__label--active {
   fill: var(--ink, #222);
+}
+
+.graph__label--active {
   font-weight: 600;
+}
+
+.graph__label--dim {
+  opacity: 0.2;
 }
 
 .graph__list,
@@ -230,5 +239,4 @@
 
 .graph__list-link--ghost {
   color: var(--ink-3, #888);
-  cursor: default;
 }

@@ -8,15 +8,15 @@ import { readmeFile } from './readme-file.ts';
 import { sortedTagTree, tagFile } from './tag-file.ts';
 import { byCode, type IndexFile } from './text.ts';
 
-/** The vault's own guides at its root: about the vault, not notes in it. */
-const VAULT_GUIDES = new Set<VaultPath>(['CLAUDE.md', 'README.md']);
+/** The vault's own guides at its root, and the report a migration left: about the vault, not notes in it. */
+const VAULT_GUIDES = new Set<VaultPath>(['CLAUDE.md', 'README.md', 'MIGRATION-REPORT.md']);
 
 /**
  * The `_index/` files for a vault: a map Claude reads instead of the notes, so
  * it opens only the few that matter. Pure and deterministic — the same notes,
  * in any order, give the same files byte for byte, sorted by path. Hidden
  * paths (`_index/`, `.dfai-lite/`, dotfiles), non-markdown files and the
- * root `CLAUDE.md` and `README.md` are left out.
+ * root `CLAUDE.md`, `README.md` and `MIGRATION-REPORT.md` are left out.
  */
 export function buildAiIndex(notes: readonly IndexFile[]): readonly IndexFile[] {
   const visible = notes.filter(({ path }) => isVisibleNote(path) && !VAULT_GUIDES.has(path));
@@ -35,5 +35,15 @@ export function buildAiIndex(notes: readonly IndexFile[]): readonly IndexFile[] 
     conflictCopies: paths.filter(isConflictCopyPath),
   });
   const files = [readme, ...folders.files, tagFile(index, tags), ...meetings.files];
+  assertDistinctPaths(files);
   return files.sort((left, right) => byCode(left.path, right.path));
+}
+
+/** The generator's own invariant: two files at one path would mean one silently overwrites the other. */
+function assertDistinctPaths(files: readonly IndexFile[]): void {
+  const seen = new Set<string>();
+  for (const { path } of files) {
+    if (seen.has(path)) throw new Error(`AI index bug: two generated files at ${path}`);
+    seen.add(path);
+  }
 }

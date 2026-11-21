@@ -5,6 +5,7 @@ import {
   type VaultFiles,
 } from '../application/index.ts';
 import { createMiniSearchEngine } from '../adapters/search/index.ts';
+import { browserLayoutStorage, type LayoutStorage } from '../ui/panes/layout-storage.ts';
 import type { AppServices, PendingEdits } from '../ui/services.ts';
 import { feedSearch } from './search-feed.ts';
 
@@ -13,6 +14,8 @@ export type Boot =
   | {
       readonly kind: 'app';
       readonly services: AppServices;
+      /** Where this device keeps its panes and tabs between launches. */
+      readonly layoutStorage: LayoutStorage;
       /** Starts what may wait until the app is on screen: sync, the global key. */
       readonly start: () => void;
     }
@@ -32,6 +35,15 @@ export async function openSession(
   feedSearch(session, search);
   await openVault({ files, session });
   return { session, search };
+}
+
+/**
+ * The panes and tabs, in the WebView's own `localStorage` in both modes: it
+ * persists in the Mac app, and the layout is a per-device convenience that a
+ * lost write costs nothing of (the notes and settings live elsewhere).
+ */
+export function deviceLayoutStorage(): LayoutStorage {
+  return browserLayoutStorage(() => window.localStorage);
 }
 
 /** The open editors' unsaved typing, written all at once before a sync commits. */

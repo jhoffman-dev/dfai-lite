@@ -50,3 +50,46 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+.shortcuts-dialog {
+  width: min(520px, 100%);
+  max-height: 76vh;
+}
+
+.shortcuts-list {
+  margin: 0;
+  min-height: 0;
+  overflow: auto;
+  font-size: var(--text-meta);
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.shortcuts-row:last-child {
+  border-bottom: 0;
+}
+
+.shortcuts-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: 0;
+}
+
+.shortcuts-row kbd {
+  font-family: var(--font-ui);
+  font-size: var(--text-label);
+  color: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 0 5px;
+  white-space: nowrap;
+}

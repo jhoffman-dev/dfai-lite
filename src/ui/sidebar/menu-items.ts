@@ -17,7 +17,6 @@ export type MenuTarget =
 export interface MenuContext {
   readonly actions: NoteActions;
   readonly favorites: readonly VaultPath[];
-  readonly activePath: VaultPath | null;
   readonly title: (path: VaultPath) => string;
   readonly askMove: (path: VaultPath) => void;
   readonly askRenameFolder: (path: VaultPath) => void;
@@ -48,6 +47,8 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
   const { path } = target;
   const isFavorite = context.favorites.includes(path);
   return [
+    { label: 'Open in new tab', run: () => actions.openNote(path, 'new-tab') },
+    { label: 'Open to the side', run: () => actions.openNote(path, 'side') },
     { label: 'Rename', run: () => actions.startRename(path) },
     { label: 'Move to folder…', run: () => context.askMove(path) },
     {
@@ -62,7 +63,7 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
         if (!context.confirm(`Delete “${context.title(path)}”? This cannot be undone here.`)) {
           return;
         }
-        later(actions.remove(path, { wasOpen: path === context.activePath }));
+        later(actions.remove(path));
       },
     },
   ];

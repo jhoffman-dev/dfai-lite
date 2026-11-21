@@ -1,6 +1,6 @@
 import { noteTitle, saveNoteText } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
-import { navigate } from '../routing/use-route.ts';
+import { retargetNote } from '../panes/layout.ts';
 import type { AppContextValue } from '../services.ts';
 import { createAutosave, type Autosave } from './autosave.ts';
 
@@ -13,12 +13,12 @@ export interface NoteSaver {
 }
 
 /**
- * Debounced saves of one note's editor. Each save says which text it was
+ * Debounced saves of one note's editors. Each save says which text it was
  * based on; when a sync changed the note underneath, `saveNoteText` keeps
- * both, and the window moves to the copy holding what was typed here.
+ * both, and the tabs on the note move to the copy holding what was typed here.
  */
 export function createNoteSaver(app: AppContextValue, path: VaultPath): NoteSaver {
-  const { deps, services, actions, ui } = app;
+  const { deps, services, actions, ui, workspace } = app;
   let basedOnText = services.session.file(path)?.text ?? '';
   const save = async (text: string) => {
     const result = await saveNoteText(deps, { path, text, basedOnText, clock: services.clock });
@@ -27,7 +27,7 @@ export function createNoteSaver(app: AppContextValue, path: VaultPath): NoteSave
     ui.setState({
       notice: `“${noteTitle(path)}” changed elsewhere while you typed. Your text is in “${noteTitle(result.path)}”.`,
     });
-    navigate({ kind: 'note', path: result.path }, { replace: true });
+    workspace.arrange((layout) => retargetNote(layout, path, result.path));
   };
   return {
     autosave: createAutosave({ save, onError: actions.report }),

@@ -9,6 +9,7 @@ import {
   cappedList,
   fileText,
   linkTo,
+  oneLine,
   truncated,
   type IndexFile,
 } from './text.ts';
@@ -91,7 +92,7 @@ function meetingEntry(index: VaultIndex, path: VaultPath, text: string): Meeting
   const summary = lineSummary(index.summary(path));
   if (summary !== '') parts.push(summary);
   if (date !== null && path !== canonicalPath(date, fileNameOf(path))) parts.push(`at ${path}`);
-  return { path, date, line: parts.join(' | ') };
+  return { path, date, line: oneLine(parts.join(' | ')) };
 }
 
 /** Where the vault contract puts a meeting held on `date`. */
