@@ -1,9 +1,9 @@
 // File-system helpers the tools share. Plain Node, no dependencies, erasable
 // TypeScript only, so `node tools/<tool>.ts` runs them as they are.
-import { mkdir, readFile, readdir, rm, rmdir, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, rm, rmdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 
-/** Folders never read as part of a vault. */
+/** Folders at a vault's root never read as part of it. */
 const SKIPPED_FOLDERS = new Set(['.git', 'node_modules', '_index']);
 
 /** A file found under a folder: its path from that folder, `/`-separated, and where it is on disk. */
@@ -12,45 +12,97 @@ export interface FoundFile {
   readonly absolute: string;
 }
 
-/** Every file under `root`, sorted by path, skipping `.git`, `node_modules`, `_index` and `skip`. */
-export async function listFiles(
+/** What a walk found and did not follow: a symbolic link, or anything neither file nor folder. */
+export interface PassedOver {
+  readonly path: string;
+  readonly kind: 'symlink' | 'special';
+}
+
+const byPath = (left: { path: string }, right: { path: string }): number =>
+  left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
+
+/**
+ * Every regular file under `root`, sorted by path, and what was passed over.
+ * Symbolic links are never followed. `skip` names folders left out at the
+ * root only: a folder of that name deeper down is an ordinary folder.
+ */
+export async function scanFolder(
   root: string,
   skip: ReadonlySet<string> = SKIPPED_FOLDERS,
-): Promise<FoundFile[]> {
-  const found: FoundFile[] = [];
+): Promise<{ files: FoundFile[]; passedOver: PassedOver[] }> {
+  const files: FoundFile[] = [];
+  const passedOver: PassedOver[] = [];
   const walk = async (folder: string): Promise<void> => {
     const entries = await readdir(folder, { withFileTypes: true });
     for (const entry of entries) {
       const absolute = join(folder, entry.name);
+      const path = relative(root, absolute).split(sep).join('/');
       if (entry.isDirectory()) {
-        if (!skip.has(entry.name)) await walk(absolute);
+        if (!(folder === root && skip.has(entry.name))) await walk(absolute);
       } else if (entry.isFile()) {
-        found.push({ path: relative(root, absolute).split(sep).join('/'), absolute });
+        files.push({ path, absolute });
+      } else {
+        passedOver.push({ path, kind: entry.isSymbolicLink() ? 'symlink' : 'special' });
       }
     }
   };
   await walk(root);
-  return found.sort((left, right) =>
-    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
-  );
+  return { files: files.sort(byPath), passedOver: passedOver.sort(byPath) };
+}
+
+/** Every regular file under `root`, sorted by path, skipping the `skip` folders at the root. */
+export async function listFiles(
+  root: string,
+  skip: ReadonlySet<string> = SKIPPED_FOLDERS,
+): Promise<FoundFile[]> {
+  return (await scanFolder(root, skip)).files;
 }
 
 /**
  * Every markdown file under `root` with its text, leaving out dot folders
  * unread: the index ignores them, and the Action checks the writer out into one.
+ * Read one at a time, so a vault of any size never runs out of file handles.
  */
 export async function readMarkdown(root: string): Promise<{ path: string; text: string }[]> {
   const files = (await listFiles(root)).filter(
     ({ path }) =>
       path.toLowerCase().endsWith('.md') && !path.split('/').some((part) => part.startsWith('.')),
   );
-  return Promise.all(
-    files.map(async ({ path, absolute }) => ({ path, text: await readFile(absolute, 'utf8') })),
-  );
+  const notes: { path: string; text: string }[] = [];
+  for (const { path, absolute } of files)
+    notes.push({ path, text: await readFile(absolute, 'utf8') });
+  return notes;
 }
 
-/** Writes `text` to `root/path`, making its folders; false when the file already held exactly that. */
+/** Refused: a write or delete would have gone through a symbolic link, out of the folder it was meant for. */
+export class UnsafePathRefused extends Error {
+  override readonly name = 'UnsafePathRefused';
+}
+
+/** Throws unless each existing part of `root/path` below `root` is a real folder (or, last, a real file). */
+export async function assertNoLinks(root: string, path: string): Promise<void> {
+  const parts = path.split('/');
+  for (let at = 1; at <= parts.length; at += 1) {
+    const inside = parts.slice(0, at).join('/');
+    const found = await lstat(join(root, ...parts.slice(0, at))).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return null;
+        throw error;
+      },
+    );
+    if (found === null) return;
+    if (found.isSymbolicLink()) {
+      throw new UnsafePathRefused(`Refusing to go through a symbolic link: ${inside}`);
+    }
+    if (at < parts.length && !found.isDirectory()) {
+      throw new UnsafePathRefused(`Refusing to write: ${inside} is not a folder`);
+    }
+  }
+}
+
+/** Writes `text` to `root/path`, making its folders; false when the file already held exactly that. Never through a link. */
 export async function writeIfChanged(root: string, path: string, text: string): Promise<boolean> {
+  await assertNoLinks(root, path);
   const absolute = join(root, ...path.split('/'));
   const current = await readFile(absolute, 'utf8').catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') return null;
@@ -62,8 +114,9 @@ export async function writeIfChanged(root: string, path: string, text: string): 
   return true;
 }
 
-/** Deletes `root/path`, then each folder it leaves empty, up to (not including) `stopAt`. */
+/** Deletes `root/path`, then each folder it leaves empty, up to (not including) `stopAt`. Never through a link. */
 export async function removeFile(root: string, path: string, stopAt: string): Promise<void> {
+  await assertNoLinks(root, path);
   await rm(join(root, ...path.split('/')));
   let folder = dirname(path);
   while (folder !== '.' && folder !== stopAt) {
