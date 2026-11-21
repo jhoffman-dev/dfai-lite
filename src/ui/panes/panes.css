@@ -1,0 +1,116 @@
+/* The main area: one pane, or two side by side with a divider. Each pane is a
+   column (tab bar, then its content), and the content scrolls on its own. */
+
+.panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.panes.is-split {
+  --divider: 1px;
+  grid-template-columns:
+    minmax(0, calc((100% - var(--divider)) * var(--split, 0.5)))
+    var(--divider)
+    minmax(0, 1fr);
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.pane-header {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  background: var(--bg);
+}
+
+/* The bar's bottom hairline, drawn over the tabs so the selected tab can cover
+   it (tabs.css) without the bar changing height. */
+.pane-header::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.pane-action {
+  flex: none;
+  align-self: center;
+  margin: 0 2px;
+  padding: 4px;
+  color: var(--ink-3);
+}
+
+.pane-header .pane-action:last-child {
+  margin-right: var(--space-2);
+}
+
+.pane-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Where a dragged tab would land: the whole pane, or the right half it would split into. */
+.pane-drop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--focus) 8%, transparent);
+  border: 2px solid color-mix(in srgb, var(--focus) 60%, transparent);
+  border-radius: var(--radius-control);
+}
+
+.pane-drop.is-split {
+  left: 50%;
+}
+
+.pane-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* A hairline to look at, with a wider band to grab: the band reaches over
+   both panes' edges and lights up while pointed at, dragged or focused. */
+.pane-divider {
+  position: relative;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--line);
+  outline: none;
+}
+
+.pane-divider::before,
+.pane-divider::after {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+}
+
+.pane-divider::after {
+  inset: 0 -1px;
+  background: transparent;
+  transition: background 120ms;
+}
+
+.pane-divider:hover::after,
+.pane-divider:active::after,
+.pane-divider:focus-visible::after {
+  background: var(--focus);
+}

@@ -13,6 +13,8 @@ export interface PendingFocus {
 export interface UiState {
   readonly paletteOpen: boolean;
   readonly settingsOpen: boolean;
+  /** The list of keyboard shortcuts. */
+  readonly shortcutsOpen: boolean;
   /** The sidebar, on a phone-width screen where it is a drawer. */
   readonly drawerOpen: boolean;
   /** Rendered view (true) or the editor (false). */
@@ -28,6 +30,7 @@ export function createUiStore({ preview }: { preview: boolean }): UiStore {
   return createStore<UiState>(() => ({
     paletteOpen: false,
     settingsOpen: false,
+    shortcutsOpen: false,
     drawerOpen: false,
     preview,
     pendingFocus: null,

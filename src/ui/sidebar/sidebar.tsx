@@ -4,6 +4,8 @@ import type { VaultPath } from '../../domain/vault/index.ts';
 import type { Route } from '../routing/route.ts';
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
+import { IS_MAC, keyFor } from '../shell/shortcuts.ts';
+import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { useVault } from '../state/vault-store.ts';
 import { SyncChip } from '../sync/sync-chip.tsx';
 import { FavoritesSection } from './favorites-section.tsx';
@@ -14,11 +16,10 @@ import { RenameFolderDialog } from './rename-folder-dialog.tsx';
 import { RowMenu } from './row-menu.tsx';
 import './sidebar.css';
 
-const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
-
 /** The sidebar: new note and search on top, favourites, the folder tree, and sync in the footer. */
 export function Sidebar({ route }: { route: Route }) {
   const { actions, ui, services } = useApp();
+  const host = useKeyHost();
   const favorites = useVault((vault) => vault.favorites);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [moving, setMoving] = useState<VaultPath | null>(null);
@@ -36,7 +37,7 @@ export function Sidebar({ route }: { route: Route }) {
         >
           <Icon name="plus" />
           <span>New note</span>
-          <kbd>{IS_MAC ? '⌥N' : 'Alt N'}</kbd>
+          <kbd>{keyFor('note.new', host)}</kbd>
         </button>
         <button
           type="button"
@@ -72,6 +73,15 @@ export function Sidebar({ route }: { route: Route }) {
         {services.sync === null ? null : <SyncChip sync={services.sync} />}
         <button
           type="button"
+          className="quiet-button sidebar-shortcuts"
+          aria-label="Keyboard shortcuts"
+          title={`Keyboard shortcuts (${keyFor('help.shortcuts', host)})`}
+          onClick={() => ui.setState({ shortcutsOpen: true })}
+        >
+          <Icon name="keyboard" />
+        </button>
+        <button
+          type="button"
           className="quiet-button sidebar-settings"
           onClick={() => ui.setState({ settingsOpen: true })}
         >
@@ -87,7 +97,6 @@ export function Sidebar({ route }: { route: Route }) {
           items={menuItemsFor(menu, {
             actions,
             favorites,
-            activePath,
             title: noteTitle,
             askMove: setMoving,
             askRenameFolder: setRenamingFolder,

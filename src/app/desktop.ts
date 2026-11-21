@@ -18,7 +18,7 @@ import {
 import { navigate } from '../ui/routing/use-route.ts';
 import type { AppServices } from '../ui/services.ts';
 import type { DesktopControls } from '../ui/settings/desktop-controls.ts';
-import { createPendingEdits, openSession, type Boot } from './app-boot.ts';
+import { createPendingEdits, deviceLayoutStorage, openSession, type Boot } from './app-boot.ts';
 import { remoteInfo, wireSync } from './desktop-sync.ts';
 
 type FileSettings = SettingsStore & { written(): Promise<void> };
@@ -87,7 +87,7 @@ async function composeDesktop({
       reportQuietly('register the capture key'),
     );
   };
-  return { kind: 'app', services, start };
+  return { kind: 'app', services, layoutStorage: deviceLayoutStorage(), start };
 }
 
 /** Changes on disk (Claude, git, an editor) reach the session one batch at a time, in order. */

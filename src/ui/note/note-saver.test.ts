@@ -5,11 +5,9 @@ import {
   MemoryVaultFiles,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
+import { createAppContext } from '../app-context.ts';
+import { memoryLayoutStorage } from '../panes/layout-storage.ts';
 import { parseRoute } from '../routing/route.ts';
-import type { AppContextValue } from '../services.ts';
-import { createNoteActions } from '../state/note-actions.ts';
-import { createUiStore } from '../state/ui-store.ts';
-import { createVaultStore } from '../state/vault-store.ts';
 import { createNoteSaver } from './note-saver.ts';
 
 const PLAN = 'Projects/Larkspur Payroll.md';
@@ -17,27 +15,20 @@ const PLAN = 'Projects/Larkspur Payroll.md';
 async function setup() {
   const files = MemoryVaultFiles.of({ [PLAN]: 'Parallel run.' });
   const session = new VaultSession();
-  const deps = { files, session };
-  await openVault(deps);
-  const ui = createUiStore({ preview: false });
-  const settings = new MemorySettingsStore();
-  const app: AppContextValue = {
-    services: {
-      files,
-      session,
-      settings,
-      clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
-      search: new SimpleSearchEngine(),
-      sync: null,
-      desktop: null,
-      pendingEdits: { add: () => () => undefined },
-    },
-    deps,
-    ui,
-    vault: createVaultStore(session),
-    actions: createNoteActions({ deps, ui, settings }),
+  await openVault({ files, session });
+  const services = {
+    files,
+    session,
+    settings: new MemorySettingsStore(),
+    clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
+    search: new SimpleSearchEngine(),
+    sync: null,
+    desktop: null,
+    pendingEdits: { add: () => () => undefined },
   };
-  return { app, session, ui, deps };
+  const app = createAppContext(services, memoryLayoutStorage());
+  app.workspace.open({ kind: 'note', path: PLAN });
+  return { app, session, ui: app.ui, deps: { files, session } };
 }
 
 /** What a sync (or Claude) does: the note changes on disk, and the session hears. */
@@ -58,7 +49,7 @@ describe('saving a note from the editor', () => {
     expect(session.file(PLAN)?.text).toBe('Parallel run for two cycles.');
   });
 
-  it('keeps both when a sync changed the note while typing, and opens the copy', async () => {
+  it('keeps both when a sync changed the note while typing, and its tab moves to the copy', async () => {
     const { app, session, ui, deps } = await setup();
     const saver = createNoteSaver(app, PLAN);
     saver.opened('Parallel run.');

@@ -1,6 +1,8 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { folderOf, rankNoteSuggestions } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
+import type { OpenIn } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
 import { useApp } from '../services.ts';
 import './search.css';
 
@@ -15,7 +17,11 @@ type PaletteRow =
       readonly title: string;
       readonly snippet: string;
     }
-  | { readonly kind: 'create'; readonly name: string };
+  | { readonly kind: 'create'; readonly name: string }
+  | { readonly kind: 'shortcuts' };
+
+/** Typed alone, it lists the keyboard shortcuts instead of searching. */
+const HELP_QUERY = '?';
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,6 +43,7 @@ function usePaletteRows(query: string): PaletteRow[] {
   return useMemo(() => {
     const typed = query.trim();
     if (typed === '') return [];
+    if (typed === HELP_QUERY) return [{ kind: 'shortcuts' }];
     const index = services.session.index;
     const names = rankNoteSuggestions({
       query: typed,
@@ -59,23 +66,27 @@ function usePaletteRows(query: string): PaletteRow[] {
 
 /** ⌘K: one field that switches to a note by name, searches the text, or makes the note. */
 export function SearchPalette({ onClose }: { onClose: () => void }) {
-  const { actions } = useApp();
+  const { actions, ui } = useApp();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const rows = usePaletteRows(query);
   const current = Math.min(selected, rows.length - 1);
 
-  const choose = (row: PaletteRow | undefined) => {
+  // Enter opens in the active tab, ⌘/Ctrl-Enter in a new tab, ⌥-Enter in the other pane.
+  const choose = (row: PaletteRow | undefined, openIn: OpenIn) => {
     if (row === undefined) return;
     onClose();
-    if (row.kind === 'create') actions.followLink(row.name).catch(actions.report);
-    else actions.openNote(row.path);
+    if (row.kind === 'shortcuts') ui.setState({ shortcutsOpen: true });
+    else if (row.kind === 'create') actions.followLink(row.name, openIn).catch(actions.report);
+    else actions.openNote(row.path, openIn);
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose();
-    else if (event.key === 'Enter') choose(rows[current]);
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    else if (event.key === 'Enter') {
+      const { metaKey, ctrlKey, altKey } = event;
+      choose(rows[current], openInFor({ button: 0, metaKey, ctrlKey, altKey }));
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       const step = event.key === 'ArrowDown' ? 1 : -1;
       setSelected((current + step + rows.length) % Math.max(rows.length, 1));
     } else return;
@@ -94,7 +105,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           aria-expanded={rows.length > 0}
           aria-controls="palette-results"
           aria-activedescendant={rows.length > 0 ? `palette-row-${current}` : undefined}
-          placeholder="Find or create a note…"
+          placeholder="Find or create a note… (? for shortcuts)"
           autoFocus
           value={query}
           onChange={(event) => {
@@ -106,15 +117,18 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         <ul id="palette-results" className="palette-results" role="listbox" aria-label="Results">
           {rows.map((row, at) => (
             <li
-              key={row.kind === 'create' ? 'create' : `${row.kind}:${row.path}`}
+              key={'path' in row ? `${row.kind}:${row.path}` : row.kind}
               id={`palette-row-${at}`}
               role="option"
               aria-selected={at === current}
               className={`palette-row is-${row.kind}`}
               onPointerMove={() => setSelected(at)}
-              onClick={() => choose(row)}
+              onClick={(event) => choose(row, openInFor(event))}
+              onAuxClick={(event) => event.button === 1 && choose(row, 'new-tab')}
             >
-              {row.kind === 'create' ? (
+              {row.kind === 'shortcuts' ? (
+                <span className="palette-title">Keyboard shortcuts</span>
+              ) : row.kind === 'create' ? (
                 <span className="palette-title">Create note “{row.name}”</span>
               ) : (
                 <>
