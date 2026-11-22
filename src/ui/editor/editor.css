@@ -277,37 +277,24 @@
 /* ---- callouts ---- */
 
 /* A callout is a hairline card with a badge before its title: a faint wash
-   of its kind's color, never a heavy rule down its edge or a filled block. */
+   of its type's hue, never a heavy rule down its edge or a filled block.
+   The hue is DFAI's pastel set (controls.css draws `[data-hue]` as `--pill`
+   and `--pill-ink`, light and dark), so a type the person makes looks as
+   right in either theme as a built-in. The editor's view sets `data-hue`;
+   one with none (a copy pasted elsewhere) is the fallback's gray. */
 .callout {
-  --callout-tint: var(--accent-text);
-  --callout-mark: 'i';
-  background: color-mix(in srgb, var(--callout-tint) 6%, var(--surface));
-  border: 1px solid var(--line);
+  --callout-tint: var(--hue-gray-ink);
+  --callout-wash: var(--hue-gray-bg);
+  background: color-mix(in srgb, var(--callout-wash) 45%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--callout-wash) 80%, var(--line));
   border-radius: var(--radius-chip);
   margin: 1em 0;
   padding: 10px 14px;
 }
 
-.callout[data-callout='warning'],
-.callout[data-callout='caution'],
-.callout[data-callout='attention'] {
-  --callout-tint: var(--warning);
-  --callout-mark: '!';
-}
-
-.callout[data-callout='danger'],
-.callout[data-callout='error'],
-.callout[data-callout='bug'],
-.callout[data-callout='failure'] {
-  --callout-tint: var(--danger);
-  --callout-mark: '!';
-}
-
-.callout[data-callout='tip'],
-.callout[data-callout='success'],
-.callout[data-callout='done'] {
-  --callout-tint: var(--success);
-  --callout-mark: '✓';
+.callout[data-hue] {
+  --callout-tint: var(--pill-ink);
+  --callout-wash: var(--pill);
 }
 
 .callout__title {
@@ -321,20 +308,10 @@
   user-select: none;
 }
 
-/* The badge is a dot: the one thing besides an avatar that is fully round. */
-.callout__title::before {
-  align-items: center;
-  background: var(--callout-tint);
-  border-radius: var(--radius-pill);
-  color: var(--surface);
-  content: var(--callout-mark);
+/* The badge: the type's glyph in its ink, drawn by the view, never written. */
+.callout__badge {
   display: inline-flex;
   flex: none;
-  font-size: 10px;
-  font-weight: 600;
-  height: 16px;
-  justify-content: center;
-  width: 16px;
 }
 
 .callout__body > *:first-child {
@@ -548,7 +525,8 @@
 .block-handle {
   align-items: center;
   border-radius: var(--radius-control);
-  color: var(--line-strong);
+  /* The quiet ink, not a hairline's: 5.3:1 on the page in light, 5.5:1 in dark. */
+  color: var(--ink-3);
   cursor: grab;
   display: flex;
   font-size: 12px;
@@ -568,9 +546,15 @@
   display: none;
 }
 
-.block-handle:hover,
-.block-handle--open {
+.block-handle:hover {
   background: var(--hover);
+  color: var(--ink);
+}
+
+/* Its menu open: pressed, as a toggle that is on. */
+.block-handle--open,
+.block-handle--open:hover {
+  background: var(--selected);
   color: var(--ink);
 }
 

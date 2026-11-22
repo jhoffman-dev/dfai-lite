@@ -90,6 +90,10 @@ export function NoteEditor({
           embedImage,
           watchImages: (listener) => bridgeNow.get().watchImages(listener),
         },
+        callouts: {
+          settings: () => bridgeNow.get().calloutSettings(),
+          watch: (listener) => bridgeNow.get().watchCallouts(listener),
+        },
       }),
     [bridgeNow, embedImage],
   );

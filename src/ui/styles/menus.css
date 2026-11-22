@@ -133,3 +133,42 @@
   background: color-mix(in srgb, var(--danger) 12%, var(--raised));
   color: var(--danger);
 }
+
+/* ---- A submenu (a callout's types) ---- */
+
+/* The submenu's trigger ends in a chevron turned to point where it opens. */
+.menu__more {
+  color: var(--ink-3);
+  display: inline-flex;
+  margin-left: auto;
+  transform: rotate(-90deg);
+}
+
+.menu button[data-popup-open] {
+  background: var(--hover);
+}
+
+.menu--callout-types {
+  max-height: min(420px, var(--available-height, 420px));
+  overflow-y: auto;
+}
+
+/* The chosen row's tick, at the end, in the row's ink. */
+.menu__check {
+  color: var(--ink-2);
+  display: inline-flex;
+  margin-left: auto;
+}
+
+/* A callout type's badge in a menu or a list: its glyph on its hue. */
+.callout-swatch {
+  align-items: center;
+  background: var(--pill);
+  border-radius: var(--radius-chip);
+  color: var(--pill-ink);
+  display: inline-flex;
+  flex: none;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
