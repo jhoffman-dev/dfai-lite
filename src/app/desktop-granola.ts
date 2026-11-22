@@ -11,14 +11,17 @@ import { tauriGranola } from '../adapters/tauri/index.ts';
 import type { SyncControls, SyncStatus } from '../ui/sync/sync-status.ts';
 
 /**
- * Whether a sync has pulled the vault this session: one finished (with or
- * without conflict copies), or found the vault does not sync. Once true it
- * stays true for the session, as DFAI's `syncedThisSession`.
+ * Whether a sync has pulled the vault this session: one finished, with or
+ * without conflict copies — `lastSyncedAt` is set only by a sync that ran in
+ * this session, whatever the status shows, so conflict copies left from an
+ * earlier session do not count — or it found the vault does not sync, the
+ * one case with nothing to pull. Once true it stays true for the session,
+ * as DFAI's `syncedThisSession`.
  */
-const pulledThisSession = (status: SyncStatus) =>
-  (status.kind === 'idle' && status.lastSyncedAt !== null) ||
-  status.kind === 'conflicts' ||
-  status.kind === 'off';
+function pulledThisSession(status: SyncStatus): boolean {
+  if (status.kind === 'off') return true;
+  return 'lastSyncedAt' in status && status.lastSyncedAt !== null;
+}
 
 export function syncReadiness(sync: SyncControls): SyncReadiness {
   let ready = pulledThisSession(sync.getStatus());
