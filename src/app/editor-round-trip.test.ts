@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { remarkMarkdown } from '../adapters/markdown/index.ts';
+import { blockRenderer, remarkMarkdown } from '../adapters/markdown/index.ts';
 import type { EditorDocument } from '../domain/markdown/index.ts';
 import { editable } from '../ui/editor/editable-doc.ts';
 import { createEditorExtensions } from '../ui/editor/extensions.ts';
@@ -122,6 +122,38 @@ describe.each(Object.entries(NOTES))('a note with %s, in the editor', (_name, te
     });
     // Every note with words in it was edited somewhere, so the check above ran.
     expect(edits > 0).toBe(note.parsed.doc.content.some((block) => block.type !== 'rawBlock'));
+  });
+});
+
+describe('saving a long note', () => {
+  it('renders none of the blocks the editor holds as they were read, whatever the note', () => {
+    for (const text of Object.values(NOTES)) {
+      const { note, editor } = open(text);
+      const renders: string[] = [];
+      const render = blockRenderer(note.parsed, (node) => {
+        renders.push(node.type);
+        return '';
+      });
+      const read = (editor.getJSON() as EditorDocument).content.filter(
+        (node) => node.attrs?.['blockId'] !== null && node.attrs?.['blockId'] !== undefined,
+      );
+      read.forEach(render);
+      expect({ text, renders }).toEqual({ text, renders: [] });
+    }
+  });
+
+  it('renders a block typed in once, not again on the next save', () => {
+    const { note, editor } = open('First.\n\nSecond.\n');
+    let renders = 0;
+    const render = blockRenderer(note.parsed, () => {
+      renders += 1;
+      return 'written';
+    });
+    editor.view.dispatch(editor.state.tr.insertText('Z', 1));
+    const [edited] = (editor.getJSON() as EditorDocument).content;
+    render(edited!);
+    render(structuredClone(edited!));
+    expect(renders).toBe(1);
   });
 });
 

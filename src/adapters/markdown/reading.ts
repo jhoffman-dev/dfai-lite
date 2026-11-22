@@ -25,7 +25,7 @@ export function readingOf(nodes: readonly EditorNode[]): Reading {
       tokens.push(...characterTokens(node));
       return;
     }
-    const opening = `<${node.type} ${canonical(node.type, node.attrs)} ${marksKey(node.marks ?? [])}`;
+    const opening = `<${node.type} ${expressedAttrs(node.type, node.attrs)} ${marksKey(node.marks ?? [])}`;
     tokens.push({ key: opening, unlinked: null });
     if (node.content === undefined) return;
     const content = TEXT_BLOCKS.has(node.type) ? endTrimmed(node.content) : node.content;
@@ -74,7 +74,7 @@ function isAutolinkOf(mark: EditorMark, value: string): boolean {
 
 function marksKey(marks: readonly EditorMark[]): string {
   return marks
-    .map((mark) => `${mark.type}${canonical(mark.type, mark.attrs)}`)
+    .map((mark) => `${mark.type}${expressedAttrs(mark.type, mark.attrs)}`)
     .sort()
     .join(',');
 }
@@ -115,7 +115,10 @@ const EXPRESSED: Readonly<Record<string, readonly string[]>> = {
  * The attributes markdown can say, keys in order, leaving out empty ones
  * (null, false) and the block id.
  */
-function canonical(type: string, attrs: Readonly<Record<string, unknown>> | undefined): string {
+export function expressedAttrs(
+  type: string,
+  attrs: Readonly<Record<string, unknown>> | undefined,
+): string {
   const expressed = EXPRESSED[type];
   const kept = Object.entries(attrs ?? {})
     .filter(

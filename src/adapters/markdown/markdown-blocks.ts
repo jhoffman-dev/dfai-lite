@@ -17,6 +17,7 @@ import { editorNodeToMdastBlock } from './editor-to-mdast.ts';
 import { escapesATag } from './escaped-tags.ts';
 import { writeAsTyped, type ReadMarkdown } from './as-typed.ts';
 import { readingOf } from './reading.ts';
+import { blockRenderer } from './rendered-blocks.ts';
 import { remarkWikiLink } from './wiki-link-syntax.ts';
 import { expressible } from './expressible.ts';
 import {
@@ -367,12 +368,13 @@ export function serializeMarkdownBody({
   doc: EditorDocument;
 }): string {
   const byId = new Map(parsed.blocks.map((block) => [block.id, block]));
+  const rendered = blockRenderer(parsed, (node) => renderSafely(node));
   // The editor keeps an empty paragraph at the end so there is somewhere to type
   // after an atom block. Markdown has no such thing, so blocks that serialize to
   // nothing are dropped rather than written out as stray blank lines. Only
   // markdown's own whitespace counts as nothing: a no-break space is what an
   // `&nbsp;` spacer paragraph holds, and it is kept (A21-04).
-  const nodes = doc.content.filter((node) => /[^ \t\r\n]/.test(renderSafely(node)));
+  const nodes = doc.content.filter((node) => /[^ \t\r\n]/.test(rendered(node)));
 
   if (nodes.length === 0) return parsed.blocks.length === 0 ? originalBody : '';
 
@@ -386,7 +388,7 @@ export function serializeMarkdownBody({
   // Each block's own bytes where it was not changed.
   const kept = nodes.map((node) => {
     const block = byId.get(blockIdOf(node) ?? '') ?? null;
-    return block !== null && renderSafely(node) === block.normalized ? block.source : null;
+    return block !== null && rendered(node) === block.normalized ? block.source : null;
   });
 
   nodes.forEach((node, index) => {
