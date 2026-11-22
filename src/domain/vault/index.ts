@@ -40,4 +40,4 @@ export {
   type FolderNode,
   type TreeRow,
 } from './folder-tree.ts';
-export { pathMovedInto, type VaultEntry } from './moves.ts';
+export { dropFolderAt, pathMovedInto, type DropPoint, type VaultEntry } from './moves.ts';

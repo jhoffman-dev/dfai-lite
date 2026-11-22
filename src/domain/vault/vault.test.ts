@@ -6,6 +6,7 @@ import {
   isDisposableFile,
   isVisibleFolder,
   pathMovedInto,
+  dropFolderAt,
   flattenFolderTree,
   folderOf,
   isHiddenPath,
@@ -192,5 +193,56 @@ describe('moving into a folder', () => {
     expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'People')).toBeNull();
     expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'People/Team')).toBeNull();
     expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'Peoples')).toBe('Peoples/People');
+  });
+});
+
+describe('where a drag held over the tree drops', () => {
+  const tree = buildFolderTree(
+    ['Inbox/Idea.md', 'Projects/Plan.md', 'Projects/Q4/Budget.md', 'Welcome.md', 'Areas/idea.md'],
+    ['People/Team'],
+  );
+  const note = { kind: 'note', path: 'Inbox/Idea.md' } as const;
+  const people = { kind: 'folder', path: 'People' } as const;
+
+  it('is the folder under the pointer', () => {
+    expect(dropFolderAt(note, { kind: 'folder', path: 'Projects' }, tree)).toBe('Projects');
+    expect(dropFolderAt(note, { kind: 'folder', path: 'Projects/Q4' }, tree)).toBe('Projects/Q4');
+    expect(dropFolderAt(people, { kind: 'folder', path: 'Projects' }, tree)).toBe('Projects');
+  });
+
+  it('is the folder a note under the pointer is in, never the note', () => {
+    expect(dropFolderAt(note, { kind: 'note', path: 'Projects/Q4/Budget.md' }, tree)).toBe(
+      'Projects/Q4',
+    );
+    expect(dropFolderAt(people, { kind: 'note', path: 'Projects/Plan.md' }, tree)).toBe('Projects');
+  });
+
+  it('is the top of the vault on the space around the rows, or on a note at the top', () => {
+    expect(dropFolderAt(note, null, tree)).toBe('');
+    expect(dropFolderAt(note, { kind: 'note', path: 'Welcome.md' }, tree)).toBe('');
+    expect(dropFolderAt({ kind: 'folder', path: 'Projects/Q4' }, null, tree)).toBe('');
+  });
+
+  it('is nothing where the entry already is', () => {
+    expect(dropFolderAt(note, { kind: 'folder', path: 'Inbox' }, tree)).toBeNull();
+    expect(dropFolderAt(note, { kind: 'note', path: 'Inbox/Idea.md' }, tree)).toBeNull();
+    expect(dropFolderAt(people, null, tree)).toBeNull();
+    expect(dropFolderAt({ kind: 'note', path: 'Welcome.md' }, null, tree)).toBeNull();
+  });
+
+  it('is nothing for a folder onto itself or anything under it', () => {
+    expect(dropFolderAt(people, { kind: 'folder', path: 'People' }, tree)).toBeNull();
+    expect(dropFolderAt(people, { kind: 'folder', path: 'People/Team' }, tree)).toBeNull();
+    const projects = { kind: 'folder', path: 'Projects' } as const;
+    expect(
+      dropFolderAt(projects, { kind: 'note', path: 'Projects/Q4/Budget.md' }, tree),
+    ).toBeNull();
+  });
+
+  it('is nothing where the folder already shows that name, case aside', () => {
+    expect(dropFolderAt(note, { kind: 'folder', path: 'Areas' }, tree)).toBeNull();
+    const team = { kind: 'folder', path: 'People/Team' } as const;
+    expect(dropFolderAt({ kind: 'folder', path: 'Projects/Q4' }, team, tree)).toBe('People/Team');
+    expect(dropFolderAt({ kind: 'folder', path: 'Other/team' }, people, tree)).toBeNull();
   });
 });

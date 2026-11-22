@@ -24,6 +24,7 @@ export {
   joinPath,
   pathAfterMove,
   pathMovedInto,
+  dropFolderAt,
   isWithin,
   KEEP_FILE,
 } from '../domain/vault/index.ts';
