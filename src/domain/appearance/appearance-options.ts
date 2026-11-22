@@ -56,7 +56,6 @@ export const APPEARANCE_ICONS = [
   'quote',
   'cloud',
   'sun',
-  'moon',
 ] as const;
 
 export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];

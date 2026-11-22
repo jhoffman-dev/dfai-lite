@@ -78,6 +78,17 @@ describe('setting a look', () => {
     expect(files.peek(APPEARANCE_PATH)).toBe('{oops');
   });
 
+  it('draws the looks again when the vault is opened afresh (a relaunch)', async () => {
+    const { deps, files } = await opened();
+    await setPathAppearance(deps, { path: 'Projects', color: 'green', icon: 'work' });
+    const reopened = { files, session: new VaultSession() };
+    await openVault(reopened);
+    expect(reopened.session.resolvedAppearances.get('Projects')).toEqual({
+      hue: 'green',
+      icon: { kind: 'glyph', name: 'work' },
+    });
+  });
+
   it('reads the file afresh when it changes on disk (the other Mac synced)', async () => {
     const { deps, files } = await opened();
     files.edit(APPEARANCE_PATH, '{"People": {"color": "green"}}');

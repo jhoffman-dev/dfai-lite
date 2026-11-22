@@ -1,0 +1,23 @@
+/* A folder's or a note's own glyph where it is named outside the sidebar:
+   the icon it wears, tinted in its hue's ink. Only the sidebar draws the box. */
+
+.look-glyph {
+  align-items: center;
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+}
+
+.look-glyph[data-hue] {
+  color: var(--pill-ink);
+}
+
+/* An emoji is drawn at the glyph's size, so a row keeps its height and line. */
+.look-emoji {
+  display: inline-block;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-size: 13px;
+  line-height: 15px;
+  text-align: center;
+  width: 15px;
+}
