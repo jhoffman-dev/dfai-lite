@@ -11,6 +11,7 @@ import { ControlKeys } from './control-keys.ts';
 import { VaultImage } from './image.tsx';
 import { RawBlock } from './raw-block.ts';
 import { SlashCommands, type SlashCommandView } from './slash-commands.ts';
+import { TableAlign } from './table-align.ts';
 import { TagHighlight } from './tag-highlight.ts';
 import { TagSuggestionExtension, type TagSuggestionView } from './tag-suggestion.ts';
 import { TrailingLine } from './trailing-line.ts';
@@ -58,6 +59,7 @@ export function createEditorExtensions({
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
+    TableAlign,
     Callout,
     WikiLink,
     BlockId,

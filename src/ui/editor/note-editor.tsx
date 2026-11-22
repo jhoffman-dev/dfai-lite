@@ -7,6 +7,7 @@ import type { EditorDocument } from '../../domain/markdown/index.ts';
 import type { EditorSteps, OpenNote } from '../note/open-notes.ts';
 import { openInFor } from '../panes/open-in.ts';
 import { latestOf, type EditorBridge } from './bridge.ts';
+import { editable } from './editable-doc.ts';
 import { createEditorExtensions } from './extensions.ts';
 import { LinkSuggestionPopup } from './link-suggestion-popup.tsx';
 import { READ_FROM_FILE, showAsRead } from './show-as-read.ts';
@@ -223,18 +224,6 @@ function applySteps(editor: Editor, steps: EditorSteps, sourceDoc: () => EditorD
     return;
   }
   editor.view.dispatch(tr.setMeta(MIRRORED, true).setMeta('addToHistory', false));
-}
-
-/**
- * The document as the editor holds it from the start: with the empty line
- * `TrailingLine` keeps to type in under a last list, table or picture (an
- * empty note is just that line), there before the first click rather than
- * after it. The save drops it while it is empty.
- */
-function editable(doc: EditorDocument): EditorDocument {
-  const last = doc.content.at(-1);
-  const typesAfter = last?.type === 'paragraph' && last.content?.at(-1)?.type !== 'image';
-  return typesAfter ? doc : { ...doc, content: [...doc.content, { type: 'paragraph' }] };
 }
 
 /** Whether a step was applied: one that does not fit, or cannot be read, was not. */

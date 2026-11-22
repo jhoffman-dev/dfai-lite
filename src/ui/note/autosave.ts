@@ -40,10 +40,12 @@ export function createAutosave({
     const read = pending;
     pending = null;
     if (read !== null) {
-      running = running.then(() => save(read())).catch((error: unknown) => {
-        onError(error);
-        retry(read);
-      });
+      running = running
+        .then(() => save(read()))
+        .catch((error: unknown) => {
+          onError(error);
+          retry(read);
+        });
     }
     return running;
   };
