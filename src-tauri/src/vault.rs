@@ -213,6 +213,13 @@ pub fn create_folder(root: State<'_, VaultRoot>, path: String) -> Result<(), Str
     files::create_folder(&inside(&root.get()?, &path)?, &path)
 }
 
+/// Moves a folder whole; both paths confined to the vault, no dot names.
+#[tauri::command]
+pub fn rename_folder(root: State<'_, VaultRoot>, from: String, to: String) -> Result<(), String> {
+    let root = root.get()?;
+    files::rename_folder(&inside(&root, &from)?, &inside(&root, &to)?, &to)
+}
+
 /// Removes a folder holding nothing but its keep file (or Finder's `.DS_Store`).
 #[tauri::command]
 pub fn remove_folder(root: State<'_, VaultRoot>, path: String) -> Result<(), String> {

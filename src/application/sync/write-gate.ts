@@ -70,6 +70,7 @@ export function gatedVaultFiles(files: VaultFiles, gate: WriteGate): VaultFiles 
     remove: (request) => pass().then(() => files.remove(request)),
     createFolder: (path) => pass().then(() => files.createFolder(path)),
     removeFolder: (path) => pass().then(() => files.removeFolder(path)),
+    renameFolder: (from, to) => pass().then(() => files.renameFolder(from, to)),
     readIgnoreFile: () => pass().then(() => files.readIgnoreFile()),
     writeIgnoreFile: (request) => pass().then(() => files.writeIgnoreFile(request)),
     findUnsyncable: () => pass().then(() => files.findUnsyncable()),

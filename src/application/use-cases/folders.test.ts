@@ -1,6 +1,5 @@
 import { buildAiIndex } from '../../domain/ai-index/index.ts';
 import { FAVORITES_PATH } from '../../domain/favorites/index.ts';
-import { TrashRefusedError } from '../ports/index.ts';
 import { VaultSession } from '../session/index.ts';
 import { MemoryVaultFiles } from '../testing/index.ts';
 import {
@@ -10,6 +9,7 @@ import {
   moveFolderInto,
   moveNoteInto,
   openVault,
+  renameFolder,
   type VaultDeps,
 } from './index.ts';
 
@@ -144,18 +144,82 @@ describe('moving a folder into a folder', () => {
   });
 });
 
+describe('renaming or moving a folder moves the folder itself', () => {
+  it('changes only the case for real: no second folder, links still open, a reopen agrees', async () => {
+    const deps = await opened({
+      'projects/Plan.md': 'The plan.',
+      'Notes.md': 'See [[projects/Plan]].',
+    });
+    expect(await renameFolder(deps, { from: 'projects', to: 'Projects' })).toMatchObject({
+      kind: 'renamed',
+      moved: 1,
+    });
+    expect(deps.files.folders()).toContain('Projects');
+    expect(deps.files.folders()).not.toContain('projects');
+    // Links compare case aside: the old spelling still opens the note, so it is left as written.
+    expect(deps.session.index.resolve('projects/Plan')).toBe('Projects/Plan.md');
+    const reopened = { files: deps.files, session: new VaultSession() };
+    await openVault(reopened);
+    expect(reopened.session.folderTree().folders.map((f) => f.path)).toEqual([
+      'Inbox',
+      'People',
+      'Projects',
+    ]);
+  });
+
+  it('takes attachments, folders and dot files with it, so nothing is split', async () => {
+    const deps = await opened({ 'People/.draft.md': 'Hidden.' }, ['People/plan.png']);
+    await createFolder(deps, { path: 'People/Archive' });
+    await moveFolderInto(deps, { path: 'People', folder: 'Projects' });
+    const { otherPaths, folders, notes } = await deps.files.readAll();
+    expect(otherPaths).toEqual(['Projects/People/Archive/.gitkeep', 'Projects/People/plan.png']);
+    expect(folders).not.toContain('People');
+    expect(notes.map((note) => note.path)).toContain('Projects/People/.draft.md');
+    expect(deps.session.otherPaths()).toContain('Projects/People/plan.png');
+  });
+
+  it('changes nothing in the session or the links when the disk refuses', async () => {
+    const deps = await opened();
+    deps.files.renameFolder = () => Promise.reject(new Error('disk full'));
+    await expect(renameFolder(deps, { from: 'Inbox', to: 'Filed' })).rejects.toThrow('disk full');
+    expect(deps.session.file(IDEA)).not.toBeNull();
+    expect(deps.files.peek(PLAN)).toContain('[[Inbox/Payroll idea]]');
+    expect(deps.session.favorites).toEqual([IDEA]);
+  });
+
+  it('refuses the names a new folder may not take: the index folder and dot names', async () => {
+    const deps = await opened();
+    for (const to of ['_index', '_INDEX/x', '.dfai-lite', 'Projects/.hidden']) {
+      expect(await renameFolder(deps, { from: 'Inbox', to }), to).toMatchObject({
+        kind: 'refused',
+      });
+    }
+  });
+});
+
+describe('a folder path typed in other capitals', () => {
+  it('lands in the folder already there, as it is spelled', async () => {
+    const deps = await opened();
+    expect(await createFolder(deps, { path: 'projects/Q4' })).toEqual({
+      kind: 'created',
+      path: 'Projects/Q4',
+    });
+    expect(folderNames(deps)).toEqual(['Inbox', 'People', 'Projects']);
+  });
+});
+
 describe('deleting a folder', () => {
   it('removes an empty folder and its keep file', async () => {
     const deps = await opened();
     await createFolder(deps, { path: 'Areas' });
-    expect(await deleteFolder(deps, { path: 'Areas' })).toEqual({ kind: 'deleted', notes: 0 });
+    expect(await deleteFolder(deps, { path: 'Areas' })).toMatchObject({ deleted: 0, total: 0 });
     expect(deps.files.folders()).not.toContain('Areas');
     expect(folderNames(deps)).not.toContain('Areas');
   });
 
   it('sends each note to the Trash one by one, then removes the folders', async () => {
     const deps = await opened({ 'People/Team/Tobias Fenn.md': '' });
-    expect(await deleteFolder(deps, { path: 'People' })).toEqual({ kind: 'deleted', notes: 2 });
+    expect(await deleteFolder(deps, { path: 'People' })).toMatchObject({ deleted: 2, total: 2 });
     expect(deps.files.trashed).toEqual([MARA, 'People/Team/Tobias Fenn.md']);
     expect(deps.files.folders()).not.toContain('People');
   });
@@ -169,13 +233,39 @@ describe('deleting a folder', () => {
     expect(deps.files.trashed).toEqual([]);
   });
 
-  it('passes on a Trash that refuses, leaving the folder', async () => {
+  it('refuses up front a folder holding a dot-named note the tree hides', async () => {
+    const deps = await opened({ 'People/.draft.md': 'Hidden.', 'People/A.md': '' });
+    expect(await deleteFolder(deps, { path: 'People' })).toMatchObject({
+      kind: 'refused',
+      reason: expect.stringMatching(/\.draft\.md/),
+    });
+    expect(deps.files.trashed).toEqual([]);
+  });
+
+  it('keeps a note changed on disk, deletes the rest, and says which it kept', async () => {
+    const deps = await opened({ 'People/Tobias Fenn.md': '' });
+    deps.files.edit(MARA, 'Changed by Claude.');
+    expect(await deleteFolder(deps, { path: 'People' })).toEqual({
+      kind: 'deleted',
+      deleted: 1,
+      total: 2,
+      kept: [MARA],
+      trashRefused: false,
+    });
+    expect(deps.files.peek(MARA)).toBe('Changed by Claude.');
+    expect(deps.files.folders()).toContain('People');
+  });
+
+  it('stops at a Trash that refuses, and a retry for good leaves the kept notes', async () => {
     const deps = await opened();
     deps.files.trashRefuses = true;
-    await expect(deleteFolder(deps, { path: 'People' })).rejects.toBeInstanceOf(TrashRefusedError);
-    expect(deps.files.folders()).toContain('People');
-    expect(await deleteFolder(deps, { path: 'People', permanently: true })).toMatchObject({
-      kind: 'deleted',
+    expect(await deleteFolder(deps, { path: 'People' })).toMatchObject({
+      deleted: 0,
+      trashRefused: true,
     });
+    expect(deps.files.folders()).toContain('People');
+    expect(await deleteFolder(deps, { path: 'People', permanently: true, skip: [] })).toMatchObject(
+      { deleted: 1, trashRefused: false },
+    );
   });
 });

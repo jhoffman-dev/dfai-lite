@@ -9,6 +9,7 @@ import {
   applyExternalChanges,
   createDeletionApprovals,
   createFolder,
+  renameFolder,
   createSyncNow,
   createWriteGate,
   deleteNote,
@@ -191,6 +192,25 @@ describe('sync with real git', { timeout: 30_000 }, () => {
     const areas = there.deps.session.folderTree().folders.find((f) => f.name === 'Areas');
     expect(areas?.folders.map((f) => f.path)).toEqual(['Areas/Garden']);
     expect(there.deps.session.index.paths().some((path) => path.includes('.gitkeep'))).toBe(false);
+  });
+
+  it('moves a folder whole on disk, its attachment and its case with it, to the other Mac', async () => {
+    const here = await clone('Studio', 'here');
+    const there = await clone('Laptop', 'there');
+    await writeFile(join(here.dir, 'People', 'photo.png'), 'png');
+    await applyExternalChanges(here.deps, ['People/photo.png']);
+    expect(await renameFolder(here.deps, { from: 'People', to: 'people' })).toMatchObject({
+      kind: 'renamed',
+      moved: 1,
+    });
+    expect((await here.files.readAll()).folders).toEqual(['people']);
+    expect(await here.sync()).toMatchObject({ kind: 'synced', pushed: true });
+    const paths = await remotePaths();
+    expect(paths).toContain('people/Mara Quill.md');
+    expect(paths).toContain('people/photo.png');
+    expect(paths.filter((path) => path.startsWith('People/'))).toEqual([]);
+    await there.sync();
+    expect(there.deps.session.file('people/Mara Quill.md')).not.toBeNull();
   });
 
   it('keeps both when both Macs changed a note: this Mac’s in place, the other’s beside it', async () => {

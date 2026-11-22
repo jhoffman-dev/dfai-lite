@@ -1,14 +1,20 @@
+import { favoritesAfterMove } from '../../domain/favorites/index.ts';
 import {
+  linkKeysOf,
+  moveResolvers,
+  notesAfterMove,
+  retargetLinks,
+} from '../../domain/links/index.ts';
+import {
+  folderPathProblem,
   foldedPath,
-  isNotePath,
   isWithin,
-  noteNameProblem,
   pathAfterMove,
+  type PathMove,
   type VaultPath,
 } from '../../domain/vault/index.ts';
-import { removeEmptyFolders } from './empty-folders.ts';
-import { renameNote } from './rename-note.ts';
-import type { VaultDeps } from './vault-deps.ts';
+import { writeFavorites } from './favorites.ts';
+import { writeFile, type VaultDeps } from './vault-deps.ts';
 
 export type RenameFolderResult =
   | {
@@ -20,73 +26,57 @@ export type RenameFolderResult =
     }
   | { readonly kind: 'refused'; readonly reason: string };
 
-function folderProblem(deps: VaultDeps, from: VaultPath, to: VaultPath): string | null {
-  if (to === '') return 'A folder needs a name.';
-  for (const part of to.split('/')) {
-    const problem = noteNameProblem(part);
-    if (problem !== null) return problem;
-  }
+/** Why the folder cannot go to `to`: the shared folder rules, itself, or anything already there. */
+function folderProblem(deps: VaultDeps, { from, to }: PathMove): string | null {
+  const problem = folderPathProblem(to);
+  if (problem !== null) return problem;
+  // A change of case alone is the same folder: nothing else is in its way.
+  if (foldedPath(to) === foldedPath(from)) return null;
   if (isWithin(to, from)) return 'A folder cannot move inside itself.';
   const wanted = foldedPath(to);
-  if (wanted !== foldedPath(from)) {
-    const clash = deps.session.folders().find((folder) => foldedPath(folder) === wanted);
-    if (clash !== undefined) return `A folder is already at ${clash}.`;
-  }
-  const staying = new Set<string>();
-  for (const file of deps.session.allFiles()) {
-    if (!isWithin(file.path, from)) staying.add(foldedPath(file.path));
-  }
-  for (const file of deps.session.allFiles()) {
-    const after = isWithin(file.path, from) ? pathAfterMove(file.path, { from, to }) : null;
-    if (after !== null && staying.has(foldedPath(after))) return `A note is already at ${after}.`;
-  }
-  return null;
+  const taken = [...deps.session.folders(), ...deps.session.takenPaths()];
+  const clash = taken.find((other) => foldedPath(other) === wanted);
+  return clash === undefined ? null : `Something is already at ${clash}.`;
+}
+
+/** The notes whose links a move may break: every note linking to a note moved, by name or path. */
+function linkersOf(deps: VaultDeps, move: PathMove): readonly VaultPath[] {
+  const index = deps.session.index;
+  const keys = index
+    .paths()
+    .filter((path) => isWithin(path, move.from))
+    .flatMap((path) => [...linkKeysOf(path), ...linkKeysOf(pathAfterMove(path, move) ?? path)]);
+  return index.linkSources(keys);
 }
 
 /**
- * Renames or moves a folder: every note in it, at any depth, moves with
- * `renameNote`, so every link to each is rewritten and favorites follow.
- * Checked whole first, so a clash (a note, or a folder already at the new
- * path) refuses before anything moves. Its empty folders are made again at
- * the new place, and the emptied old ones removed. Files in it that are not
- * notes stay where they are, and keep the old folder with them.
+ * Renames or moves a folder: the folder itself moves on disk, in one step,
+ * with everything in it (notes, attachments, folders, dot files), so an
+ * image a note shows never stays behind and a change of case is real. Then
+ * every link the move broke is rewritten and favorites follow. Checked
+ * first; if the disk refuses, nothing in the session or the links changes.
  */
-export async function renameFolder(
-  deps: VaultDeps,
-  { from, to }: { from: VaultPath; to: VaultPath },
-): Promise<RenameFolderResult> {
-  if (from === to) return { kind: 'renamed', moved: 0, retargeted: 0 };
-  const problem = folderProblem(deps, from, to);
+export async function renameFolder(deps: VaultDeps, move: PathMove): Promise<RenameFolderResult> {
+  if (move.from === move.to) return { kind: 'renamed', moved: 0, retargeted: 0 };
+  const problem = folderProblem(deps, move);
   if (problem !== null) return { kind: 'refused', reason: problem };
-  const notes = [...deps.session.allFiles()]
-    .map((file) => file.path)
-    .filter((path) => isNotePath(path) && isWithin(path, from))
-    .sort();
-  let retargeted = 0;
-  for (const path of notes) {
-    const result = await renameNote(deps, {
-      from: path,
-      to: pathAfterMove(path, { from, to }) ?? path,
-    });
-    if (result.kind === 'refused') return result;
-    retargeted += result.retargeted;
-  }
-  // A change of case alone is the same folder on a Mac's disk: nothing to carry or remove.
-  if (foldedPath(from) !== foldedPath(to)) await carryFolders(deps, { from, to });
-  return { kind: 'renamed', moved: notes.length, retargeted };
-}
 
-/** Makes the moved folder's empty folders at their new place, then removes the emptied old ones. */
-async function carryFolders(deps: VaultDeps, move: { from: VaultPath; to: VaultPath }) {
-  const moving = deps.session
-    .folders()
-    .filter((folder) => isWithin(folder, move.from))
-    .sort();
-  for (const folder of moving) {
-    const after = pathAfterMove(folder, move) ?? folder;
-    if (deps.session.folders().includes(after)) continue;
-    await deps.files.createFolder(after);
-    deps.session.applyCreateFolder(after);
+  const across = notesAfterMove(move, deps.session.index.paths());
+  const resolvers = moveResolvers(across);
+  const sources = linkersOf(deps, move);
+  await deps.files.renameFolder(move.from, move.to);
+  deps.session.applyFolderMove(move);
+
+  let retargeted = 0;
+  for (const source of sources) {
+    const path = pathAfterMove(source, move) ?? source;
+    const file = deps.session.file(path);
+    if (file === null) continue;
+    const result = retargetLinks(file.text, resolvers);
+    if (result.count === 0) continue;
+    retargeted += result.count;
+    await writeFile(deps, path, result.text);
   }
-  await removeEmptyFolders(deps, move.from);
+  await writeFavorites(deps, favoritesAfterMove(deps.session.favorites, move));
+  return { kind: 'renamed', moved: across.moved.size, retargeted };
 }

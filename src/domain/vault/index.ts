@@ -20,7 +20,7 @@ export {
   forbiddenCharacter,
   noteNameProblem,
 } from './file-name.ts';
-export { folderNameProblem } from './folder-name.ts';
+export { folderNameProblem, folderPathProblem } from './folder-name.ts';
 export {
   APP_FOLDER,
   INDEX_FOLDER,

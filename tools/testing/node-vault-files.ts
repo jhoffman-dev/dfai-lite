@@ -126,6 +126,18 @@ export class NodeVaultFiles implements VaultFiles {
     await writeFile(join(absolute, KEEP_FILE), '', { flag: 'wx' });
   }
 
+  async renameFolder(from: string, to: string): Promise<void> {
+    const source = onDisk(this.root, from);
+    const target = onDisk(this.root, to);
+    const held = await lstat(source);
+    if (!held.isDirectory()) throw new Error(`${from} is not a folder`);
+    // As the host: never onto another folder; the same folder in another case is allowed.
+    const there = await lstat(target).catch(() => null);
+    if (there !== null && there.ino !== held.ino) throw new FileExistsError(`${to} exists`);
+    await mkdir(dirname(target), { recursive: true });
+    await rename(source, target);
+  }
+
   async removeFolder(path: string): Promise<void> {
     const absolute = onDisk(this.root, path);
     const entries = await readdir(absolute, { withFileTypes: true });

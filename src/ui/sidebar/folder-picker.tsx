@@ -45,7 +45,11 @@ function choicesFor(root: FolderNode, entry: VaultEntry, query: string): Choice[
   }
   const exists = folders.some((choice) => choice.path.toLowerCase() === typed.toLowerCase());
   // With nothing typed, the row says how to make a folder; choosing it does nothing.
-  return typed !== '' && exists ? folders : [...folders, { kind: 'create', path: typed }];
+  // A new folder the move would then be refused into (inside the folder moved) is not offered.
+  const refused = typed !== '' && pathMovedInto(entry, typed) === null;
+  return (typed !== '' && exists) || refused
+    ? folders
+    : [...folders, { kind: 'create', path: typed }];
 }
 
 /**

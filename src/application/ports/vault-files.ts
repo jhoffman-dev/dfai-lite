@@ -76,6 +76,12 @@ export interface VaultFiles {
    */
   removeFolder(path: VaultPath): Promise<void>;
   /**
+   * Moves a folder, everything in it included, in one step; never onto
+   * another folder or file ({@link FileExistsError}). A change of case alone
+   * is the same folder on a Mac's disk, and its case really changes.
+   */
+  renameFolder(from: VaultPath, to: VaultPath): Promise<void>;
+  /**
    * Moves the file to the Trash, or deletes it for good when `permanently`,
    * only while it holds `expected` (null: whatever it holds). Rejects with
    * {@link FileChangedError}, or {@link TrashRefusedError} when the Trash

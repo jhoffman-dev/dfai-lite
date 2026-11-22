@@ -1,14 +1,15 @@
 import {
   fileNameOf,
-  folderNameProblem,
+  folderPathProblem,
   foldedPath,
-  INDEX_FOLDER,
   isDisposableFile,
+  isVisibleNote,
   isWithin,
+  joinPath,
   pathMovedInto,
   type VaultPath,
 } from '../../domain/vault/index.ts';
-import { FileExistsError } from '../ports/index.ts';
+import { FileChangedError, FileExistsError, TrashRefusedError } from '../ports/index.ts';
 import type { VaultSession } from '../session/index.ts';
 import { deleteNote } from './delete-note.ts';
 import { removeEmptyFolders } from './empty-folders.ts';
@@ -21,19 +22,37 @@ export type CreateFolderResult =
   | { readonly kind: 'refused'; readonly reason: string };
 
 export type DeleteFolderResult =
-  | { readonly kind: 'deleted'; readonly notes: number }
+  | {
+      readonly kind: 'deleted';
+      readonly deleted: number;
+      /** Notes the folder held. */
+      readonly total: number;
+      /** Notes kept because they changed on disk since they were read. */
+      readonly kept: readonly VaultPath[];
+      /** The Trash would not take a note: the run stopped there, the rest kept. */
+      readonly trashRefused: boolean;
+    }
   | { readonly kind: 'refused'; readonly reason: string };
+
+/**
+ * `path` spelled as the folders already there spell it, case aside, so a
+ * folder typed `projects/Q4` lands in the existing `Projects/`, as the disk
+ * would put it, and never shows as a second folder.
+ */
+export function spelledAsExisting(session: VaultSession, path: VaultPath): VaultPath {
+  const byFold = new Map(session.folders().map((folder) => [foldedPath(folder), folder]));
+  let spelled = '';
+  for (const part of path.split('/')) {
+    const next = joinPath(spelled, part);
+    spelled = byFold.get(foldedPath(next)) ?? next;
+  }
+  return spelled;
+}
 
 /** Why `path` cannot be a new folder's path, or null when it can. */
 export function newFolderProblem(session: VaultSession, path: VaultPath): string | null {
-  if (path === '') return 'Give the folder a name.';
-  for (const part of path.split('/')) {
-    const problem = folderNameProblem(part);
-    if (problem !== null) return problem;
-  }
-  if (foldedPath(path.split('/')[0] ?? '') === foldedPath(INDEX_FOLDER)) {
-    return `${INDEX_FOLDER} is kept for the generated index.`;
-  }
+  const problem = folderPathProblem(path);
+  if (problem !== null) return problem;
   const wanted = foldedPath(path);
   const taken = [...session.folders(), ...session.takenPaths()];
   const clash = taken.find((other) => foldedPath(other) === wanted);
@@ -41,16 +60,18 @@ export function newFolderProblem(session: VaultSession, path: VaultPath): string
 }
 
 /**
- * Makes an empty folder at `path` (any missing folder above it too). It is
- * made with a `.gitkeep`, so git carries it to the other Mac while empty.
- * Refused when the name breaks the rules or anything is already there.
+ * Makes an empty folder at `path` (any missing folder above it too), in the
+ * folders already there as they are spelled. It is made with a `.gitkeep`,
+ * so git carries it to the other Mac while empty. Refused when the name
+ * breaks the rules or anything is already there.
  */
 export async function createFolder(
   deps: VaultDeps,
-  { path }: { path: VaultPath },
+  { path: typed }: { path: VaultPath },
 ): Promise<CreateFolderResult> {
-  const problem = newFolderProblem(deps.session, path);
+  const problem = newFolderProblem(deps.session, typed);
   if (problem !== null) return { kind: 'refused', reason: problem };
+  const path = spelledAsExisting(deps.session, typed);
   try {
     await deps.files.createFolder(path);
   } catch (error) {
@@ -87,31 +108,69 @@ export async function moveFolderInto(
 }
 
 /**
+ * What in the folder the note commands cannot delete: files that are not
+ * notes (an image), and dot-named files the tree hides (`.draft.md`), all
+ * but the disposable `.gitkeep` and `.DS_Store`.
+ */
+function undeletable(session: VaultSession, path: VaultPath): VaultPath[] {
+  const inside = (other: VaultPath) => isWithin(other, path) && !isDisposableFile(other);
+  const others = session.otherPaths().filter(inside);
+  const hidden = [...session.allFiles()]
+    .map((file) => file.path)
+    .filter((file) => inside(file) && !isVisibleNote(file));
+  return [...others, ...hidden].sort();
+}
+
+/**
  * Deletes a folder: each note in it, at any depth, goes to the Trash one by
  * one through `deleteNote` (or for good when `permanently`), then the
  * emptied folders go. Refused, before anything is deleted, when it holds
- * files that are not notes (an image): those are Finder's to move.
+ * what the note commands cannot delete. A note changed on disk since it was
+ * read is kept and the rest go on; a Trash that refuses stops the run, so
+ * the person can choose to delete the rest for good.
  */
 export async function deleteFolder(
   deps: VaultDeps,
-  { path, permanently = false }: { path: VaultPath; permanently?: boolean },
+  {
+    path,
+    permanently = false,
+    skip = [],
+  }: {
+    path: VaultPath;
+    permanently?: boolean;
+    /** Notes left alone: the ones kept on an earlier run, which must not go on a retry. */
+    skip?: readonly VaultPath[];
+  },
 ): Promise<DeleteFolderResult> {
   const { session } = deps;
   if (path === '') return { kind: 'refused', reason: 'The vault itself cannot be deleted here.' };
-  const kept = session.otherPaths().filter((other) => isWithin(other, path));
-  const blocking = kept.filter((other) => !isDisposableFile(other));
+  const blocking = undeletable(session, path);
   if (blocking.length > 0) {
     const names = blocking.slice(0, 3).map(fileNameOf).join(', ');
+    const more = blocking.length > 3 ? ` and ${blocking.length - 3} more` : '';
     return {
       kind: 'refused',
-      reason: `“${fileNameOf(path)}” holds files that are not notes (${names}). Move them in Finder first.`,
+      reason: `“${fileNameOf(path)}” holds files the app does not delete (${names}${more}). Move them in Finder first.`,
     };
   }
   const notes = [...session.allFiles()]
     .map((file) => file.path)
-    .filter((note) => isWithin(note, path))
+    .filter((note) => isWithin(note, path) && !skip.includes(note))
     .sort();
-  for (const note of notes) await deleteNote(deps, { path: note, permanently });
+  const kept: VaultPath[] = [];
+  let deleted = 0;
+  for (const note of notes) {
+    try {
+      await deleteNote(deps, { path: note, permanently });
+      deleted += 1;
+    } catch (error) {
+      if (error instanceof TrashRefusedError) {
+        return { kind: 'deleted', deleted, total: notes.length, kept, trashRefused: true };
+      }
+      if (!(error instanceof FileChangedError)) throw error;
+      kept.push(note);
+    }
+  }
   await removeEmptyFolders(deps, path);
-  return { kind: 'deleted', notes: notes.length };
+  return { kind: 'deleted', deleted, total: notes.length, kept, trashRefused: false };
 }

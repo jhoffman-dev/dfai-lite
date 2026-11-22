@@ -123,6 +123,33 @@ export class MemoryVaultFiles implements VaultFiles {
     this.others.add(joinPath(path, KEEP_FILE));
   }
 
+  /** As on a Mac's disk: the folder is found case aside, and a change of case alone is allowed. */
+  async renameFolder(from: VaultPath, to: VaultPath): Promise<void> {
+    const within = (path: VaultPath, folder: VaultPath) =>
+      isWithin(foldedPath(path), foldedPath(folder));
+    if (!this.folders().some((folder) => foldedPath(folder) === foldedPath(from))) {
+      throw new Error(`There is no folder at ${from}.`);
+    }
+    const sameFolder = foldedPath(from) === foldedPath(to);
+    const all = [...this.texts.keys(), ...this.others, ...this.folders()];
+    if (!sameFolder && all.some((path) => within(path, to))) {
+      throw new FileExistsError(`${to} exists.`);
+    }
+    const follow = (path: VaultPath) =>
+      within(path, from) ? `${to}${path.slice(from.length)}` : path;
+    for (const [path, text] of [...this.texts]) {
+      this.texts.delete(path);
+      this.texts.set(follow(path), text);
+    }
+    for (const set of [this.others, this.emptyFolders]) {
+      const moved = [...set].map(follow);
+      set.clear();
+      for (const path of moved) set.add(path);
+    }
+    this.keepFoldersAbove(joinPath(to, KEEP_FILE));
+    this.emptyFolders.add(to);
+  }
+
   async removeFolder(path: VaultPath): Promise<void> {
     const inside = (other: VaultPath) => other !== path && isWithin(other, path);
     const files = [...this.texts.keys(), ...this.others].filter(inside);

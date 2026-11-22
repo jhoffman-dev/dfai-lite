@@ -11,7 +11,9 @@ import {
   isWithin,
   joinPath,
   KEEP_FILE,
+  pathAfterMove,
   type FolderNode,
+  type PathMove,
   type VaultPath,
 } from '../../domain/vault/index.ts';
 import type { StoredFile } from '../ports/index.ts';
@@ -167,6 +169,31 @@ export class VaultSession {
     this.addFoldersAbove(to.path);
     this.tree = null;
     this.emit({ kind: 'renamed', from, to: to.path });
+  }
+
+  /**
+   * A folder moved on disk with everything in it: each file under it is at
+   * its new path (one `renamed` per file, so what shows a note follows it),
+   * and so are the files not read as text and the folders under it.
+   */
+  applyFolderMove(move: PathMove): void {
+    const moved = [...this.files.values()].filter((file) => isWithin(file.path, move.from));
+    for (const file of moved) {
+      const to = pathAfterMove(file.path, move) ?? file.path;
+      this.files.delete(file.path);
+      this.files.set(to, { path: to, text: file.text });
+      this.vaultIndex.remove(file.path);
+      this.vaultIndex.upsert(to, file.text);
+    }
+    const follow = (path: VaultPath) => pathAfterMove(path, move) ?? path;
+    this.others = this.others.map(follow).sort();
+    this.folderSet = new Set([...this.folderSet].map(follow));
+    this.addFoldersAbove(joinPath(move.to, KEEP_FILE));
+    this.tree = null;
+    for (const file of moved) {
+      this.emit({ kind: 'renamed', from: file.path, to: follow(file.path) });
+    }
+    this.emit({ kind: 'folders' });
   }
 
   /** The folder (and any above it) was made on disk, with its keep file. */

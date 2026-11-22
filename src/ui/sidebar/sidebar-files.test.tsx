@@ -184,3 +184,46 @@ describe('the sidebar’s edge', () => {
     expect(document.querySelector('.app')).toHaveAttribute('data-sidebar', 'shown');
   });
 });
+
+describe('a drag that is not a tree row’s', () => {
+  it('moves nothing, even after a row’s drag was cancelled without a dragend', async () => {
+    const { services } = await renderApp({ files: VAULT });
+    fireEvent.click(within(tree()).getByText('Inbox'));
+    const note = await within(tree()).findByText('Payroll idea');
+    const folder = within(tree()).getByText('People').closest('[role="treeitem"]') as Element;
+    fireEvent.dragStart(note, { dataTransfer: transfer() });
+    // A tab's drag, or a file from the Finder, carries no tree row.
+    const tab = transfer();
+    tab.setData('application/x-dfai-lite-tab', 'tab-1');
+    fireEvent.dragOver(folder, { dataTransfer: tab });
+    expect(folder).not.toHaveClass('is-drop-target');
+    fireEvent.drop(folder, { dataTransfer: tab });
+    await act(() => Promise.resolve());
+    expect(services.session.file('Inbox/Payroll idea.md')).not.toBeNull();
+  });
+});
+
+describe('moving a folder in the picker', () => {
+  it('offers no new folder inside the folder being moved', async () => {
+    const user = userEvent.setup();
+    const { services } = await renderApp({ files: VAULT });
+    fireEvent.contextMenu(within(tree()).getByText('People'));
+    await user.click(screen.getByRole('menuitem', { name: 'Move to…' }));
+    await user.keyboard('People/Archive');
+    const picker = screen.getByRole('dialog', { name: 'Move to' });
+    expect(within(picker).queryByRole('option', { name: /New folder/ })).toBeNull();
+    await user.keyboard('{Enter}');
+    expect((services.files as MemoryVaultFiles).folders()).not.toContain('People/Archive');
+  });
+});
+
+describe('a favorite’s menu', () => {
+  it('opens from the “…” on its row', async () => {
+    const user = userEvent.setup();
+    await renderApp({ files: VAULT });
+    await user.click(screen.getByRole('button', { name: 'More for Larkspur Payroll' }));
+    const menu = screen.getByRole('menu', { name: 'Note actions' });
+    const item = within(menu).getByRole('menuitem', { name: 'Remove from favorites' });
+    expect(item).toBeInTheDocument();
+  });
+});

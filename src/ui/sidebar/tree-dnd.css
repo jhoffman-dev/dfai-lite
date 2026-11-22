@@ -115,3 +115,14 @@
 .tree-slot:has(.tree-new-folder) {
   z-index: 2;
 }
+
+/* The favorites' "…", beside their star (sidebar.css shows both on hover). */
+.sidebar-row-action.is-more {
+  color: var(--ink-3);
+}
+
+@media (hover: none) {
+  .sidebar-row-action.is-more {
+    display: inline-flex;
+  }
+}

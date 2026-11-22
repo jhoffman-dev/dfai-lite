@@ -51,11 +51,24 @@ export function useTreeDrag({
     setTarget(null);
   }, [stopOpening]);
 
-  // A row scrolled out of the virtual list takes its own dragend with it: hear it here.
+  // A row scrolled out of the virtual list takes its own dragend with it: hear it on the window,
+  // with any drop anywhere and a drag leaving the window, so a cancelled drag is never left held.
   useEffect(() => {
+    const leftWindow = (event: globalThis.DragEvent) => event.relatedTarget === null && end();
     window.addEventListener('dragend', end);
-    return () => window.removeEventListener('dragend', end);
+    window.addEventListener('drop', end);
+    window.addEventListener('dragleave', leftWindow);
+    return () => {
+      window.removeEventListener('dragend', end);
+      window.removeEventListener('drop', end);
+      window.removeEventListener('dragleave', leftWindow);
+      end();
+    };
   }, [end]);
+
+  /** The row being dragged, only while this drag is one: a tab or a Finder file carries none. */
+  const heldBy = (event: DragEvent): VaultEntry | null =>
+    event.dataTransfer.types.includes(ENTRY_DRAG) ? dragged.current : null;
 
   const handlers = useMemo<RowDrag>(() => {
     const openLater = (folder: VaultPath) => {
@@ -72,7 +85,7 @@ export function useTreeDrag({
         dragged.current = entry;
       },
       over(folder, event: DragEvent) {
-        const entry = dragged.current;
+        const entry = heldBy(event);
         if (entry === null) return;
         event.stopPropagation();
         const allowed = pathMovedInto(entry, folder) !== null;
@@ -84,8 +97,9 @@ export function useTreeDrag({
         event.dataTransfer.dropEffect = 'move';
       },
       drop(folder, event) {
-        const entry = dragged.current;
+        const entry = heldBy(event);
         end();
+        if (entry !== null && event.dataTransfer.getData(ENTRY_DRAG) !== entry.path) return;
         if (entry === null || pathMovedInto(entry, folder) === null) return;
         event.preventDefault();
         event.stopPropagation();

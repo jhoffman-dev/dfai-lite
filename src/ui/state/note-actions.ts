@@ -109,15 +109,22 @@ export function createNoteActions({
     if (result.kind === 'refused') notice(result.reason);
     return result.kind !== 'refused';
   };
-  const removeFolder = async (path: VaultPath, permanently: boolean): Promise<void> => {
-    try {
-      const result = await deleteFolder(deps, { path, permanently });
-      if (result.kind === 'refused') notice(result.reason);
-    } catch (error) {
-      if (permanently || !(error instanceof TrashRefusedError)) throw error;
-      const message = `The Trash would not take the notes in “${path}”. Delete them for good? Their history in git keeps them once synced.`;
-      if (await ask({ message, yes: 'Delete permanently' })) await removeFolder(path, true);
+  const removeFolder = async (path: VaultPath): Promise<void> => {
+    const first = await deleteFolder(deps, { path });
+    if (first.kind === 'refused') return notice(first.reason);
+    let { deleted, kept } = first;
+    let declined = false;
+    if (first.trashRefused) {
+      const message = `The Trash would not take the notes in “${path}”. Delete the rest for good? Their history in git keeps them once synced.`;
+      if (await ask({ message, yes: 'Delete permanently' })) {
+        const rest = await deleteFolder(deps, { path, permanently: true, skip: kept });
+        if (rest.kind === 'refused') return notice(rest.reason);
+        deleted += rest.deleted;
+        kept = [...kept, ...rest.kept];
+      } else declined = true;
     }
+    const summary = folderDeleteSummary({ deleted, total: first.total, kept, declined });
+    if (summary !== null) notice(summary);
   };
 
   return {
@@ -169,7 +176,7 @@ export function createNoteActions({
           : `Delete “${path}” and the ${count === 1 ? 'note' : `${count} notes`} in it? They go to the Trash.`;
       if (!(await ask({ message, yes: 'Delete' }))) return;
       await flushEdits();
-      await removeFolder(path, false);
+      await removeFolder(path);
     },
     ask,
     setSidebar({ collapsed, width }) {
@@ -210,4 +217,26 @@ function countNotesIn(root: FolderNode, path: VaultPath): number {
     return null;
   };
   return walk(root) ?? 0;
+}
+
+/** What a folder delete that did not delete everything says; null when it did. */
+function folderDeleteSummary({
+  deleted,
+  total,
+  kept,
+  declined,
+}: {
+  deleted: number;
+  total: number;
+  kept: readonly VaultPath[];
+  declined: boolean;
+}): string | null {
+  if (deleted === total) return null;
+  const parts = [`Deleted ${deleted} of ${total} notes.`];
+  if (kept.length > 0) {
+    const names = kept.map((path) => path.slice(path.lastIndexOf('/') + 1, -3)).join(', ');
+    parts.push(`Kept, as they changed on disk since you saw them: ${names}.`);
+  }
+  if (declined) parts.push('The Trash would not take the rest, so they were kept.');
+  return parts.join(' ');
 }

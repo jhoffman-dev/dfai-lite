@@ -187,10 +187,63 @@ pub fn remove_empty_folder(target: &Path, label: &str) -> Result<(), String> {
         }
         disposable.push(entry.path());
     }
+    let had_keep = disposable.iter().any(|file| file.ends_with(KEEP_FILE));
     for file in disposable {
         fs::remove_file(file).map_err(|error| format!("cannot remove {label}: {error}"))?;
     }
-    fs::remove_dir(target).map_err(|error| format!("cannot remove {label}: {error}"))
+    fs::remove_dir(target).map_err(|error| {
+        // Something arrived meanwhile and the folder stays: it keeps its keep file too.
+        if had_keep {
+            let _ = open_new(&target.join(KEEP_FILE));
+        }
+        format!("cannot remove {label}: {error}")
+    })
+}
+
+/// Moves a folder with everything in it, in one step, never onto another
+/// file or folder. A change of case alone (`projects` to `Projects`) is the
+/// same folder on a Mac's disk: it goes through a temporary name, so the
+/// case really changes, and comes back if the second step fails.
+pub fn rename_folder(source: &Path, target: &Path, label: &str) -> Result<(), String> {
+    let source_meta = source
+        .symlink_metadata()
+        .map_err(|error| format!("cannot move {label}: {error}"))?;
+    if !source_meta.is_dir() {
+        return Err(format!("cannot move {label}: it is not a folder"));
+    }
+    let same_folder = target
+        .symlink_metadata()
+        .is_ok_and(|meta| meta.ino() == source_meta.ino() && meta.dev() == source_meta.dev());
+    make_parent(target)?;
+    let exists = |error: std::io::Error| match error.kind() {
+        ErrorKind::AlreadyExists => format!("{EXISTS} something is already at {label}"),
+        _ => format!("cannot move {label}: {error}"),
+    };
+    if !same_folder {
+        return rename_folder_exclusive(source, target).map_err(exists);
+    }
+    let temp = temp_beside(source);
+    fs::rename(source, &temp).map_err(exists)?;
+    rename_folder_exclusive(&temp, target).map_err(|error| {
+        // Put back under its old name: the folder is never left at the temporary one.
+        let _ = fs::rename(&temp, source);
+        exists(error)
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn rename_folder_exclusive(source: &Path, target: &Path) -> std::io::Result<()> {
+    rename_exclusive(source, target)
+}
+
+/// Elsewhere (Linux, for CI), where a folder cannot be hard-linked: a check,
+/// then the move. The app itself runs on the Mac, where the move is atomic.
+#[cfg(not(target_os = "macos"))]
+fn rename_folder_exclusive(source: &Path, target: &Path) -> std::io::Result<()> {
+    if target.symlink_metadata().is_ok() {
+        return Err(std::io::Error::from(ErrorKind::AlreadyExists));
+    }
+    fs::rename(source, target)
 }
 
 #[cfg(target_os = "macos")]
@@ -318,5 +371,37 @@ mod tests {
         fs::remove_dir(folder.join("Inner")).unwrap();
         remove_empty_folder(&folder, "Areas").unwrap();
         assert!(!folder.exists());
+    }
+
+    #[test]
+    fn a_folder_moves_whole_never_onto_another_and_its_case_really_changes() {
+        let root = temp_folder();
+        let folder = root.join("projects");
+        create_folder(&folder, "projects").unwrap();
+        fs::write(folder.join("plan.png"), "png").unwrap();
+        fs::write(folder.join(".draft.md"), "hidden").unwrap();
+        rename_folder(&folder, &root.join("Projects"), "Projects").unwrap();
+        let names: Vec<_> = fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["Projects"]);
+        let moved = root.join("Projects");
+        for name in ["plan.png", ".draft.md", KEEP_FILE] {
+            assert!(moved.join(name).is_file(), "{name} stayed behind");
+        }
+        create_folder(&root.join("Areas"), "Areas").unwrap();
+        let refused = rename_folder(&moved, &root.join("Areas"), "Areas").unwrap_err();
+        assert!(refused.starts_with(EXISTS), "{refused}");
+        assert!(moved.join("plan.png").is_file());
+        rename_folder(
+            &moved,
+            &root.join("Areas").join("Projects"),
+            "Areas/Projects",
+        )
+        .unwrap();
+        assert!(root.join("Areas/Projects/plan.png").is_file());
+        fs::write(root.join("note.md"), "x").unwrap();
+        assert!(rename_folder(&root.join("note.md"), &root.join("Other"), "Other").is_err());
     }
 }
