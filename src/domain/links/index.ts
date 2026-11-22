@@ -15,6 +15,7 @@ export {
   type CommentSpan,
   type WikiLinkSpan,
 } from './wikilink-spans.ts';
+export { WikiLinkReader } from './wikilink-reader.ts';
 export {
   composed,
   createWikiLinkResolver,
