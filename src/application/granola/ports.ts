@@ -78,6 +78,11 @@ export interface GranolaRecord {
   readonly lastImportAt: string | null;
   /** What it did, in a few words. */
   readonly lastResult: string | null;
+  /**
+   * When Granola last refused the key kept on this Mac (an ISO instant); null
+   * when it has not, or a key has been set since. Never the key.
+   */
+  readonly keyRefusedAt: string | null;
 }
 
 export const NO_GRANOLA_RECORD: GranolaRecord = {
@@ -85,6 +90,7 @@ export const NO_GRANOLA_RECORD: GranolaRecord = {
   watermark: null,
   lastImportAt: null,
   lastResult: null,
+  keyRefusedAt: null,
 };
 
 /**

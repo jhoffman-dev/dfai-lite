@@ -1,5 +1,5 @@
 import { buildAiIndex } from '../../domain/ai-index/index.ts';
-import { IMPORTS_PATH, parseImportLedger } from '../../domain/meetings/index.ts';
+import { IMPORTS_PATH, parseImportLedger, recordImport } from '../../domain/meetings/index.ts';
 import { VaultSession } from '../session/index.ts';
 import {
   FakeGranola,
@@ -8,7 +8,13 @@ import {
   granolaRefusal,
   MemoryVaultFiles,
 } from '../testing/index.ts';
-import { applyExternalChanges, deleteNote, openVault, renameNote } from '../use-cases/index.ts';
+import {
+  applyExternalChanges,
+  deleteNote,
+  openVault,
+  renameNote,
+  updateImportLedger,
+} from '../use-cases/index.ts';
 import { GranolaError } from './ports.ts';
 import { importGranolaMeetings, type GranolaImportDeps } from './import-granola-meetings.ts';
 
@@ -259,5 +265,83 @@ describe('importing Granola meetings', () => {
     const report = await importNow();
     expect(report.counts).toMatchObject({ imported: 1, skipped: 1 });
     expect(report.problems[0]?.problem).toContain('title: missing');
+  });
+
+  it('ends after three meetings in a row cannot reach Granola, leaving the rest for next time', async () => {
+    for (const id of ['not_B2', 'not_C3', 'not_D4', 'not_E5']) {
+      granola.add(fictionalGranolaNote({ id, web_url: null }));
+    }
+    for (const id of granola.notes.keys()) {
+      granola.noteFailures.set(id, new GranolaError({ kind: 'timeout', message: 'slow' }));
+    }
+    const report = await importNow('2026-11-10T00:00:00.000Z');
+    expect(granola.calls.filter((call) => call.startsWith('get'))).toHaveLength(3);
+    expect(report).toMatchObject({ ended: 'failed', written: [] });
+    expect(report.counts.failed).toBe(3);
+    expect(report.problem).toContain('The meetings not reached are imported next time.');
+    expect(report.watermark).toBe('2026-11-10T00:00:00.000Z');
+  });
+
+  it('takes the meetings in oldest first, so a run cut short carries on where it stopped', async () => {
+    granola.notes.clear();
+    granola.add(fictionalGranolaNote({ id: 'not_New', updated_at: '2026-11-19T00:00:00Z' }));
+    granola.add(fictionalGranolaNote({ id: 'not_Old', updated_at: '2026-11-01T00:00:00Z' }));
+    granola.add(fictionalGranolaNote({ id: 'not_Mid', updated_at: '2026-11-10T00:00:00Z' }));
+    await importNow();
+    expect(granola.calls.filter((call) => call.startsWith('get'))).toEqual([
+      'get not_Old',
+      'get not_Mid',
+      'get not_New',
+    ]);
+  });
+});
+
+describe('an import ledger that cannot be read', () => {
+  const BROKEN = '{ "version": 1, "meetings": [ <<<<<<< HEAD';
+
+  beforeEach(async () => {
+    await open({ [IMPORTS_PATH]: BROKEN, 'Meetings/Old call.md': 'An old call. #meeting\n' });
+  });
+
+  it('stops the import before anything is written, and is never written over', async () => {
+    const report = await importNow();
+    expect(report).toMatchObject({ ended: 'stopped', ledgerUnreadable: true, written: [] });
+    expect(report.problem).toContain('cannot be read');
+    expect(files.peek(PATH)).toBeUndefined();
+    expect(files.peek(IMPORTS_PATH)).toBe(BROKEN);
+    expect(granola.calls).toEqual([]);
+  });
+
+  it('is left as it is when a note is deleted or renamed; those go ahead', async () => {
+    await renameNote({ files, session }, { from: 'Meetings/Old call.md', to: 'Meetings/Call.md' });
+    expect(files.peek('Meetings/Call.md')).toBeDefined();
+    await deleteNote({ files, session }, { path: 'Meetings/Call.md' });
+    expect(files.peek('Meetings/Call.md')).toBeUndefined();
+    expect(files.peek(IMPORTS_PATH)).toBe(BROKEN);
+  });
+});
+
+describe('the ledger while an import runs', () => {
+  it('keeps what changed in it meanwhile: each write applies only this import’s own entry', async () => {
+    granola.add(fictionalGranolaNote({ id: 'not_B2', title: 'Tobias 1:1', web_url: null }));
+    const get = granola.getNote.bind(granola);
+    granola.getNote = async (args) => {
+      if (args.id === 'not_B2') {
+        // A sync brings the other Mac's entry while this import is fetching.
+        await updateImportLedger({ files, session }, (current) =>
+          recordImport(current, {
+            ...{ provider: 'granola', id: 'not_FromOtherMac', path: 'Meetings/Other.md' },
+            ...{ source: null, updatedAt: '2026-11-01T00:00:00Z', dismissed: false },
+          }),
+        );
+      }
+      return get(args);
+    };
+    await importNow();
+    expect(ledger().map(({ id }) => id)).toEqual([
+      'not_B2',
+      'not_FromOtherMac',
+      'not_Lk7pQ2rTs9vWx3',
+    ]);
   });
 });

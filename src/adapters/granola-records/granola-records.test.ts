@@ -14,6 +14,7 @@ describe('this Mac’s Granola record', () => {
       watermark: '2026-11-17T17:41:03.000Z',
       lastImportAt: '2026-11-20T00:00:00.000Z',
       lastResult: 'Imported 1 meeting.',
+      keyRefusedAt: '2026-11-19T08:00:00.000Z',
     };
     records.write('/Users/example/Notes', record);
     expect(records.read('/Users/example/Notes')).toEqual(record);

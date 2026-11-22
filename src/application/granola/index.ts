@@ -1,6 +1,7 @@
 export {
   GRANOLA_IMPORT_EVERY_MS,
   createGranolaImporter,
+  pastedKey,
   type GranolaControls,
   type GranolaImporterDeps,
   type GranolaKeyState,

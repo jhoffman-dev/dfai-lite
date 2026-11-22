@@ -5,6 +5,7 @@ export type {
 } from './granola-note-types.ts';
 export {
   backoff,
+  OFFLINE_IN_A_ROW,
   paceOf,
   REQUESTS_PER_SECOND,
   RETRIES,

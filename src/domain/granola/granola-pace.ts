@@ -20,6 +20,13 @@ export const RETRIES = 5;
  */
 export const SLOW_DOWNS_IN_A_ROW = 3;
 
+/**
+ * Notes in a row that may fail because Granola cannot be reached (offline, a
+ * request that timed out) before the import ends: each note left would wait
+ * out its own timeout for nothing.
+ */
+export const OFFLINE_IN_A_ROW = 3;
+
 const FIRST_BACKOFF_MS = 1_000;
 
 /**

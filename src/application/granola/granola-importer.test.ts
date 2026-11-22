@@ -238,4 +238,71 @@ describe('the Granola import schedule', () => {
     expect(made.getView().dismissed).toBe(0);
     expect(files.peek(IMPORTS_PATH)).not.toContain('dismissed');
   });
+
+  it('says a refused key once, and a later launch neither imports nor says it again', async () => {
+    sync.ready = true;
+    granola.refused = true;
+    const made = await importer();
+    expect(notices).toEqual([]);
+    made.importNow();
+    await flush();
+    made.importNow();
+    await flush();
+    expect(notices.filter((text) => text.includes('refused'))).toHaveLength(1);
+    expect(records.record.keyRefusedAt).toBe('2026-11-20T00:00:00.000Z');
+    expect(JSON.stringify(records.record)).not.toContain('grn_');
+
+    // The next launch: the host remembers nothing, this Mac's record does.
+    granola.refused = false;
+    granola.calls.length = 0;
+    notices = [];
+    const again = await importer();
+    expect(again.getView().keyState).toBe('refused');
+    expect(lists()).toBe(0);
+    expect(notices).toEqual([]);
+    await again.connect('grn_Fict10nalKeyNew');
+    await flush();
+    expect(again.getView().keyState).toBe('accepted');
+    expect(records.record.keyRefusedAt).toBeNull();
+  });
+
+  it('takes a pasted `Bearer grn_…` as the key', async () => {
+    granola.key = null;
+    const made = await importer();
+    await made.connect('  Bearer grn_Fict10nalKey ');
+    expect(granola.key).toBe('grn_Fict10nalKey');
+  });
+
+  it('with an import record that cannot be read, waits, then rebuilds it at the person’s word', async () => {
+    files = MemoryVaultFiles.of({ [IMPORTS_PATH]: 'not json', [PATH]: 'Old. #meeting\n' });
+    session = new VaultSession();
+    await openVault({ files, session });
+    sync.ready = true;
+    const made = await importer();
+    expect(made.getView().ledgerProblem).toContain('is not valid JSON');
+    expect(lists()).toBe(0);
+    made.importNow();
+    await flush();
+    expect(lists()).toBe(0);
+    expect(files.peek(IMPORTS_PATH)).toBe('not json');
+    made.rebuildLedger();
+    await flush();
+    await flush();
+    expect(made.getView().ledgerProblem).toBeNull();
+    expect(lists()).toBe(1);
+    expect(files.peek(IMPORTS_PATH)).toContain('not_Lk7pQ2rTs9vWx3');
+  });
+
+  it('starts an empty record at the person’s word, importing at the next turn', async () => {
+    files = MemoryVaultFiles.of({ [IMPORTS_PATH]: 'not json' });
+    session = new VaultSession();
+    await openVault({ files, session });
+    sync.ready = true;
+    const made = await importer();
+    made.startEmptyLedger();
+    await flush();
+    expect(made.getView().ledgerProblem).toBeNull();
+    expect(files.peek(IMPORTS_PATH)).toContain('"meetings": []');
+    expect(lists()).toBe(0);
+  });
 });

@@ -4,10 +4,17 @@ import {
   granolaReportLine,
   type GranolaPullMode,
 } from '../../domain/granola/index.ts';
-import { restoreDismissed } from '../../domain/meetings/index.ts';
+import { IMPORTS_PATH, restoreDismissed } from '../../domain/meetings/index.ts';
 import type { Clock } from '../ports/index.ts';
+import type { VaultChange } from '../session/index.ts';
 import type { SyncTimers } from '../sync/index.ts';
-import { readImportLedger, writeImportLedger, type VaultDeps } from '../use-cases/index.ts';
+import {
+  importLedgerProblem,
+  readImportLedger,
+  replaceImportLedger,
+  updateImportLedger,
+  type VaultDeps,
+} from '../use-cases/index.ts';
 import {
   importGranolaMeetings,
   type GranolaImportReport,
@@ -52,6 +59,8 @@ export interface GranolaView {
   readonly problem: string | null;
   /** Meetings whose notes the person deleted, which imports leave out. */
   readonly dismissed: number;
+  /** Why the import ledger cannot be read: imports wait for the person's choice. Null when it can. */
+  readonly ledgerProblem: string | null;
 }
 
 /** Whether sync has pulled the vault this session (or found it does not sync), and word when that changes. */
@@ -84,6 +93,14 @@ export interface GranolaControls {
   setAutomatic(on: boolean): void;
   /** Lets the meetings whose notes the person deleted be imported again, and imports now. */
   importDeletedAgain(): void;
+  /**
+   * For a ledger that cannot be read: replaces it, then imports now, which
+   * links each meeting again to the note carrying its `- Source:` line. The
+   * meetings the person had deleted cannot be told from the rest: they come back.
+   */
+  rebuildLedger(): void;
+  /** For a ledger that cannot be read: replaces it with an empty one; the next import relinks by Source lines. */
+  startEmptyLedger(): void;
   /** Hears the quiet notices: meetings arrived, the key was refused, an Import now failed. */
   onNotice(listener: (text: string) => void): () => void;
 }
@@ -93,36 +110,57 @@ function problemOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-/** The key state a status from the host means; `accepted` when it answers a new key Granola took. */
-function keyStateOf(status: GranolaKeyStatus, fresh: boolean): GranolaKeyState {
+/** A key as pasted: a copied `Authorization` value's `Bearer ` taken off. */
+export const pastedKey = (text: string): string => text.trim().replace(/^Bearer\s+/i, '');
+
+/**
+ * The key state a status from the host means. A refusal this Mac remembers
+ * from an earlier session stands until a new key, or an answer, says otherwise.
+ */
+function keyStateOf(
+  status: GranolaKeyStatus,
+  { fresh, refusedBefore }: { fresh: boolean; refusedBefore: boolean },
+): GranolaKeyState {
   if (!status.hasKey) return 'none';
-  if (status.lastRefusal !== null) return 'refused';
+  if (status.lastRefusal !== null || refusedBefore) return 'refused';
   return fresh ? 'accepted' : 'set';
 }
+
+const touchesLedger = (change: VaultChange) =>
+  change.kind === 'loaded' ||
+  ((change.kind === 'written' || change.kind === 'deleted') && change.path === IMPORTS_PATH) ||
+  (change.kind === 'renamed' && (change.from === IMPORTS_PATH || change.to === IMPORTS_PATH));
 
 /**
  * The Granola import of the open vault, as DFAI schedules it: once as the
  * vault opens, every 15 minutes while automatic import is on, and on Import
- * now — and only once sync has pulled the vault this session, and while this
- * Mac holds a key Granola has not refused. One import at a time: Import now
- * pressed during an automatic one runs right after it, once.
+ * now — and only once sync has pulled the vault this session, while this
+ * Mac holds a key Granola has not refused, and while the import ledger can
+ * be read. One import at a time: Import now pressed during an automatic one
+ * runs right after it, once.
  */
 export function createGranolaImporter(
   deps: GranolaImporterDeps,
 ): GranolaControls & { start(): void; stop(): void } {
+  const { session } = deps.vault;
+  const vault = deps.vaultKey;
   const listeners = new Set<() => void>();
   const noticeListeners = new Set<(text: string) => void>();
-  const record = (): GranolaRecord => deps.records.read(deps.vaultKey);
-  const dismissedNow = () =>
-    readImportLedger(deps.vault.session).ledger.filter(
+  const record = (): GranolaRecord => deps.records.read(vault);
+  const keepRecord = (change: Partial<GranolaRecord>) =>
+    deps.records.write(vault, { ...record(), ...change });
+  const ledgerState = () => ({
+    ledgerProblem: importLedgerProblem(session),
+    dismissed: readImportLedger(session).ledger.filter(
       (entry) => entry.provider === 'granola' && entry.dismissed,
-    ).length;
+    ).length,
+  });
   const kept = record();
   let view: GranolaView = {
     ...{ keyState: 'checking', keyProblem: null, pending: false, importing: false },
     ...{ waiting: !deps.sync.isReady(), automatic: kept.automatic, problems: [] },
     lastImportAt: kept.lastImportAt === null ? null : new Date(kept.lastImportAt),
-    ...{ lastResult: kept.lastResult, problem: null, dismissed: dismissedNow() },
+    ...{ lastResult: kept.lastResult, problem: null, ...ledgerState() },
   };
   const update = (change: Partial<GranolaView>) => {
     view = { ...view, ...change };
@@ -132,7 +170,6 @@ export function createGranolaImporter(
     if (text !== null) for (const listener of noticeListeners) listener(text);
   };
   const usable = () => view.keyState === 'set' || view.keyState === 'accepted';
-  const vault = deps.vaultKey;
   const wait = (ms: number) => new Promise<void>((resolve) => deps.timers.after(ms, resolve));
 
   let running: { mode: GranolaPullMode; done: Promise<void> } | null = null;
@@ -141,11 +178,21 @@ export function createGranolaImporter(
   let cancelTimer: (() => void) | null = null;
   let stopped = false;
 
+  /** Granola refused the key: said once, kept so a later launch neither imports nor says it again. */
+  const refusedNow = (words: string | null) => {
+    if (record().keyRefusedAt === null) notice(words);
+    keepRecord({ keyRefusedAt: record().keyRefusedAt ?? deps.clock.now().toISOString() });
+    update({ keyState: 'refused' });
+  };
+
   /** Asks the host again; a key Granola just accepted stays `accepted` while nothing refused it. */
   const readKey = async () => {
     try {
       const status = await deps.granola.status({ vault });
-      update({ keyState: keyStateOf(status, view.keyState === 'accepted'), keyProblem: null });
+      if (!status.hasKey) keepRecord({ keyRefusedAt: null });
+      const refusedBefore = record().keyRefusedAt !== null;
+      const fresh = view.keyState === 'accepted';
+      update({ keyState: keyStateOf(status, { fresh, refusedBefore }), keyProblem: null });
     } catch (cause) {
       update({ keyProblem: problemOf(cause) });
     }
@@ -154,21 +201,16 @@ export function createGranolaImporter(
   const keep = (report: GranolaImportReport) => {
     const line = granolaReportLine(report);
     const at = deps.clock.now();
-    const next: GranolaRecord = {
-      ...record(),
-      watermark: report.watermark,
-      lastImportAt: at.toISOString(),
-      lastResult: line,
-    };
-    deps.records.write(vault, next);
+    keepRecord({ watermark: report.watermark, lastImportAt: at.toISOString(), lastResult: line });
     update({ lastImportAt: at, lastResult: line, problems: report.problems });
-    update({ problem: report.problem, dismissed: dismissedNow() });
+    update({ problem: report.problem, ...ledgerState() });
   };
 
   const tell = (report: GranolaImportReport, mode: GranolaPullMode) => {
     notice(granolaArrivalNotice(report.counts));
-    if (report.keyRefused) notice(report.problem);
+    if (report.keyRefused) refusedNow(report.problem);
     else if (mode === 'import-now' && report.ended !== 'imported') notice(report.problem);
+    if (report.ended === 'imported') keepRecord({ keyRefusedAt: null });
   };
 
   const runOnce = async (mode: GranolaPullMode) => {
@@ -181,7 +223,7 @@ export function createGranolaImporter(
       keep(report);
       tell(report, mode);
     } catch (cause) {
-      // A fault outside Granola's own failures (the disk, the ledger): said on the card and kept going.
+      // A fault outside Granola's own failures (the disk): said on the card and kept going.
       update({ problem: problemOf(cause) });
     } finally {
       update({ importing: false });
@@ -198,6 +240,8 @@ export function createGranolaImporter(
       update({ waiting: true });
       return Promise.resolve();
     }
+    // An unreadable ledger waits for the person's choice in Settings, which shows it.
+    if (importLedgerProblem(session) !== null) return Promise.resolve();
     const done = runOnce(mode).finally(() => {
       running = null;
       if (queued) {
@@ -228,7 +272,17 @@ export function createGranolaImporter(
     schedule();
   };
 
-  let unsubscribeSync: (() => void) | null = null;
+  /** Replaces an unreadable ledger at the person's word, then maybe imports. */
+  const replaceLedger = (thenImport: boolean) => {
+    void replaceImportLedger(deps.vault, [])
+      .then(() => {
+        update({ problem: null, ...ledgerState() });
+        return thenImport ? pull('import-now') : undefined;
+      })
+      .catch((cause: unknown) => update({ problem: problemOf(cause) }));
+  };
+
+  const stops: (() => void)[] = [];
 
   return {
     getView: () => view,
@@ -241,20 +295,27 @@ export function createGranolaImporter(
       return () => noticeListeners.delete(listener);
     },
     start() {
-      unsubscribeSync = deps.sync.subscribe(maybeStart);
+      stops.push(deps.sync.subscribe(maybeStart));
+      stops.push(
+        session.subscribe((change) => {
+          if (touchesLedger(change)) update(ledgerState());
+        }),
+      );
       void readKey().then(maybeStart);
     },
     stop() {
       stopped = true;
-      unsubscribeSync?.();
+      for (const unsubscribe of stops) unsubscribe();
       cancelTimer?.();
     },
-    async connect(key) {
+    async connect(pasted) {
       update({ pending: true, problem: null });
       try {
-        const status = await deps.granola.setKey({ vault, key });
-        update({ keyState: keyStateOf(status, true), keyProblem: null });
-        if (status.lastRefusal !== null) notice('Granola refused this key.');
+        const status = await deps.granola.setKey({ vault, key: pastedKey(pasted) });
+        keepRecord({ keyRefusedAt: null });
+        const state = keyStateOf(status, { fresh: true, refusedBefore: false });
+        update({ keyState: state, keyProblem: null });
+        if (state === 'refused') refusedNow('Granola refused this key.');
         startedOnce = false;
         maybeStart();
       } catch (cause) {
@@ -267,7 +328,8 @@ export function createGranolaImporter(
       update({ pending: true, problem: null });
       try {
         const status = await deps.granola.forgetKey({ vault });
-        update({ keyState: keyStateOf(status, false) });
+        keepRecord({ keyRefusedAt: null });
+        update({ keyState: keyStateOf(status, { fresh: false, refusedBefore: false }) });
         schedule();
       } catch (cause) {
         update({ problem: problemOf(cause) });
@@ -279,19 +341,20 @@ export function createGranolaImporter(
       void pull('import-now');
     },
     setAutomatic(on) {
-      deps.records.write(vault, { ...record(), automatic: on });
+      keepRecord({ automatic: on });
       update({ automatic: on });
       if (on) maybeStart();
       schedule();
     },
     importDeletedAgain() {
-      const { ledger } = readImportLedger(deps.vault.session);
-      void writeImportLedger(deps.vault, restoreDismissed(ledger, 'granola'))
+      void updateImportLedger(deps.vault, (ledger) => restoreDismissed(ledger, 'granola'))
         .then(() => {
-          update({ dismissed: dismissedNow() });
+          update(ledgerState());
           return pull('import-now');
         })
         .catch((cause: unknown) => update({ problem: problemOf(cause) }));
     },
+    rebuildLedger: () => replaceLedger(true),
+    startEmptyLedger: () => replaceLedger(false),
   };
 }

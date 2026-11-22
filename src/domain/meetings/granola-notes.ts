@@ -1,6 +1,6 @@
 import { readGeminiAttendees } from './gemini-attendees.ts';
 import { MeetingInputError, type MeetingInput, type TranscriptTurn } from './meeting-input.ts';
-import { sectionProse } from './section-prose.ts';
+import { sectionProse, withoutRemoteImages } from './section-prose.ts';
 import { rfc3339Instant, wallClockIn, type WallTime } from './wall-clock.ts';
 
 /*
@@ -112,7 +112,7 @@ function readItem(
     turn: {
       speaker: speakerOf(item.speaker, `transcript[${at}].speaker`, reading.noteTaker),
       ...(time === null ? {} : { time }),
-      text: oneLine(item.text, `transcript[${at}].text`),
+      text: withoutRemoteImages(oneLine(item.text, `transcript[${at}].text`)),
     },
     began,
     // A turn that ends before it starts ends, for the meeting, when it starts.

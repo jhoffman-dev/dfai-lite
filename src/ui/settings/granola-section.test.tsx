@@ -17,6 +17,7 @@ const VIEW: GranolaView = {
   problems: [],
   problem: null,
   dismissed: 0,
+  ledgerProblem: null,
 };
 
 function setUp(change: Partial<GranolaView> = {}) {
@@ -26,6 +27,8 @@ function setUp(change: Partial<GranolaView> = {}) {
     importNow: vi.fn(),
     setAutomatic: vi.fn(),
     importDeletedAgain: vi.fn(),
+    rebuildLedger: vi.fn(),
+    startEmptyLedger: vi.fn(),
   };
   render(<GranolaSettings view={{ ...VIEW, ...change }} controls={controls} />);
   return controls;
@@ -74,11 +77,25 @@ describe('Settings → Granola', () => {
     expect(screen.getByRole('button', { name: 'Import now' })).toBeDisabled();
   });
 
-  it('a refused key says to paste a new one, and Import now waits for it', () => {
+  it('a refused key says to paste a new one; Import now still asks, as DFAI’s Sync now', () => {
     setUp({ keyState: 'refused', problem: 'Granola refused the API key.' });
     expect(screen.getByTestId('granola-key')).toHaveTextContent('Granola refused this key');
     expect(screen.getByRole('alert')).toHaveTextContent('Granola refused the API key.');
+    expect(screen.getByRole('button', { name: 'Import now' })).toBeEnabled();
+  });
+
+  it('an import record that cannot be read stops imports and offers the two ways out', async () => {
+    const controls = setUp({ ledgerProblem: '.dfai-lite/imports.json is not valid JSON.' });
+    const choice = screen.getByRole('group', { name: 'The import record cannot be read' });
+    expect(within(choice).getByRole('alert')).toHaveTextContent('is not valid JSON');
+    expect(within(choice).getByText(/cannot be recovered/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import now' })).toBeDisabled();
+    await userEvent.click(
+      within(choice).getByRole('button', { name: 'Rebuild from the notes’ Source lines' }),
+    );
+    expect(controls.rebuildLedger).toHaveBeenCalledOnce();
+    await userEvent.click(within(choice).getByRole('button', { name: 'Start an empty record' }));
+    expect(controls.startEmptyLedger).toHaveBeenCalledOnce();
   });
 
   it('turns automatic import off and on', async () => {
@@ -116,6 +133,9 @@ describe('Settings → Granola', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Disconnect…' }));
     const question = screen.getByRole('group', { name: 'Disconnect Granola?' });
     expect(within(question).getByText(/Meetings already in the vault stay/)).toBeInTheDocument();
+    expect(question).toHaveTextContent(
+      'a vault moved to another folder needs its key pasted again',
+    );
     await userEvent.click(within(question).getByRole('button', { name: 'Disconnect' }));
     expect(controls.disconnect).toHaveBeenCalledOnce();
   });

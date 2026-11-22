@@ -189,4 +189,22 @@ describe('fromGranola', () => {
     };
     expect(() => fromGranola(noOffset, LA)).toThrow('has no start');
   });
+
+  it('writes a picture from the web as a link, so opening the note loads nothing', () => {
+    const input = fromGranola(
+      {
+        ...NOTE,
+        summary_markdown:
+          'See ![the chart](https://cdn.example.com/chart.png) and ![](http://example.com/a.png).\n\n<img src="https://example.com/b.png" alt="b">\n\nRef ![x][chart]\n\n[[Larkspur rollout]] and [the plan](https://example.com/plan).',
+        private_notes_markdown: '```\n![kept in code](https://example.com/c.png)\n```',
+        transcript: [{ text: 'Look ![](https://example.com/d.png)', start_time: null }],
+      },
+      LA,
+    );
+    expect(input.summary).toBe(
+      'See [the chart](https://cdn.example.com/chart.png) and [image](http://example.com/a.png).\n\n[image](https://example.com/b.png)\n\nRef [x][chart]\n\n[[Larkspur rollout]] and [the plan](https://example.com/plan).',
+    );
+    expect(input.notes).toContain('![kept in code]');
+    expect(input.transcript?.[0]?.text).toBe('Look [image](https://example.com/d.png)');
+  });
 });

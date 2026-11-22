@@ -27,6 +27,7 @@ function recordOf(value: unknown): GranolaRecord {
     watermark: textOrNull(value.watermark),
     lastImportAt: textOrNull(value.lastImportAt),
     lastResult: textOrNull(value.lastResult),
+    keyRefusedAt: textOrNull(value.keyRefusedAt),
   };
 }
 

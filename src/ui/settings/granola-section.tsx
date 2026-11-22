@@ -38,11 +38,19 @@ export function GranolaSettings({
   view: GranolaView;
   controls: Pick<
     GranolaControls,
-    'connect' | 'disconnect' | 'importNow' | 'setAutomatic' | 'importDeletedAgain'
+    | 'connect'
+    | 'disconnect'
+    | 'importNow'
+    | 'setAutomatic'
+    | 'importDeletedAgain'
+    | 'rebuildLedger'
+    | 'startEmptyLedger'
   >;
 }) {
   const hasKey = view.keyState !== 'none' && view.keyState !== 'checking';
   const usable = view.keyState === 'set' || view.keyState === 'accepted';
+  // As DFAI's Sync now: asked whatever the key's last answer was, so a mended key is heard.
+  const canImport = hasKey && view.ledgerProblem === null;
   return (
     <section className="settings__section" aria-labelledby="granola-heading">
       <h3 id="granola-heading" className="settings__heading">
@@ -62,12 +70,20 @@ export function GranolaSettings({
         <button
           className="btn btn--secondary"
           type="button"
-          disabled={!usable || view.waiting || view.importing || view.pending}
+          disabled={!canImport || view.waiting || view.importing || view.pending}
           onClick={controls.importNow}
         >
           Import now
         </button>
       </div>
+      {view.ledgerProblem !== null && (
+        <LedgerProblem
+          reason={view.ledgerProblem}
+          busy={view.importing}
+          onRebuild={controls.rebuildLedger}
+          onStartEmpty={controls.startEmptyLedger}
+        />
+      )}
       {view.keyState === 'none' && (
         <p className="settings__lede">
           Make one in Granola → Settings → Connectors → API keys (it needs a Business or Enterprise
@@ -177,6 +193,40 @@ function NotWritten({ problems }: { problems: readonly GranolaNoteProblem[] }) {
   );
 }
 
+/** The import record cannot be read: imports wait for one of two choices, said plainly. */
+function LedgerProblem({
+  reason,
+  busy,
+  onRebuild,
+  onStartEmpty,
+}: {
+  reason: string;
+  busy: boolean;
+  onRebuild: () => void;
+  onStartEmpty: () => void;
+}) {
+  return (
+    <div className="granola__confirm" role="group" aria-label="The import record cannot be read">
+      <p className="settings__problem" role="alert">
+        The import record cannot be read: {reason} Nothing is imported until you choose.
+      </p>
+      <p className="settings__lede">
+        Rebuilding links each Granola meeting again to the note whose Source line points at it, and
+        imports now. Which meetings you had deleted cannot be recovered: they come back as notes.
+        Starting an empty record does the same at the next import.
+      </p>
+      <div className="settings__actions">
+        <button className="btn btn--primary" type="button" disabled={busy} onClick={onRebuild}>
+          Rebuild from the notes’ Source lines
+        </button>
+        <button className="btn btn--ghost" type="button" disabled={busy} onClick={onStartEmpty}>
+          Start an empty record
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ForgetKey({ pending, onForget }: { pending: boolean; onForget: () => Promise<void> }) {
   const [confirming, setConfirming] = useState(false);
   if (!confirming) {
@@ -198,7 +248,8 @@ function ForgetKey({ pending, onForget }: { pending: boolean; onForget: () => Pr
       <p className="settings__lede">
         The app stops importing from Granola on this Mac and removes the key from its Keychain.
         Meetings already in the vault stay. Granola does not show a key again, so you would make a
-        new one to connect again.
+        new one to connect again. The key is kept for this vault folder where it is now: a vault
+        moved to another folder needs its key pasted again.
       </p>
       <div className="settings__actions">
         <button
