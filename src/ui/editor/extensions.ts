@@ -6,7 +6,7 @@ import type { TagSuggestion } from '../../domain/tags/index.ts';
 import { BlockDrop } from './block-drop.ts';
 import { BlockHandle } from './block-handle.ts';
 import { BlockId } from './block-id.ts';
-import { Callout } from './callout.ts';
+import { Callout, type CalloutCatalog } from './callout.ts';
 import { codeLanguages } from './code-grammars.ts';
 import { CodeHighlight } from './code-highlight.ts';
 import { ControlKeys } from './control-keys.ts';
@@ -34,6 +34,7 @@ export function createEditorExtensions({
   onOpenTag,
   createNote,
   images,
+  callouts,
 }: {
   suggest: (query: string) => readonly NoteSuggestion[];
   onView: (view: WikiSuggestionView | null) => void;
@@ -47,6 +48,8 @@ export function createEditorExtensions({
   createNote: (name: string) => void;
   /** How the note's pictures are shown, and pasted or dropped ones saved. */
   images: ImageOptions;
+  /** The vault's callout types; the built-ins alone when there is no vault behind the editor. */
+  callouts?: CalloutCatalog;
 }) {
   return [
     StarterKit.configure({
@@ -66,7 +69,7 @@ export function createEditorExtensions({
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
     TableAlign,
-    Callout,
+    callouts === undefined ? Callout : Callout.configure({ catalog: callouts }),
     WikiLink,
     BlockId,
     CodeHighlight.configure({ languages: codeLanguages }),
@@ -76,7 +79,10 @@ export function createEditorExtensions({
     VaultImage.configure(images),
     WikiLinkSuggestion.configure({ suggest, onView, createNote }),
     TagSuggestionExtension.configure({ suggest: suggestTags, onView: onTagView }),
-    SlashCommands.configure({ onView: onSlashView }),
+    SlashCommands.configure({
+      onView: onSlashView,
+      callouts: () => callouts?.settings() ?? { types: [], hidden: [] },
+    }),
     BlockHandle,
     BlockDrop,
   ];

@@ -22,7 +22,7 @@ export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
   'Projects/Pay run report.md':
     'How the parallel pay runs compare, month by month. #project/active #payroll\n\n![Pay runs by month|320](../attachments/Pay%20runs.png)\n\nThe fourth month is the parallel run with [[Larkspur Payroll]].\n',
   'Projects/Garden shed.md':
-    'Building a shed at the bottom of the garden. #project/someday\n\nNeeds a [[Materials list]].\n',
+    'Building a shed at the bottom of the garden. #project/someday\n\nNeeds a [[Materials list]].\n\n> [!note] Before ordering\n> Measure the plot twice.\n\n> [!warning]\n> Check the boundary with the neighbors first.\n',
   'Meetings/2026/11/2026-11-14 Larkspur kickoff.md':
     'Kicked off the payroll move and agreed the timeline. #meeting\n\n- When: 2026-11-14 10:00–11:00\n- With: [[Mara Quill]], [[Tobias Fenn]]\n- About: [[Larkspur Payroll]]\n\n## Decisions\n\n- Two parallel pay cycles before cutover.\n',
   'Meetings/2026/11/2026-11-21 Weekly sync.md':

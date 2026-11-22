@@ -43,3 +43,14 @@ export {
   APPEARANCE_PATH,
   isSingleEmoji,
 } from '../domain/appearance/index.ts';
+export {
+  BUILT_IN_CALLOUTS,
+  CALLOUT_HUES,
+  CALLOUT_ICONS,
+  CALLOUTS_PATH,
+  checkCalloutDraft,
+  kindAfterChange,
+  MAX_CALLOUT_LABEL,
+  offeredCallouts,
+  resolveCallout,
+} from '../domain/callouts/index.ts';

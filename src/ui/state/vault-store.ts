@@ -2,7 +2,8 @@ import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ResolvedAppearances, VaultSession } from '../../application/index.ts';
 import type { Favorites } from '../../domain/favorites/index.ts';
-import type { FolderNode } from '../../domain/vault/index.ts';
+import type { CalloutSettings } from '../../domain/callouts/index.ts';
+import type { FolderNode, VaultPath } from '../../domain/vault/index.ts';
 import { useApp } from '../services.ts';
 
 /**
@@ -17,6 +18,12 @@ export interface VaultSnapshot {
   readonly favorites: Favorites;
   /** Each folder's and note's look as drawn, by path; replaced only when the appearance file changes. */
   readonly appearances: ResolvedAppearances;
+  /** The vault's callout types: the same object until the callouts file changes. */
+  readonly callouts: CalloutSettings;
+  /** Why the callouts file could not be read, or null. */
+  readonly calloutsProblem: string | null;
+  /** Conflict copies of the callouts file whose types are merged in. */
+  readonly calloutCopies: readonly VaultPath[];
 }
 
 export type VaultStore = StoreApi<VaultSnapshot> & {
@@ -30,6 +37,9 @@ function snapshotOf(session: VaultSession): VaultSnapshot {
     tree: session.folderTree(),
     favorites: session.favorites,
     appearances: session.resolvedAppearances,
+    callouts: session.calloutSettings,
+    calloutsProblem: session.calloutsProblem,
+    calloutCopies: session.calloutCopies,
   };
 }
 
