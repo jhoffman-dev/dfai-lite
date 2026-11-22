@@ -528,11 +528,6 @@
   min-width: 0;
 }
 
-.editor ul[data-type='taskList'] li[data-checked='true'] > div {
-  color: var(--ink-3);
-  text-decoration: line-through;
-}
-
 /* Where a dragged block will land. */
 .editor-drop-line {
   background: var(--focus);

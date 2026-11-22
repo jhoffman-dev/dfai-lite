@@ -225,9 +225,16 @@ function applySteps(editor: Editor, steps: EditorSteps, sourceDoc: () => EditorD
   editor.view.dispatch(tr.setMeta(MIRRORED, true).setMeta('addToHistory', false));
 }
 
-/** The document as the editor can hold it: an empty note is one empty paragraph to type in. */
+/**
+ * The document as the editor holds it from the start: with the empty line
+ * `TrailingLine` keeps to type in under a last list, table or picture (an
+ * empty note is just that line), there before the first click rather than
+ * after it. The save drops it while it is empty.
+ */
 function editable(doc: EditorDocument): EditorDocument {
-  return doc.content.length > 0 ? doc : { ...doc, content: [{ type: 'paragraph' }] };
+  const last = doc.content.at(-1);
+  const typesAfter = last?.type === 'paragraph' && last.content?.at(-1)?.type !== 'image';
+  return typesAfter ? doc : { ...doc, content: [...doc.content, { type: 'paragraph' }] };
 }
 
 /** Whether a step was applied: one that does not fit, or cannot be read, was not. */
