@@ -6,6 +6,7 @@ import type { MarkdownPort } from '../../application/index.ts';
 import type { EditorDocument } from '../../domain/markdown/index.ts';
 import type { EditorSteps, OpenNote } from '../note/open-notes.ts';
 import { openInFor } from '../panes/open-in.ts';
+import { useBlockMenu } from './block-menu.tsx';
 import { latestOf, type EditorBridge } from './bridge.ts';
 import { editable } from './editable-doc.ts';
 import { createEditorExtensions } from './extensions.ts';
@@ -128,6 +129,8 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
+  const blockMenu = useBlockMenu(editor);
+
   // Delegated rather than bound per link, so links added while typing work too.
   // A plain click follows a link (a pill holds no caret); ⌘ opens a new tab, ⌥ the other pane.
   const followLink = (event: React.MouseEvent | React.KeyboardEvent, click: MouseLike) => {
@@ -156,6 +159,7 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
         </pre>
       )}
       <EditorContent editor={editor} className="editor-host" />
+      {blockMenu}
       {links !== null && <LinkSuggestionPopup view={links} />}
       {tags !== null && <TagSuggestionPopup view={tags} />}
       {commands !== null && (

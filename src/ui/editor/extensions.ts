@@ -3,6 +3,8 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import type { NoteSuggestion } from '../../domain/links/index.ts';
 import type { TagSuggestion } from '../../domain/tags/index.ts';
+import { BlockDrop } from './block-drop.ts';
+import { BlockHandle } from './block-handle.ts';
 import { BlockId } from './block-id.ts';
 import { Callout } from './callout.ts';
 import { codeLanguages } from './code-grammars.ts';
@@ -51,6 +53,7 @@ export function createEditorExtensions({
       link: { openOnClick: false },
       // Colored by `CodeHighlight`, whose grammars load on first use.
       codeBlock: { languageClassPrefix: 'language-' },
+      // Where a dragged block will land: a line drawn by the stylesheet, in the accent.
       dropcursor: { color: false, width: 2, class: 'editor-drop-line' },
       // Replaced by `TrailingLine`, which also leaves room to type after a last picture.
       trailingNode: false,
@@ -71,5 +74,7 @@ export function createEditorExtensions({
     WikiLinkSuggestion.configure({ suggest, onView, createNote }),
     TagSuggestionExtension.configure({ suggest: suggestTags, onView: onTagView }),
     SlashCommands.configure({ onView: onSlashView }),
+    BlockHandle,
+    BlockDrop,
   ];
 }
