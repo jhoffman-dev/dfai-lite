@@ -13,6 +13,7 @@ import {
   type VaultPath,
 } from '../../domain/vault/index.ts';
 import { writeFavorites } from './favorites.ts';
+import { followMoveInLedger } from './import-ledger.ts';
 import { filesNow, imagesFollowingMove } from './images-across-move.ts';
 import { writeFile, type VaultDeps } from './vault-deps.ts';
 
@@ -68,6 +69,7 @@ export async function renameNote(
     await writeFile(deps, source, result.text);
   }
   await writeFavorites(deps, favoritesAfterMove(deps.session.favorites, { from, to }));
+  await followMoveInLedger(deps, { from, to });
   return { kind: 'renamed', path: to, retargeted };
 }
 
