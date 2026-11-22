@@ -22,6 +22,7 @@ function transfer() {
     setData: (type: string, value: string) => void data.set(type, value),
     getData: (type: string) => data.get(type) ?? '',
     clearData: () => data.clear(),
+    setDragImage: () => undefined,
   };
 }
 
@@ -137,7 +138,96 @@ describe('dragging in the tree', () => {
     expect(folder).not.toHaveClass('is-drop-target');
   });
 
-  it('refuses a folder dropped into itself, and says so for a name already taken', async () => {
+  it('drops into the folder lit at the release, though a folder held over before it would have opened above it', async () => {
+    const { services } = await renderApp({ files: VAULT });
+    const dataTransfer = transfer();
+    fireEvent.click(within(tree()).getByText('Inbox'));
+    fireEvent.click(within(tree()).getByText('Projects'));
+    const note = await within(tree()).findByText('Payroll idea');
+    const row = (name: string) =>
+      within(tree()).getByText(name).closest('[role="treeitem"]') as HTMLElement;
+    const projectsAt = row('Projects').dataset['index'];
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      fireEvent.dragStart(note, { dataTransfer });
+      // On the closed People for a moment, then on to the open Projects below it, and held there.
+      fireEvent.dragOver(row('People'), { dataTransfer });
+      act(() => vi.advanceTimersByTime(200));
+      fireEvent.dragOver(row('Projects'), { dataTransfer });
+      act(() => vi.advanceTimersByTime(1500));
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(row('Projects')).toHaveClass('is-drop-target');
+
+    // The pointer has not moved: the drop lands on whatever row is now where Projects was.
+    const under = tree().querySelector(`[data-index="${projectsAt}"]`) as Element;
+    fireEvent.drop(under, { dataTransfer });
+    await waitFor(() => expect(services.session.file('Inbox/Payroll idea.md')).toBeNull());
+    const landed = ['People', 'Projects'].filter(
+      (folder) => services.session.file(`${folder}/Payroll idea.md`) !== null,
+    );
+    expect(landed).toEqual(['Projects']);
+  });
+
+  it('lights the open folder a note is held over, with its rows, and drops into it', async () => {
+    const { services } = await renderApp({ files: VAULT });
+    const dataTransfer = transfer();
+    fireEvent.click(within(tree()).getByText('Inbox'));
+    fireEvent.click(within(tree()).getByText('Projects'));
+    const note = await within(tree()).findByText('Payroll idea');
+    const projects = within(tree()).getByText('Projects').closest('[role="treeitem"]');
+    const inside = within(tree()).getByText('Garden shed');
+    fireEvent.dragStart(note, { dataTransfer });
+    expect(note.closest('[role="treeitem"]')).toHaveClass('is-dragged');
+    expect(screen.getByTestId('tree-drag-tile')).toHaveTextContent('Payroll idea');
+
+    fireEvent.dragOver(inside, { dataTransfer });
+    expect(projects).toHaveClass('is-drop-target');
+    expect(inside.closest('.tree-slot')).toHaveClass('is-in-drop-target');
+    expect(inside.closest('[role="treeitem"]')).not.toHaveClass('is-drop-target');
+    fireEvent.drop(inside, { dataTransfer });
+    await waitFor(() => expect(services.session.file('Projects/Payroll idea.md')).not.toBeNull());
+    expect(screen.queryByTestId('tree-drag-tile')).toBeNull();
+  });
+
+  it('drops at the top of the vault from the space around the rows or a note there', async () => {
+    const { services } = await renderApp({ files: VAULT });
+    const dataTransfer = transfer();
+    fireEvent.click(within(tree()).getByText('Inbox'));
+    const note = await within(tree()).findByText('Payroll idea');
+    const section = tree().closest('section') as Element;
+    fireEvent.dragStart(note, { dataTransfer });
+    fireEvent.dragOver(tree(), { dataTransfer });
+    expect(section).toHaveClass('is-drop-root');
+    fireEvent.dragOver(within(tree()).getByText('Welcome'), { dataTransfer });
+    expect(section).toHaveClass('is-drop-root');
+    fireEvent.drop(within(tree()).getByText('Welcome'), { dataTransfer });
+    await waitFor(() => expect(services.session.file('Payroll idea.md')).not.toBeNull());
+  });
+
+  it('moves nothing on a drop with nothing lit, and nothing once the drag was cancelled', async () => {
+    const { services } = await renderApp({ files: VAULT });
+    const dataTransfer = transfer();
+    fireEvent.click(within(tree()).getByText('Inbox'));
+    const note = await within(tree()).findByText('Payroll idea');
+    const people = within(tree()).getByText('People').closest('[role="treeitem"]') as Element;
+    fireEvent.dragStart(note, { dataTransfer });
+    fireEvent.drop(people, { dataTransfer });
+
+    fireEvent.dragStart(note, { dataTransfer });
+    fireEvent.dragOver(people, { dataTransfer });
+    // Escape, or a release outside any target: the source hears dragend, no drop comes.
+    fireEvent.dragEnd(note, { dataTransfer });
+    expect(people).not.toHaveClass('is-drop-target');
+    expect(screen.queryByTestId('tree-drag-tile')).toBeNull();
+    fireEvent.drop(people, { dataTransfer });
+    await act(() => Promise.resolve());
+    expect(services.session.file('Inbox/Payroll idea.md')).not.toBeNull();
+  });
+
+  it('refuses a folder dropped into itself, and a folder that already holds the name', async () => {
     const { services } = await renderApp({
       files: { ...VAULT, 'People/Payroll idea.md': 'Another.\n' },
     });
@@ -152,9 +242,12 @@ describe('dragging in the tree', () => {
     fireEvent.click(within(tree()).getByText('Inbox'));
     const note = await within(tree()).findByText('Payroll idea');
     fireEvent.dragStart(note, { dataTransfer });
+    expect(fireEvent.dragOver(people, { dataTransfer })).toBe(true);
+    expect(people).not.toHaveClass('is-drop-target');
     fireEvent.drop(people, { dataTransfer });
-    expect(await screen.findByRole('status')).toHaveTextContent(/already/);
+    await act(() => Promise.resolve());
     expect(services.session.file('Inbox/Payroll idea.md')).not.toBeNull();
+    expect(services.session.file('People/Payroll idea.md')).toHaveProperty('text', 'Another.\n');
   });
 });
 

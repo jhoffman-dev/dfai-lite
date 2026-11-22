@@ -32,6 +32,8 @@ async function markdownOf(page: Page): Promise<string> {
 
 /** Points at `block` near its left edge, where the hand goes to reach its handle. */
 async function hover(page: Page, block: Locator): Promise<Locator> {
+  // The note's tags row sits above the text: a block near the end may start below the fold.
+  await block.scrollIntoViewIfNeeded();
   const box = await block.boundingBox();
   if (box === null) throw new Error('The block is not drawn.');
   await page.mouse.move(box.x + 8, box.y + 6);

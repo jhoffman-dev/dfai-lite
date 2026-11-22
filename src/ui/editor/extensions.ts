@@ -14,6 +14,7 @@ import { VaultImage, type ImageOptions } from './image.tsx';
 import { RawBlock } from './raw-block.ts';
 import { SlashCommands, type SlashCommandView } from './slash-commands.ts';
 import { TableAlign } from './table-align.ts';
+import { EmptyNote } from './empty-note.ts';
 import { TagHighlight } from './tag-highlight.ts';
 import { TagSuggestionExtension, type TagSuggestionView } from './tag-suggestion.ts';
 import { TrailingLine } from './trailing-line.ts';
@@ -60,6 +61,7 @@ export function createEditorExtensions({
       trailingNode: false,
     }),
     TrailingLine,
+    EmptyNote,
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),

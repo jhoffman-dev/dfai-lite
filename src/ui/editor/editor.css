@@ -4,10 +4,21 @@
 /* The body is running text meant to be read: 14 on a 720px measure,
    with headings at 600 and nothing heavier. */
 .editor {
+  /* The caret in the ink, plain to see on either theme. */
+  caret-color: var(--ink);
   color: var(--ink-body);
   font-size: var(--text-body-lg);
   line-height: 1.6;
   outline: none;
+}
+
+/* An empty note's quiet hint (empty-note.ts): drawn, never typed, gone at the first key. */
+.editor .editor-empty::before {
+  color: var(--ink-3);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
 
 .editor > * + * {
@@ -599,6 +610,7 @@
   background: transparent;
   border: 0;
   box-sizing: border-box;
+  caret-color: var(--ink);
   color: var(--ink);
   font: var(--text-mono) / 1.6 var(--font-mono);
   min-height: 60vh;
