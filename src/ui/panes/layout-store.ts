@@ -22,7 +22,7 @@ export function createLayoutStore({
   storage: LayoutStorage;
   exists: (path: VaultPath) => boolean;
   /** What a first launch (no saved layout) shows in its one tab. */
-  fallback: { view: TabView; preview: boolean };
+  fallback: { view: TabView; source: boolean };
 }): LayoutStore {
   const store = createStore<Layout>(
     () => restoreLayout(storage.load(), exists) ?? initialLayout(fallback),

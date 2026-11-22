@@ -1,14 +1,14 @@
 import { APP_FOLDER, pathAfterMove, type PathMove, type VaultPath } from '../vault/index.ts';
 
-/** Where the favourites live: an ordinary vault file, synced like a note. */
+/** Where the favorites live: an ordinary vault file, synced like a note. */
 export const FAVORITES_PATH = `${APP_FOLDER}/favorites.json`;
 
-/** The favourite notes' paths, in the order the sidebar shows them, each once. */
+/** The favorite notes' paths, in the order the sidebar shows them, each once. */
 export type Favorites = readonly VaultPath[];
 
 /**
- * The favourites read from the file's text. Malformed text — not JSON, or not
- * a list — reads as no favourites, and says why, so the app can tell the
+ * The favorites read from the file's text. Malformed text — not JSON, or not
+ * a list — reads as no favorites, and says why, so the app can tell the
  * person instead of quietly emptying their list. Entries that are not
  * strings, and repeats, are left out.
  */
@@ -40,14 +40,14 @@ export function isFavorite(favorites: Favorites, path: VaultPath): boolean {
   return favorites.includes(path);
 }
 
-/** Adds `path` at the end, or takes it out when it is already a favourite. */
+/** Adds `path` at the end, or takes it out when it is already a favorite. */
 export function toggleFavorite(favorites: Favorites, path: VaultPath): Favorites {
   return isFavorite(favorites, path)
     ? favorites.filter((favorite) => favorite !== path)
     : [...favorites, path];
 }
 
-/** Moves `path` to `index` (clamped to the list); unchanged when it is not a favourite. */
+/** Moves `path` to `index` (clamped to the list); unchanged when it is not a favorite. */
 export function moveFavorite(favorites: Favorites, path: VaultPath, index: number): Favorites {
   if (!isFavorite(favorites, path)) return favorites;
   const rest = favorites.filter((favorite) => favorite !== path);
@@ -55,12 +55,12 @@ export function moveFavorite(favorites: Favorites, path: VaultPath, index: numbe
   return [...rest.slice(0, at), path, ...rest.slice(at)];
 }
 
-/** The favourites after a note or folder moved: each one moved keeps its place in the list. */
+/** The favorites after a note or folder moved: each one moved keeps its place in the list. */
 export function favoritesAfterMove(favorites: Favorites, move: PathMove): Favorites {
   return [...new Set(favorites.map((path) => pathAfterMove(path, move) ?? path))];
 }
 
-/** The favourites without a note that was deleted. */
+/** The favorites without a note that was deleted. */
 export function favoritesAfterDelete(favorites: Favorites, path: VaultPath): Favorites {
   return favorites.filter((favorite) => favorite !== path);
 }

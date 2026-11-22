@@ -37,7 +37,7 @@ Needs Node 22.18 or later. From a DFAI Lite checkout, into a new empty folder (t
 node tools/migrate-from-dfai.ts ~/path/to/dfai-vault ~/Notes-new
 ```
 
-It strips frontmatter (tags become inline `#tags`, other properties a `- Key: value` list, favourites go to `.dfai-lite/favorites.json`), moves meetings to `Meetings/<YYYY>/<MM>/` and people to `People/`, adds `CLAUDE.md` and the Action, writes `_index/`, and prints every property it dropped and every name clash. Read the report, then push the folder to the private repo and choose it in the app:
+It strips frontmatter (tags become inline `#tags`, other properties a `- Key: value` list, favorites go to `.dfai-lite/favorites.json`), moves meetings to `Meetings/<YYYY>/<MM>/` and people to `People/`, adds `CLAUDE.md` and the Action, writes `_index/`, and prints every property it dropped and every name clash. Read the report, then push the folder to the private repo and choose it in the app:
 
 ```sh
 cd ~/Notes-new

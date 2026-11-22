@@ -95,7 +95,7 @@ export async function migrate(source: string, output: string): Promise<Migration
   if (favorites.length > 0) await writeInto(output, FAVORITES_PATH, serializeFavorites(favorites));
   const templateFiles = await copyTemplate(output, taken);
   const index = await buildIndex(output);
-  const report = summarise(plan, { collisions, templateFiles, index, linksRewritten, favorites });
+  const report = summarize(plan, { collisions, templateFiles, index, linksRewritten, favorites });
   await writeInto(output, REPORT_PATH, reportNote(report, output));
   return report;
 }
@@ -195,7 +195,7 @@ function claim(
   return to;
 }
 
-function summarise(
+function summarize(
   plan: SourcePlan,
   done: Pick<MigrationReport, 'collisions' | 'templateFiles' | 'index'> & {
     linksRewritten: number;
@@ -306,7 +306,7 @@ async function realLocation(path: string): Promise<string> {
 
 /**
  * Whether `inner` is `outer` or inside it, ignoring case and Unicode
- * normalisation: on a Mac `vault/Lite` and `Vault/Lite` are one folder.
+ * normalization: on a Mac `vault/Lite` and `Vault/Lite` are one folder.
  */
 function isWithin(inner: string, outer: string): boolean {
   const fold = (path: string): string => path.normalize('NFC').toLowerCase();

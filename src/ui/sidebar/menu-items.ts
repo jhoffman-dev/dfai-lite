@@ -9,7 +9,7 @@ export type MenuTarget =
       readonly path: VaultPath;
       readonly x: number;
       readonly y: number;
-      /** Where it sits in the favourites, when opened there; null in the tree. */
+      /** Where it sits in the favorites, when opened there; null in the tree. */
       readonly favoriteAt: number | null;
     }
   | { readonly kind: 'folder'; readonly path: VaultPath; readonly x: number; readonly y: number };
@@ -52,7 +52,7 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
     { label: 'Rename', run: () => actions.startRename(path) },
     { label: 'Move to folder…', run: () => context.askMove(path) },
     {
-      label: isFavorite ? 'Remove from favourites' : 'Add to favourites',
+      label: isFavorite ? 'Remove from favorites' : 'Add to favorites',
       run: () => later(actions.toggleFavorite(path)),
     },
     ...(target.favoriteAt === null ? [] : favoriteMoves(path, target.favoriteAt, context)),

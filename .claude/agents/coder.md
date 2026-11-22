@@ -53,7 +53,7 @@ propagated on purpose; an ignored error carries a why-safe comment.
 
 Domain rule → unit test, seeded RNG, fixed clock. Use-case → fake adapters,
 happy path + edges. Adapter → integration round-trip + one failure mode.
-User-facing flow → component test; core-loop flow → e2e step. Behaviour, not
+User-facing flow → component test; core-loop flow → e2e step. Behavior, not
 implementation; no snapshots. Keep repo ≥ 70% and the high-impact slice ≥ 90%.
 
 ## Gate, then report
@@ -61,7 +61,7 @@ implementation; no snapshots. Keep repo ≥ 70% and the high-impact slice ≥ 90
 Where the project's `CLAUDE.md` describes a **scoped gate** and hands the full
 gate to `tester`, run the scoped gate and report "full gate: tester + CI".
 Otherwise run the full gate: typecheck, lint, unit, integration, build, and
-e2e/smoke if behaviour changed.
+e2e/smoke if behavior changed.
 
 Report: files changed by layer (one line each); decisions you made; gate
 commands with pass/fail and coverage; anything left out and why. Never claim it

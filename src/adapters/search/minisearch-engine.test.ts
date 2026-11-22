@@ -35,7 +35,7 @@ describe('the MiniSearch engine', () => {
     expect(paths(engine().search('opertions'))).toEqual([MARA]);
   });
 
-  it('returns nothing for a blank query and honours the limit', () => {
+  it('returns nothing for a blank query and honors the limit', () => {
     const search = engine();
     expect(search.search('   ')).toEqual([]);
     expect(search.search('payroll', { limit: 1 })).toHaveLength(1);

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-/** The core loop on the sample vault: write, link, follow, favourite, find, tag, graph. */
-test('the core loop: new note, link, favourite, search, tags, graph', async ({ page }) => {
+/** The core loop on the sample vault: write, link, follow, favorite, find, tag, graph. */
+test('the core loop: new note, link, favorite, search, tags, graph', async ({ page }) => {
   await page.goto('/');
   const sidebar = page.getByRole('navigation', { name: 'Sidebar' });
   await expect(sidebar).toBeVisible();
@@ -16,12 +16,11 @@ test('the core loop: new note, link, favourite, search, tags, graph', async ({ p
   const editor = page.getByRole('textbox', { name: 'Note text' });
   await expect(editor).toBeFocused();
   await page.keyboard.type('Payday checklist with [[New Linked Note]] and #ideas/lite ');
-  await expect(page.locator('.cm-tag-pill', { hasText: '#ideas/lite' })).toBeVisible();
+  await expect(editor.locator('.tag', { hasText: '#ideas/lite' })).toBeVisible();
 
-  // Following a link to a note that does not exist makes it and opens it.
-  await page
-    .locator('.cm-link-pill', { hasText: 'New Linked Note' })
-    .click({ modifiers: ['ControlOrMeta'] });
+  // Following a link to a note that does not exist makes it and opens it: a
+  // link is one atom in the text, and a plain click follows it.
+  await editor.locator('.wikilink', { hasText: 'New Linked Note' }).click();
   await expect(title).toHaveValue('New Linked Note');
   await expect(page).toHaveURL(/#\/note\/Inbox%2FNew%20Linked%20Note\.md$/);
   await expect(page.getByRole('region', { name: 'Linked from' })).toContainText('Untitled');
@@ -31,9 +30,9 @@ test('the core loop: new note, link, favourite, search, tags, graph', async ({ p
   await expect(title).toHaveValue('Untitled');
   await expect(editor).toContainText('Payday checklist');
 
-  // Favourite it: it joins the favourites above the tree.
-  await page.getByRole('button', { name: 'Add to favourites' }).click();
-  await expect(sidebar.getByRole('list', { name: 'Favourites' })).toContainText('Untitled');
+  // Favorite it: it joins the favorites above the tree.
+  await page.getByRole('button', { name: 'Add to favorites' }).click();
+  await expect(sidebar.getByRole('list', { name: 'Favorites' })).toContainText('Untitled');
 
   // Search finds the typed text.
   await page.keyboard.press('ControlOrMeta+k');

@@ -40,7 +40,7 @@ const NO_FAVORITES: ParsedFavorites = { kind: 'ok', favorites: [] };
 
 /**
  * The open vault in memory: every file's text, the derived index, and the
- * favourites, kept in step and announced to listeners. The UI's store
+ * favorites, kept in step and announced to listeners. The UI's store
  * subscribes here; nothing here knows about React.
  *
  * Use-cases change it (`apply…`) after the disk has the change, so the
@@ -64,12 +64,12 @@ export class VaultSession {
     return this.vaultIndex;
   }
 
-  /** The favourite notes, in order. Empty when the file is missing or malformed. */
+  /** The favorite notes, in order. Empty when the file is missing or malformed. */
   get favorites(): Favorites {
     return this.parsedFavorites.favorites;
   }
 
-  /** Why the favourites file could not be read, or null when it could (or does not exist). */
+  /** Why the favorites file could not be read, or null when it could (or does not exist). */
   get favoritesProblem(): string | null {
     return this.parsedFavorites.kind === 'malformed' ? this.parsedFavorites.reason : null;
   }

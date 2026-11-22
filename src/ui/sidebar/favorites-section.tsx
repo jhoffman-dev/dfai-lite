@@ -73,7 +73,7 @@ const FavoriteRow = memo(function FavoriteRow({
       <button
         type="button"
         className="sidebar-row-action is-on"
-        aria-label={`Remove ${noteTitle(path)} from favourites`}
+        aria-label={`Remove ${noteTitle(path)} from favorites`}
         onClick={() => actions.toggleFavorite(path).catch(actions.report)}
       >
         <Icon name="star" filled />
@@ -82,7 +82,7 @@ const FavoriteRow = memo(function FavoriteRow({
   );
 });
 
-/** The favourite notes, above the tree, in their saved order. Drag, or Alt+↑/↓, to reorder. */
+/** The favorite notes, above the tree, in their saved order. Drag, or Alt+↑/↓, to reorder. */
 export function FavoritesSection({
   activePath,
   onMenu,
@@ -97,9 +97,9 @@ export function FavoritesSection({
   return (
     <section className="sidebar-section" aria-labelledby="favorites-heading">
       <h2 id="favorites-heading" className="sidebar-heading">
-        Favourites
+        Favorites
       </h2>
-      <ul className="sidebar-list" aria-label="Favourites">
+      <ul className="sidebar-list" aria-label="Favorites">
         {favorites.map((path, at) => (
           <FavoriteRow
             key={path}

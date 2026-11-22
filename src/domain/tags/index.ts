@@ -13,3 +13,5 @@ export {
   type TagSort,
   type TagTreeNode,
 } from './tag-tree.ts';
+export { rankTagSuggestions, type TagSuggestion } from './tag-suggestions.ts';
+export { tagHue, type TagHue } from './tag-hue.ts';

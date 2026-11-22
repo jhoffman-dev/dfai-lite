@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEven
 import type { GraphNode, VaultGraph } from '../../domain/index/index.ts';
 import type { OpenIn } from '../panes/layout.ts';
 import { openInFor } from '../panes/open-in.ts';
-import { GraphLabels, type LabelledNode } from './graph-labels.tsx';
-import { neighboursOf, nodeRadius } from './graph-scope.ts';
+import { GraphLabels, type LabeledNode } from './graph-labels.tsx';
+import { neighborsOf, nodeRadius } from './graph-scope.ts';
 import { useForceLayout, type Point } from './use-force-layout.ts';
 
 /** Pan and zoom: a translation in screen pixels and a scale. */
@@ -18,7 +18,7 @@ const MAX_ZOOM = 4;
 /** How far the pointer may move and still count as a click, not a drag. */
 const CLICK_SLOP = 4;
 /** Up to this many notes every title is drawn; past it, only when zoomed in or pointed at. */
-const ALWAYS_LABELLED = 24;
+const ALWAYS_LABELED = 24;
 /** The zoom past which every title is drawn, however many notes there are. */
 const LABEL_ALL_ZOOM = 1.4;
 
@@ -26,7 +26,7 @@ const LABEL_ALL_ZOOM = 1.4;
  * The graph as a picture: notes as dots sized by how connected they are,
  * links as lines, link targets no note answers to as hollow ghosts. Drag the
  * ground to pan, the wheel to zoom, a note to move it; point at a note to
- * light its neighbours, click it to open it (a ghost: create the note and
+ * light its neighbors, click it to open it (a ghost: create the note and
 open it); ⌘/Ctrl or middle click opens a new tab, ⌥ the other pane, as
 everywhere (`open-in.ts`). Not keyboard-friendly by nature,
  * so the view offers the same graph as a list.
@@ -49,11 +49,11 @@ export function GraphCanvas({
   const surface = useRef<SVGSVGElement>(null);
   const size = useSize(surface);
   const view = chosen ?? fitView(positions, size);
-  const neighbours = useMemo(() => neighboursOf(graph.edges), [graph.edges]);
-  const lit = hovered === null ? null : new Set([hovered, ...(neighbours.get(hovered) ?? [])]);
-  const labelAll = graph.nodes.length <= ALWAYS_LABELLED || view.k >= LABEL_ALL_ZOOM;
-  const radiusOf = (id: string) => nodeRadius(neighbours.get(id)?.size ?? 0);
-  const labels: LabelledNode[] = graph.nodes
+  const neighbors = useMemo(() => neighborsOf(graph.edges), [graph.edges]);
+  const lit = hovered === null ? null : new Set([hovered, ...(neighbors.get(hovered) ?? [])]);
+  const labelAll = graph.nodes.length <= ALWAYS_LABELED || view.k >= LABEL_ALL_ZOOM;
+  const radiusOf = (id: string) => nodeRadius(neighbors.get(id)?.size ?? 0);
+  const labels: LabeledNode[] = graph.nodes
     .map((node) => ({
       node,
       radius: radiusOf(node.id),
@@ -140,7 +140,7 @@ const FIT_MARGIN = 0.9;
 /** A few notes are fitted a little larger than life, not blown up to fill the stage. */
 const FIT_MAX_ZOOM = 1.6;
 
-/** The pan and zoom that show every note, centred, never blown up past FIT_MAX_ZOOM. */
+/** The pan and zoom that show every note, centered, never blown up past FIT_MAX_ZOOM. */
 function fitView(
   positions: ReadonlyMap<string, Point>,
   size: { width: number; height: number },

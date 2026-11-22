@@ -176,7 +176,7 @@
   text-anchor: middle;
   dominant-baseline: hanging;
   pointer-events: none;
-  /* A halo of the ground colour, so the lines under a title do not cross it. */
+  /* A halo of the ground color, so the lines under a title do not cross it. */
   stroke: var(--graph-ground);
   stroke-linejoin: round;
   paint-order: stroke;

@@ -1,5 +1,6 @@
 export type { Clock } from './clock.ts';
 export type { GitCommand, GitPort, GitResult } from './git.ts';
+export type { MarkdownPort, ParsedNote } from './markdown.ts';
 export type { SearchEngine, SearchHit } from './search-engine.ts';
 export {
   DEFAULT_CAPTURE_HOTKEY,

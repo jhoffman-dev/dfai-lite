@@ -1,7 +1,7 @@
 import type { GraphNode } from '../../domain/index/index.ts';
-import { uncrowded, type LabelledNode } from './graph-labels.tsx';
+import { uncrowded, type LabeledNode } from './graph-labels.tsx';
 
-const label = (id: string, extra: Partial<LabelledNode> = {}): LabelledNode => ({
+const label = (id: string, extra: Partial<LabeledNode> = {}): LabeledNode => ({
   node: { id, kind: 'note', title: id } satisfies GraphNode,
   radius: 5,
   lit: false,
@@ -10,7 +10,7 @@ const label = (id: string, extra: Partial<LabelledNode> = {}): LabelledNode => (
   ...extra,
 });
 
-const ids = (labels: readonly LabelledNode[]) => labels.map(({ node }) => node.id).sort();
+const ids = (labels: readonly LabeledNode[]) => labels.map(({ node }) => node.id).sort();
 
 describe('uncrowded', () => {
   const positions = new Map([

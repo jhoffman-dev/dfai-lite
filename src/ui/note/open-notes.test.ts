@@ -3,6 +3,7 @@ import {
   FixedClock,
   MemorySettingsStore,
   MemoryVaultFiles,
+  plainMarkdown,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
 import { createAppContext } from '../app-context.ts';
@@ -15,7 +16,7 @@ const PLAN = 'Projects/Larkspur Payroll.md';
 const COPY = 'Projects/Larkspur Payroll (conflict 2026-11-21).md';
 
 const tabOnPlan = (id: string) => ({
-  tabs: [{ id, view: { kind: 'note' as const, path: PLAN }, preview: false }],
+  tabs: [{ id, view: { kind: 'note' as const, path: PLAN }, source: false }],
   activeTab: id,
 });
 
@@ -40,6 +41,7 @@ async function setup() {
     sync: null,
     desktop: null,
     pendingEdits: { add: () => () => undefined },
+    loadMarkdown: () => Promise.resolve(plainMarkdown),
   };
   const app = createAppContext(services, memoryLayoutStorage());
   app.layout.apply(() => SPLIT_ON_PLAN);
@@ -48,7 +50,7 @@ async function setup() {
 
 /** An editor in a tab, as the open note sees it: what an edit from disk did to it. */
 function editorOn(note: OpenNote, text: string) {
-  const editor: MirrorPeer<string> & { text: string; adopted: number } = {
+  const editor: MirrorPeer<string, string> & { text: string; adopted: number } = {
     text,
     adopted: 0,
     read: () => editor.text,
@@ -58,8 +60,8 @@ function editorOn(note: OpenNote, text: string) {
       editor.adopted += 1;
     },
   };
-  // The editor's change type is CodeMirror's; this stand-in's edits are whole texts.
-  const mirror = note.mirror as unknown as NoteMirror<string>;
+  // The editor's changes are steps and its documents trees; this stand-in's are whole texts.
+  const mirror = note.mirror as unknown as NoteMirror<string, string>;
   if (mirror.join(editor).alone) note.saver.opened(text);
   return editor;
 }

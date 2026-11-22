@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { plainMarkdown } from '../application/testing/index.ts';
 import { giveElementsASize, renderApp } from './testing/render-app.tsx';
 
 const go = (hash: string) =>
@@ -14,24 +15,24 @@ beforeEach(() => {
 });
 
 describe('the sidebar', () => {
-  it('shows the favourites above the folder tree', async () => {
+  it('shows the favorites above the folder tree', async () => {
     await renderApp();
-    const favorites = screen.getByRole('list', { name: 'Favourites' });
+    const favorites = screen.getByRole('list', { name: 'Favorites' });
     const tree = screen.getByRole('tree', { name: 'Notes' });
     expect(within(favorites).getByText('Larkspur Payroll')).toBeInTheDocument();
     expect(favorites.compareDocumentPosition(tree) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(tree).getByText('Projects')).toBeInTheDocument();
   });
 
-  it('adds the open note to the favourites with its star, and takes it off again', async () => {
+  it('adds the open note to the favorites with its star, and takes it off again', async () => {
     const user = userEvent.setup();
     await renderApp();
     await go('#/note/Welcome.md');
-    await user.click(await screen.findByRole('button', { name: 'Add to favourites' }));
-    const favorites = screen.getByRole('list', { name: 'Favourites' });
+    await user.click(await screen.findByRole('button', { name: 'Add to favorites' }));
+    const favorites = screen.getByRole('list', { name: 'Favorites' });
     expect(await within(favorites).findByText('Welcome')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Remove from favourites' }));
+    await user.click(screen.getByRole('button', { name: 'Remove from favorites' }));
     await waitFor(() => expect(within(favorites).queryByText('Welcome')).toBeNull());
   });
 
@@ -45,18 +46,27 @@ describe('the sidebar', () => {
   });
 });
 
-describe('following a link', () => {
-  it('creates the note a link names when none answers, and opens it', async () => {
-    const user = userEvent.setup();
-    const { services } = await renderApp();
-    await go('#/note/Projects%2FGarden%20shed.md');
-    const link = await screen.findByRole('link', { name: 'Materials list' });
-    await user.click(link);
-    expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue(
-      'Materials list',
+describe('a note whose editor cannot load', () => {
+  it('shows its text and a way to try again, and the rest of the window keeps working', async () => {
+    const failed = Promise.reject(new Error('chunk failed to load'));
+    failed.catch(() => undefined);
+    let current: Promise<typeof plainMarkdown> = failed;
+    await renderApp({
+      loadMarkdown: ({ afresh = false } = {}) => {
+        if (afresh) current = Promise.resolve(plainMarkdown);
+        return current;
+      },
+    });
+    await go('#/note/Welcome.md');
+    expect(await screen.findByRole('alert')).toHaveTextContent('chunk failed to load');
+    expect(screen.getByRole('tree', { name: 'Notes' })).toBeInTheDocument();
+    // Clicked inside an awaited act, so React hears the fresh load land.
+    await act(async () => {
+      screen.getByRole('button', { name: 'Try again' }).click();
+    });
+    expect(await screen.findByRole('textbox', { name: 'Note markdown' })).toHaveValue(
+      'Hello. #help\n',
     );
-    expect(services.session.file('Inbox/Materials list.md')).not.toBeNull();
-    expect(window.location.hash).toBe('#/note/Inbox%2FMaterials%20list.md');
   });
 });
 

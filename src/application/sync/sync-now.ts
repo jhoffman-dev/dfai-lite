@@ -111,7 +111,7 @@ const BLOCKED: Readonly<Record<SyncBlock, string>> = {
   detached:
     'The vault folder is not on a branch (a rebase in progress?). Finish it in git; sync waits until then.',
   'icloud-evicted':
-    'iCloud has moved notes off this Mac. Turn off Optimise Mac Storage, or move the vault out of iCloud Drive; sync waits until then.',
+    'iCloud has moved notes off this Mac. Turn off Optimize Mac Storage, or move the vault out of iCloud Drive; sync waits until then.',
 };
 
 const blocked = (reason: SyncBlock): SyncResult => ({

@@ -1,10 +1,10 @@
 /**
  * The web view's own right-click menu, kept to where it helps. On the app's
  * chrome it offers Reload (which throws away the open tabs) and Back, so it
- * is turned off there; on text — the editor, a field, the read view, or a
- * selection — it stays, for spelling, Copy and Paste.
+ * is turned off there; on text — the editor, a field, the note's markdown,
+ * or a selection — it stays, for spelling, Copy and Paste.
  */
-const TEXT_PLACES = 'input, textarea, [contenteditable="true"], .read-view';
+const TEXT_PLACES = 'input, textarea, [contenteditable="true"]';
 
 export function keepPageMenuToText(doc: Document): void {
   doc.addEventListener('contextmenu', (event) => {

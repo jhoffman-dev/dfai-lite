@@ -8,10 +8,10 @@ const LABEL_GAP_PX = 3;
 /** A title longer than this is cut short, unless it is pointed at or open. */
 const LABEL_MAX_CHARS = 24;
 
-export interface LabelledNode {
+export interface LabeledNode {
   readonly node: GraphNode;
   readonly radius: number;
-  /** Pointed at, a neighbour of the note pointed at, or the open note: drawn in full, on top. */
+  /** Pointed at, a neighbor of the note pointed at, or the open note: drawn in full, on top. */
   readonly lit: boolean;
   readonly active: boolean;
   /** Something else is pointed at and this note is not near it. */
@@ -26,7 +26,7 @@ function shortened(title: string): string {
   return title.length <= LABEL_MAX_CHARS ? title : `${title.slice(0, LABEL_MAX_CHARS - 1)}…`;
 }
 
-const shownTitle = ({ node, lit, active }: LabelledNode) =>
+const shownTitle = ({ node, lit, active }: LabeledNode) =>
   lit || active ? node.title : shortened(node.title);
 
 interface Box {
@@ -45,14 +45,14 @@ const overlaps = (one: Box, other: Box) =>
 /**
  * The titles that fit without touching another, in screen space: the open
  * note's and the lit ones always, then the best-connected first. A title left
- * out shows when the note or a neighbour is pointed at, or when zoomed in.
+ * out shows when the note or a neighbor is pointed at, or when zoomed in.
  */
 export function uncrowded(
-  labels: readonly LabelledNode[],
+  labels: readonly LabeledNode[],
   positions: ReadonlyMap<string, Point>,
   zoom: number,
-): LabelledNode[] {
-  const forced = (label: LabelledNode) => label.lit || label.active;
+): LabeledNode[] {
+  const forced = (label: LabeledNode) => label.lit || label.active;
   const byPriority = [...labels].sort(
     (left, right) => Number(forced(right)) - Number(forced(left)) || right.radius - left.radius,
   );
@@ -77,14 +77,14 @@ export function uncrowded(
 /**
  * The notes' titles that fit (`uncrowded`), drawn after every dot so no dot
  * covers a title, and the lit ones last so they sit on top. Each hangs below its own dot at a fixed
- * screen size, with a halo of the ground colour so lines under it stay quiet.
+ * screen size, with a halo of the ground color so lines under it stay quiet.
  */
 export function GraphLabels({
   labels,
   positions,
   zoom,
 }: {
-  labels: readonly LabelledNode[];
+  labels: readonly LabeledNode[];
   positions: ReadonlyMap<string, Point>;
   zoom: number;
 }) {

@@ -31,7 +31,7 @@ export interface TabMemory {
  */
 export interface Workspace {
   /** Opens `view` where `openIn` says, as a new history entry unless `replace`. */
-  open(view: TabView, openIn?: OpenIn, options?: { replace?: boolean; preview?: boolean }): void;
+  open(view: TabView, openIn?: OpenIn, options?: { replace?: boolean; source?: boolean }): void;
   /** Applies a rule that rearranges (switch, close, move): the hash follows, with no new entry. */
   arrange(rule: (layout: Layout) => Layout): void;
   /** The hash changed under the app (back, forward, a typed address): the tabs follow it. */
@@ -66,8 +66,8 @@ export function createWorkspace({
   };
 
   return {
-    open(view, openIn = 'active', { replace = false, preview = ui.getState().preview } = {}) {
-      layout.apply((current) => openView(current, { view, openIn, preview, canSplit: canSplit() }));
+    open(view, openIn = 'active', { replace = false, source = ui.getState().source } = {}) {
+      layout.apply((current) => openView(current, { view, openIn, source, canSplit: canSplit() }));
       syncHash(replace);
     },
     arrange,

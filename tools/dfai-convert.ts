@@ -167,7 +167,7 @@ function aboutLine(value: FrontmatterValue | undefined): string[] {
   return [`- About: ${text.startsWith('[[') ? text : `[[${text}]]`}`];
 }
 
-/** `- Key: value` lines for the properties a reader still needs. Tags and favourite have homes of their own. */
+/** `- Key: value` lines for the properties a reader still needs. Tags and favorite have homes of their own. */
 function keptProperties(
   properties: ReadonlyMap<string, FrontmatterValue>,
   isKept: (key: string) => boolean,

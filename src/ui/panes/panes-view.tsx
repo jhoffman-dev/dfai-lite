@@ -29,7 +29,7 @@ import { useNarrow } from './narrow.ts';
 import { usePaneDrop } from './use-pane-drop.ts';
 import './panes.css';
 
-/** The note the graph centres its local view on: the active pane's, else the other pane's. */
+/** The note the graph centers its local view on: the active pane's, else the other pane's. */
 function graphFocus(layout: Layout): string | null {
   const order = [layout.activePane, layout.activePane === 0 ? 1 : 0];
   for (const index of order) {
@@ -70,11 +70,11 @@ function useTabMenu(canSplit: boolean) {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const close = useCallback(() => setMenu(null), []);
   const items = (tabId: string): MenuItem[] => {
-    const { preview } = ui.getState();
+    const { source } = ui.getState();
     const split = layout.getState().panes.length > 1;
     const arrange = workspace.arrange;
     return [
-      { label: 'Close', run: () => arrange((current) => closeTab(current, tabId, { preview })) },
+      { label: 'Close', run: () => arrange((current) => closeTab(current, tabId, { source })) },
       { label: 'Close others', run: () => arrange((current) => closeOthers(current, tabId)) },
       ...(!canSplit
         ? []
@@ -122,7 +122,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
           paneIndex={index}
           onActivate={(tabId) => arrange((current) => activate(current, tabId))}
           onClose={(tabId) =>
-            arrange((current) => closeTab(current, tabId, { preview: ui.getState().preview }))
+            arrange((current) => closeTab(current, tabId, { source: ui.getState().source }))
           }
           onMenu={(tabId, at) => setMenu({ tabId, at })}
           onMove={(move) => arrange((current) => moveTab(current, move))}

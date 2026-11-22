@@ -13,7 +13,7 @@ export type KeyHost = 'desktop' | 'browser';
 
 export type Command =
   | 'note.new'
-  | 'note.togglePreview'
+  | 'note.toggleSource'
   | 'note.rename'
   | 'palette.open'
   | 'tab.new'
@@ -32,7 +32,7 @@ export type Command =
 export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
   'note.new': 'New note',
   'palette.open': 'Find or create a note',
-  'note.togglePreview': 'Switch between reading and editing',
+  'note.toggleSource': 'Show the note as plain markdown, or back in the editor',
   'note.rename': 'Rename the note',
   'tab.new': 'New tab',
   'tab.close': 'Close the tab',
@@ -77,7 +77,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, code: 'KeyN' }, command: 'note.new' },
   { chord: { alt: true, code: 'KeyN' }, browserOnly: true, command: 'note.new' },
   { chord: { mod: true, key: 'k' }, command: 'palette.open' },
-  { chord: { mod: true, key: 'e' }, command: 'note.togglePreview' },
+  { chord: { mod: true, key: 'e' }, command: 'note.toggleSource' },
   { chord: { key: 'F2' }, command: 'note.rename' },
   { chord: { mod: true, code: 'KeyT' }, command: 'tab.new' },
   { chord: { alt: true, code: 'KeyT' }, browserOnly: true, command: 'tab.new' },

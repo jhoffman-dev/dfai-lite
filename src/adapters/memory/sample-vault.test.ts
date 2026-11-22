@@ -2,7 +2,7 @@ import { openVault, VaultSession } from '../../application/index.ts';
 import { sampleVaultFiles } from './index.ts';
 
 describe('the sample vault', () => {
-  it('opens with its notes, a favourite, links that resolve and one that does not yet', async () => {
+  it('opens with its notes, a favorite, links that resolve and one that does not yet', async () => {
     const session = new VaultSession();
     const opened = await openVault({ files: sampleVaultFiles(), session });
     expect(opened).toEqual({ noteCount: 12, favoritesProblem: null });

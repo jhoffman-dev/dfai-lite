@@ -28,7 +28,7 @@ const SHED = 'Projects/Garden shed.md';
 const note = (path: string): TabView => ({ kind: 'note', path });
 
 function open(layout: Layout, path: string, openIn: OpenIn = 'active', canSplit = true): Layout {
-  return openView(layout, { view: note(path), openIn, preview: false, canSplit });
+  return openView(layout, { view: note(path), openIn, source: false, canSplit });
 }
 
 /** What each pane shows, by note title-ish path, with the active tab marked `*`. */
@@ -106,7 +106,7 @@ describe('opening to the side', () => {
 });
 
 describe('closing tabs', () => {
-  it('focuses the neighbour to the right, else the left', () => {
+  it('focuses the neighbor to the right, else the left', () => {
     const three = open(open(open(initialLayout(), PLAN), MARA, 'new-tab'), SHED, 'new-tab');
     const middle = activate(three, three.panes[0]?.tabs[1]?.id ?? '');
     expect(shape(closeTab(middle, middle.panes[0]?.activeTab ?? ''))).toEqual([[PLAN, `*${SHED}`]]);
@@ -215,7 +215,7 @@ describe('split and focus', () => {
     const blank = openView(split, {
       view: { kind: 'home' },
       openIn: 'active',
-      preview: false,
+      source: false,
       canSplit: true,
     });
     expect(shape(toggleSplit(activate(blank, blank.panes[0]?.activeTab ?? '')))).toEqual([

@@ -1,61 +1,88 @@
-import { EditorSelection, EditorState } from '@codemirror/state';
-import { createNoteMirror, editBetween, type MirrorPeer } from './note-mirror.ts';
+import { createNoteMirror, type MirrorPeer } from './note-mirror.ts';
 
-/** An editor stand-in whose edits are whole texts. */
-function peer(initial: string): MirrorPeer<string> & { text: string } {
-  const editor = {
+/** A view stand-in whose edits and documents are whole texts. */
+function peer(initial: string): MirrorPeer<string, string> & { text: string; adopted: string[] } {
+  const view = {
     text: initial,
-    read: () => editor.text,
+    adopted: [] as string[],
+    read: () => view.text,
     apply: (changes: string) => {
-      editor.text = changes;
+      view.text = changes;
     },
     adopt: (text: string) => {
-      editor.text = text;
+      view.text = text;
+      view.adopted.push(text);
     },
   };
-  return editor;
+  return view;
 }
 
-describe('the mirror between editors on one note', () => {
-  it('hands a typed edit to the other editors, not back to the one typing', () => {
-    const mirror = createNoteMirror<string>();
+describe('the mirror between views on one note', () => {
+  it('hands a typed edit to the other views, not back to the one typing', () => {
+    const mirror = createNoteMirror<string, string>();
     const left = peer('Parallel run.');
     const right = peer('Parallel run.');
     const typing = mirror.join(left);
     mirror.join(right);
     left.apply = () => {
-      throw new Error('An editor must not be handed its own edit.');
+      throw new Error('A view must not be handed its own edit.');
     };
-    typing.broadcast('Parallel run, twice.');
+    typing.broadcast(() => 'Parallel run, twice.');
     expect(right.text).toBe('Parallel run, twice.');
   });
 
-  it('tells the first editor it is alone, and a second one that it is not', () => {
-    const mirror = createNoteMirror<string>();
+  it('does not read a typed edit when no other view is there to take it', () => {
+    const mirror = createNoteMirror<string, string>();
+    const alone = mirror.join(peer('Parallel run.'));
+    alone.broadcast(() => {
+      throw new Error('A lone view’s edit must not be read.');
+    });
+  });
+
+  it('hands text typed as plain markdown to the other views as their new text', () => {
+    const mirror = createNoteMirror<string, string>();
+    const source = peer('# Plan');
+    const editor = peer('# Plan');
+    const typing = mirror.join(source);
+    mirror.join(editor);
+    typing.broadcastText('# Plan\n\nCut over.');
+    expect(editor.adopted).toEqual(['# Plan\n\nCut over.']);
+    expect(source.adopted).toEqual([]);
+  });
+
+  it('tells the first view it is alone, and a second one that it is not', () => {
+    const mirror = createNoteMirror<string, string>();
     expect(mirror.join(peer('a')).alone).toBe(true);
     expect(mirror.join(peer('a')).alone).toBe(false);
   });
 
-  it('starts a new editor from a live one’s text, unsaved or not', () => {
-    const mirror = createNoteMirror<string>();
-    expect(mirror.liveText()).toBeNull();
+  it('starts a new view from a live one’s document, unsaved or not', () => {
+    const mirror = createNoteMirror<string, string>();
+    expect(mirror.liveDoc()).toBeNull();
     mirror.join(peer('Typed, not saved yet.'));
-    expect(mirror.liveText()).toBe('Typed, not saved yet.');
+    expect(mirror.liveDoc()).toBe('Typed, not saved yet.');
   });
 
-  it('keeps the last editor’s text until its save lands, then defers to the vault', () => {
-    const mirror = createNoteMirror<string>();
+  it('keeps the last view’s document until its save lands, then defers to the vault', () => {
+    const mirror = createNoteMirror<string, string>();
     const member = mirror.join(peer('Last keystrokes.'));
     member.leave();
-    expect(mirror.liveText()).toBe('Last keystrokes.');
+    expect(mirror.liveDoc()).toBe('Last keystrokes.');
     mirror.settled();
-    expect(mirror.liveText()).toBeNull();
+    expect(mirror.liveDoc()).toBeNull();
+  });
+
+  it('does not let a save landing drop the document of a view still open', () => {
+    const mirror = createNoteMirror<string, string>();
+    mirror.join(peer('Still typing.'));
+    mirror.settled();
+    expect(mirror.liveDoc()).toBe('Still typing.');
   });
 });
 
 describe('a note’s new text from disk', () => {
-  it('reaches every editor on the note that does not have it yet', () => {
-    const mirror = createNoteMirror<string>();
+  it('reaches every view on the note', () => {
+    const mirror = createNoteMirror<string, string>();
     const left = peer('Parallel run.');
     const right = peer('Parallel run.');
     mirror.join(left);
@@ -67,24 +94,11 @@ describe('a note’s new text from disk', () => {
     ]);
   });
 
-  it('is found as the one run that differs, so the ends are left alone', () => {
-    expect(editBetween('Parallel run.', 'Parallel dry run.')).toEqual({
-      from: 9,
-      to: 9,
-      insert: 'dry ',
-    });
-    expect(editBetween('abcabc', 'abc')).toEqual({ from: 3, to: 6, insert: '' });
-    expect(editBetween('same', 'same')).toEqual({ from: 4, to: 4, insert: '' });
-    expect(editBetween('', 'new')).toEqual({ from: 0, to: 0, insert: 'new' });
-  });
-
-  it('keeps an editor’s caret on the words it was at, before or after the change', () => {
-    const before = '# Plan\n\nParallel run.\n\nThen cut over.';
-    const after = '# Plan\n\nParallel run for two cycles.\n\nThen cut over.';
-    const caret = before.indexOf('cut');
-    const state = EditorState.create({ doc: before, selection: EditorSelection.cursor(caret) });
-    const next = state.update({ changes: editBetween(before, after) }).state;
-    expect(next.doc.toString()).toBe(after);
-    expect(next.selection.main.head).toBe(after.indexOf('cut'));
+  it('reaches no view that has left', () => {
+    const mirror = createNoteMirror<string, string>();
+    const gone = peer('Parallel run.');
+    mirror.join(gone).leave();
+    mirror.adopt('Parallel run, edited by Claude.');
+    expect(gone.adopted).toEqual([]);
   });
 });

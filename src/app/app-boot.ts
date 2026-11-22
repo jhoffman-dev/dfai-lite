@@ -1,12 +1,14 @@
 import {
   openVault,
   VaultSession,
+  type MarkdownPort,
   type SearchEngine,
   type VaultFiles,
 } from '../application/index.ts';
 import { createMiniSearchEngine } from '../adapters/search/index.ts';
 import { browserLayoutStorage, type LayoutStorage } from '../ui/panes/layout-storage.ts';
 import type { AppServices, PendingEdits } from '../ui/services.ts';
+import { createMarkdownLoader } from './markdown-loader.ts';
 import { feedSearch } from './search-feed.ts';
 
 /** What the window shows first: the app on a vault, or the first-start question. */
@@ -47,6 +49,14 @@ export function deviceLayoutStorage(): LayoutStorage {
 }
 
 /** The open editors' unsaved typing, written all at once before a sync commits. */
+/**
+ * The markdown reader and writer, which load with the editor after the
+ * first paint, not at start: fetched once, and the same port every time.
+ */
+export const loadMarkdown: () => Promise<MarkdownPort> = createMarkdownLoader(() =>
+  import('../adapters/markdown/index.ts').then(({ remarkMarkdown }) => remarkMarkdown),
+);
+
 export function createPendingEdits(): PendingEdits & { flushAll(): Promise<void> } {
   const flushes = new Set<() => Promise<void>>();
   return {

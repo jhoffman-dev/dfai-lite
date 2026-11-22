@@ -107,7 +107,7 @@
   min-height: 60vh;
   margin: 0;
   font-family: var(--font-ui);
-  font-size: var(--text-note);
+  font-size: var(--text-body-lg);
   line-height: var(--leading-body);
   white-space: pre-wrap;
   overflow-wrap: anywhere;

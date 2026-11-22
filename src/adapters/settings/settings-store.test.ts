@@ -31,7 +31,7 @@ const SAVED: Settings = {
     theme: 'dark',
     expandedFolders: ['Projects'],
     lastOpenPath: 'Projects/Plan.md',
-    preview: true,
+    source: true,
   },
 };
 
@@ -59,7 +59,7 @@ describe('the local settings store', () => {
       JSON.stringify({
         vaultPath: 7,
         captureHotkey: 'Control+Alt+N',
-        ui: { theme: 'neon', expandedFolders: ['A', 3], lastOpenPath: 'A.md', preview: 'yes' },
+        ui: { theme: 'neon', expandedFolders: ['A', 3], lastOpenPath: 'A.md', source: 'yes' },
       }),
     );
     expect(createLocalSettingsStore(storage).load()).toEqual({

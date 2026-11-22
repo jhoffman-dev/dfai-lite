@@ -14,7 +14,7 @@ import {
   type VaultDeps,
 } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
-import { currentTab, setPreview, type OpenIn } from '../panes/layout.ts';
+import { currentTab, setSource, type OpenIn } from '../panes/layout.ts';
 import type { LayoutStore } from '../panes/layout-store.ts';
 import type { Workspace } from '../panes/workspace.ts';
 import type { UiStore } from './ui-store.ts';
@@ -47,7 +47,7 @@ export interface NoteActions {
   startRename(path: VaultPath): void;
   updatePrefs(patch: Partial<UiPrefs>): void;
   /** The active tab's rendered view or editor, remembered on this device for the next tab. */
-  togglePreview(): void;
+  toggleSource(): void;
   /** Shows `error`'s message as a notice: for a promise nobody else awaits. */
   report(error: unknown): void;
 }
@@ -81,7 +81,7 @@ export function createNoteActions({
     async newNote({ folder, replace = false } = {}) {
       const path = await createQuickNote(deps, folder === undefined ? {} : { folder });
       ui.setState({ pendingFocus: { path, target: 'editor' } });
-      workspace.open({ kind: 'note', path }, 'new-tab', { replace, preview: false });
+      workspace.open({ kind: 'note', path }, 'new-tab', { replace, source: false });
     },
     async followLink(target, openIn) {
       const result = await createNoteFromLink(deps, { target });
@@ -115,13 +115,13 @@ export function createNoteActions({
       workspace.open({ kind: 'note', path });
     },
     updatePrefs,
-    togglePreview() {
+    toggleSource() {
       const tab = currentTab(layout.getState());
       if (tab.view.kind !== 'note') return;
-      const preview = !tab.preview;
-      layout.apply((current) => setPreview(current, tab.id, preview));
-      ui.setState({ preview });
-      updatePrefs({ preview });
+      const source = !tab.source;
+      layout.apply((current) => setSource(current, tab.id, source));
+      ui.setState({ source });
+      updatePrefs({ source });
     },
     report,
   };

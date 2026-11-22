@@ -27,7 +27,7 @@ export type RenameResult =
 /**
  * Renames or moves a note to `to` (a full path, `.md` included), rewriting
  * every link the move would break, in every note, and following it in the
- * favourites. Refused when the new name breaks the file-name rules or
+ * favorites. Refused when the new name breaks the file-name rules or
  * another file already has the path, case aside.
  */
 export async function renameNote(

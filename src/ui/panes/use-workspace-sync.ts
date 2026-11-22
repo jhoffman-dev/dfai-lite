@@ -5,7 +5,7 @@ import type { Workspace } from './workspace.ts';
 import { openInFor } from './open-in.ts';
 
 /**
- * Every in-app link (`href="#/…"`: the tree, favourites, backlinks, tags,
+ * Every in-app link (`href="#/…"`: the tree, favorites, backlinks, tags,
  * the sidebar's pages) opens through the workspace, so a ⌘/Ctrl-click or
  * middle click opens a new tab and ⌥-click the other pane, never a browser tab.
  */

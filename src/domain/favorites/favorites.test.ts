@@ -7,7 +7,7 @@ import {
   toggleFavorite,
 } from './index.ts';
 
-describe('favourites', () => {
+describe('favorites', () => {
   it('reads a list of paths, dropping repeats and non-strings', () => {
     expect(parseFavorites('["A.md", 3, "B.md", "A.md"]')).toEqual({
       kind: 'ok',
