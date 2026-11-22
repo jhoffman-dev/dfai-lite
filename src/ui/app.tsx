@@ -1,3 +1,4 @@
+import './styles/index.css';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { createAppContext } from './app-context.ts';
 import { preloadEditor } from './note/note-pane.tsx';
@@ -13,7 +14,6 @@ import { useShortcuts } from './shell/use-shortcuts.ts';
 import { useStartRoute } from './shell/use-start-route.ts';
 import { Sidebar } from './sidebar/sidebar.tsx';
 import { useUi } from './state/ui-store.ts';
-import './theme.css';
 import './app.css';
 import './shell/dialog.css';
 
@@ -24,9 +24,9 @@ function Notice() {
   const notice = useUi((state) => state.notice);
   if (notice === null) return null;
   return (
-    <div className="app-notice" role="status">
-      <span>{notice}</span>
-      <button type="button" className="quiet-button" onClick={() => ui.setState({ notice: null })}>
+    <div className="toast" role="status">
+      <span className="toast__message">{notice}</span>
+      <button type="button" className="toast__action" onClick={() => ui.setState({ notice: null })}>
         Dismiss
       </button>
     </div>
@@ -60,7 +60,7 @@ function Shell() {
         <div className="app-topbar">
           <button
             type="button"
-            className="quiet-button"
+            className="icon-button"
             aria-label="Open the sidebar"
             onClick={() => ui.setState({ drawerOpen: true })}
           >
@@ -69,7 +69,7 @@ function Shell() {
           <span className="grow" />
           <button
             type="button"
-            className="quiet-button"
+            className="icon-button"
             aria-label="Search"
             onClick={() => ui.setState({ paletteOpen: true })}
           >
@@ -77,11 +77,13 @@ function Shell() {
           </button>
         </div>
         {services.desktop !== null ? null : (
-          <div className="app-banner" role="note">
-            <span>Sample vault — the Mac app opens your own notes folder.</span>
+          <div className="notice-bar" role="note">
+            <span className="notice-bar__text">
+              Sample vault — the Mac app opens your own notes folder.
+            </span>
             <button
               type="button"
-              className="quiet-button"
+              className="btn btn--secondary"
               onClick={() => ui.setState({ settingsOpen: true })}
             >
               Settings

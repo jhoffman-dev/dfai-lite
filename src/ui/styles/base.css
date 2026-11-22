@@ -1,0 +1,89 @@
+/* The page itself, and the few shared pieces every feature draws with: the
+   icon button, an icon, the visually hidden label. The body's type and ground
+   are tokens.css's (DFAI's body rule); the pieces are DFAI's shell.css. */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* A Mac app, not a page: the window never rubber-bands, and dragging across
+   the chrome selects nothing. WebKit before macOS 26 knows only the prefix. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Where the words are the content, they select as text. */
+input,
+textarea,
+[contenteditable='true'],
+.note-title,
+.mentions {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+button,
+input,
+textarea,
+select {
+  color: inherit;
+  font: inherit;
+}
+
+.icon-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  transition: background 120ms ease;
+  width: 28px;
+}
+
+.icon-button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.icon-button:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.icon {
+  display: block;
+  flex: none;
+}
+
+/* A star that is on, as DFAI fills `.star--on .star__glyph`. */
+.icon--filled path {
+  fill: currentColor;
+}
+
+.visually-hidden {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}

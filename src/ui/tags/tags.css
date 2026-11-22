@@ -1,133 +1,180 @@
-.tags-page,
-.graph-page {
-  width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-7);
-  box-sizing: border-box;
-}
+/* The tags page, DFAI's (its editor.css, UI v2 slice 13g): the tree beside
+   the chosen tag's notes, the two divided by a hairline, each a list of 34px
+   rows at 13/500, the count in ink-3 at the row's end, the chosen tag on the
+   active fill. No card, no shadow. */
 
-/* The graph takes the main pane's full height, so the page is a column the graph can fill. */
-.graph-page {
+.tags-page {
   display: flex;
-  flex-direction: column;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
 }
 
-.page-title {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-title);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+.tags {
+  container: tags / inline-size;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  /* The page's inset on the left, as DFAI's tags page sits in its panel. */
+  padding-left: 32px;
 }
 
-.tags-layout {
+.tags__columns {
   display: grid;
-  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
-  gap: var(--space-6);
-  align-items: start;
+  flex: 1;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
 }
 
-.tag-tree {
+.tags__index,
+.tags__detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.tags__index {
+  border-right: 1px solid var(--line);
+}
+
+.tags__tree,
+.tags__children,
+.tags__notes {
+  display: flex;
+  flex-direction: column;
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
-.tag-tree .tag-tree {
-  margin: 4px 0 0 var(--space-4);
-}
-
-.tag-chip {
-  display: inline-flex;
+.tags__row,
+.tags__note {
   align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border-radius: var(--radius-chip);
-  background: var(--tag-bg);
-  color: var(--tag-ink);
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  font-size: var(--text-emphasis);
   font-weight: 500;
+  gap: 10px;
+  height: 34px;
+  min-width: 0;
+  padding: 0 12px;
   text-decoration: none;
+  width: 100%;
 }
 
-.tag-chip.is-selected {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
+.tags__row:hover,
+.tags__note:hover {
+  background: var(--hover);
 }
 
-.tag-count {
+.tags__row:focus-visible,
+.tags__note:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.tags__item--on > .tags__row,
+.tags__item--on > .tags__row:hover {
+  background: var(--selected);
+  color: var(--ink);
+}
+
+.tags__icon {
+  color: var(--ink-3);
+  display: flex;
+  flex-shrink: 0;
+}
+
+.tags__item--on > .tags__row .tags__icon {
+  color: var(--active-icon);
+}
+
+/* A tag's name on the pastel it wears in a note. */
+.tags__pill {
+  background: var(--pill);
+  border-radius: var(--radius-chip);
+  color: var(--pill-ink);
+  padding: 1px 6px;
+}
+
+.tags__name,
+.tags__note-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags__count {
+  color: var(--ink-3);
+  flex: none;
+  font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+/* On the active fill ink-3 falls short of AA, so the chosen tag's count is lifted to ink-2. */
+.tags__item--on > .tags__row .tags__count {
+  color: var(--ink-2);
+}
+
+.tags__hint {
   color: var(--ink-3);
   font-size: var(--text-meta);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
-
-.tag-chip .tag-count {
-  color: inherit;
-  opacity: 0.75;
-}
-
-.tags-empty {
-  color: var(--ink-3);
-}
-
-.tags-subheading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-3);
-  font-size: 15px;
-}
-
-.tagged-list {
-  list-style: none;
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
+  padding: var(--space-2) 12px;
 }
 
-.tagged-list li {
-  padding: 8px 0;
+/* The chosen tag heads its notes at 15/600 over a hairline, its uses beside it in ink-3. */
+.tags__detail-head {
+  align-items: center;
   border-bottom: 1px solid var(--line);
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tagged-list a {
-  display: flex;
   gap: var(--space-2);
-  align-items: baseline;
+  min-height: 44px;
+  padding: var(--space-2) 12px;
+}
+
+.tags__title {
   color: var(--ink);
-  text-decoration: none;
-}
-
-.tagged-list a:hover .tagged-title {
-  text-decoration: underline;
-}
-
-.tagged-title {
+  font-size: var(--text-section);
   font-weight: 600;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.tagged-folder,
-.tagged-summary {
+.tags__uses {
   color: var(--ink-3);
+  flex: 1;
   font-size: var(--text-meta);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-@media (max-width: 720px) {
-  .tags-page,
-  .graph-page {
-    padding: var(--space-4);
+@container tags (max-width: 720px) {
+  .tags__columns {
+    display: flex;
+    flex-direction: column;
   }
 
-  .tags-layout {
-    grid-template-columns: minmax(0, 1fr);
+  /* The tree takes its own height, up to half the pane; the notes the rest. */
+  .tags__index {
+    border-bottom: 1px solid var(--line);
+    border-right: 0;
+    flex: 0 1 auto;
+    max-height: 50%;
+  }
+
+  .tags__detail {
+    flex: 1 1 0;
   }
 }

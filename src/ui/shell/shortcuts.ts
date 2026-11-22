@@ -26,6 +26,7 @@ export type Command =
   | 'pane.toggleSplit'
   | 'pane.focusLeft'
   | 'pane.focusRight'
+  | 'view.toggleTheme'
   | 'help.shortcuts';
 
 /** What each command does, in words: the keyboard shortcuts list reads these. */
@@ -44,6 +45,7 @@ export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
   'pane.toggleSplit': 'Split right, or unsplit an empty pane',
   'pane.focusLeft': 'Go to the left pane',
   'pane.focusRight': 'Go to the right pane',
+  'view.toggleTheme': 'Switch between the light and dark theme',
   'help.shortcuts': 'Keyboard shortcuts',
 };
 
@@ -96,6 +98,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, code: 'Backslash' }, command: 'pane.toggleSplit' },
   { chord: { mod: true, alt: true, code: 'ArrowLeft' }, command: 'pane.focusLeft' },
   { chord: { mod: true, alt: true, code: 'ArrowRight' }, command: 'pane.focusRight' },
+  { chord: { mod: true, shift: true, code: 'KeyL' }, command: 'view.toggleTheme' },
   { chord: { mod: true, code: 'Slash' }, command: 'help.shortcuts' },
 ];
 

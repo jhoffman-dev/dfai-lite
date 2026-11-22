@@ -500,13 +500,14 @@
   position: relative;
 }
 
-/* Bullets sit with air between them, not packed like a table (DFAI's page body). */
-.editor li + li {
+/* Bullets sit with air between them, not packed like a table: DFAI's page
+   body (its mentions.css), at its specificity, so a task list indents too. */
+.page__body .editor li + li {
   margin-top: 8px;
 }
 
-.editor ul,
-.editor ol {
+.page__body .editor ul,
+.page__body .editor ol {
   padding-left: 22px;
 }
 
@@ -552,46 +553,4 @@
   resize: none;
   width: 100%;
   field-sizing: content;
-}
-
-/* A tag's pastel, by the hue its name hashes to (tagHue): the same one wherever it is shown. */
-
-.editor .tag[data-hue='brown'] {
-  --pill: var(--hue-brown-bg);
-  --pill-ink: var(--hue-brown-ink);
-}
-
-.editor .tag[data-hue='orange'] {
-  --pill: var(--hue-orange-bg);
-  --pill-ink: var(--hue-orange-ink);
-}
-
-.editor .tag[data-hue='yellow'] {
-  --pill: var(--hue-yellow-bg);
-  --pill-ink: var(--hue-yellow-ink);
-}
-
-.editor .tag[data-hue='green'] {
-  --pill: var(--hue-green-bg);
-  --pill-ink: var(--hue-green-ink);
-}
-
-.editor .tag[data-hue='blue'] {
-  --pill: var(--hue-blue-bg);
-  --pill-ink: var(--hue-blue-ink);
-}
-
-.editor .tag[data-hue='purple'] {
-  --pill: var(--hue-purple-bg);
-  --pill-ink: var(--hue-purple-ink);
-}
-
-.editor .tag[data-hue='pink'] {
-  --pill: var(--hue-pink-bg);
-  --pill-ink: var(--hue-pink-ink);
-}
-
-.editor .tag[data-hue='red'] {
-  --pill: var(--hue-red-bg);
-  --pill-ink: var(--hue-red-ink);
 }

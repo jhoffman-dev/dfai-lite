@@ -1,33 +1,47 @@
 import { useMemo } from 'react';
-import { folderOf, noteTitle } from '../../application/index.ts';
+import { folderOf, noteTitle, tagHue } from '../../application/index.ts';
 import type { TagTreeNode } from '../../domain/tags/index.ts';
 import { useApp } from '../services.ts';
+import { Icon } from '../shell/icons.tsx';
+import { PageBar } from '../shell/page-bar.tsx';
 import { useVault } from '../state/vault-store.ts';
 import './tags.css';
 
 const tagHref = (key: string) => `#/tags/${encodeURIComponent(key)}`;
 
+/** One level of the tag tree, as DFAI's tags page draws it: 34px rows, each tag on its pastel. */
 function TagBranch({
   nodes,
   selected,
+  depth = 0,
 }: {
   nodes: readonly TagTreeNode[];
   selected: string | null;
+  depth?: number;
 }) {
   return (
-    <ul className="tag-tree">
+    <ul className={depth === 0 ? 'tags__tree' : 'tags__children'}>
       {nodes.map((node) => (
-        <li key={node.key}>
+        <li key={node.key} className={node.key === selected ? 'tags__item--on' : undefined}>
           <a
-            className={`tag-chip${node.key === selected ? ' is-selected' : ''}`}
+            className="tags__row"
             href={tagHref(node.key)}
             aria-current={node.key === selected ? 'page' : undefined}
+            // A nested tag steps in under its parent.
+            style={{ paddingLeft: 12 + depth * 18 }}
           >
-            <span>#{node.label}</span>
-            <span className="tag-count">{node.total}</span>
+            <span className="tags__icon">
+              <Icon name="tag" size={15} />
+            </span>
+            <span className="tags__name">
+              <span className="tags__pill" data-hue={tagHue(node.key)}>
+                {node.label}
+              </span>
+            </span>
+            {node.total > 0 ? <span className="tags__count">{node.total}</span> : null}
           </a>
           {node.children.length > 0 ? (
-            <TagBranch nodes={node.children} selected={selected} />
+            <TagBranch nodes={node.children} selected={selected} depth={depth + 1} />
           ) : null}
         </li>
       ))}
@@ -45,19 +59,27 @@ function TaggedNotes({ tag }: { tag: string }) {
     [services, tag, version],
   );
   return (
-    <section className="tagged-notes" aria-labelledby="tagged-heading">
-      <h2 id="tagged-heading" className="tags-subheading">
-        <span className="tag-pill">#{tag}</span>
-        <span className="tag-count">{notes.length === 1 ? '1 note' : `${notes.length} notes`}</span>
-      </h2>
-      <ul className="tagged-list" aria-label={`Notes tagged ${tag}`}>
+    <section className="tags__detail" aria-labelledby="tagged-heading">
+      <header className="tags__detail-head">
+        <h2 id="tagged-heading" className="tags__title">
+          <span className="tags__pill" data-hue={tagHue(tag)}>
+            {tag}
+          </span>
+        </h2>
+        <span className="tags__uses">
+          {notes.length === 1 ? '1 note' : `${notes.length} notes`}
+        </span>
+      </header>
+      <ul className="tags__notes" aria-label={`Notes tagged ${tag}`}>
         {notes.map((path) => (
           <li key={path}>
-            <a href={`#/note/${encodeURIComponent(path)}`}>
-              <span className="tagged-title">{noteTitle(path)}</span>
-              <span className="tagged-folder">{folderOf(path)}</span>
+            <a className="tags__note" href={`#/note/${encodeURIComponent(path)}`}>
+              <span className="tags__icon">
+                <Icon name="doc" size={15} />
+              </span>
+              <span className="tags__note-title">{noteTitle(path)}</span>
+              <span className="tags__count">{folderOf(path)}</span>
             </a>
-            <span className="tagged-summary">{services.session.index.summary(path)}</span>
           </li>
         ))}
       </ul>
@@ -77,16 +99,24 @@ export function TagsPage({ tag }: { tag: string | null }) {
 
   return (
     <div className="tags-page">
-      <h1 className="page-title">Tags</h1>
-      <div className="tags-layout">
-        <nav aria-label="Tags" className="tags-nav">
-          {tree.length === 0 ? (
-            <p className="tags-empty">No tags yet. Type #idea in a note to make one.</p>
+      <PageBar icon="tag" place="Tags" name={tag === null ? 'All tags' : `#${tag}`} />
+      <div className="tags">
+        <div className="tags__columns">
+          <nav aria-label="Tags" className="tags__index">
+            {tree.length === 0 ? (
+              <p className="tags__hint">No tags yet. Type #idea in a note to make one.</p>
+            ) : (
+              <TagBranch nodes={tree} selected={tag} />
+            )}
+          </nav>
+          {tag === null ? (
+            <div className="tags__detail">
+              <p className="tags__hint">Choose a tag to see the notes that use it.</p>
+            </div>
           ) : (
-            <TagBranch nodes={tree} selected={tag} />
+            <TaggedNotes tag={tag} />
           )}
-        </nav>
-        {tag === null ? null : <TaggedNotes tag={tag} />}
+        </div>
       </div>
     </div>
   );

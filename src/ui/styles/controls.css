@@ -1,0 +1,527 @@
+/* Controls: buttons, mode switches, fields, switches, hues and keys.
+   Lifted from DFAI's primitives.css, rule for rule. Lite's older names for
+   the same controls (.quiet-button, .primary-button, .text-input) are drawn
+   by these rules at the foot of the file, so a control looks the same
+   whichever name it carries. */
+
+/* A button is one of five kinds, each a fill, an ink and a line from the
+   palette: primary (the one thing to do, pastel blue), positive, destructive,
+   secondary (white with a hairline) and ghost (bare). Every kind carries a
+   border, transparent where it has none, so they all measure the same. */
+.btn,
+.quiet-button,
+.primary-button {
+  --btn-bg: transparent;
+  --btn-ink: var(--ink);
+  --btn-line: transparent;
+  align-items: center;
+  appearance: none;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-line);
+  border-radius: var(--radius-button);
+  color: var(--btn-ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: var(--text-column);
+  font-weight: 500;
+  gap: 6px;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 10px;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+  white-space: nowrap;
+}
+
+/* Mixing a little ink into the fill darkens in light and lightens in dark,
+   and tints a bare button, so one rule serves every kind. */
+.btn:hover:not(:disabled, [aria-disabled='true']),
+.primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--btn-bg) 88%, var(--btn-ink));
+}
+
+.btn:focus-visible,
+.quiet-button:focus-visible,
+.primary-button:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.btn:disabled,
+.quiet-button:disabled,
+.primary-button:disabled,
+.btn[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Inside a row or a band, where 28px would crowd the line. 22px is what a
+   standard Inbox row is placed by (inbox-rows.tsx ROW_HEIGHT, pinned in
+   e2e/row-estimates.spec.ts), so this one does not move on its own. */
+.btn--sm {
+  font-size: var(--text-small);
+  height: 22px;
+  padding: 0 8px;
+}
+
+.btn--primary,
+.primary-button {
+  --btn-bg: var(--btn-primary-bg);
+  --btn-ink: var(--btn-primary-ink);
+  --btn-line: var(--btn-primary-line);
+}
+
+.btn--positive {
+  --btn-bg: var(--btn-positive-bg);
+  --btn-ink: var(--btn-positive-ink);
+  --btn-line: var(--btn-positive-line);
+}
+
+.btn--destructive {
+  --btn-bg: var(--btn-destructive-bg);
+  --btn-ink: var(--btn-destructive-ink);
+  --btn-line: var(--btn-destructive-line);
+}
+
+.btn--secondary {
+  --btn-bg: var(--btn-secondary-bg);
+  --btn-ink: var(--btn-secondary-ink);
+  --btn-line: var(--btn-secondary-line);
+}
+
+.btn--ghost,
+.quiet-button {
+  --btn-bg: var(--btn-ghost-bg);
+  --btn-ink: var(--btn-ghost-ink);
+  --btn-line: var(--btn-ghost-line);
+  padding: 0 8px;
+}
+
+.btn--ghost:hover:not(:disabled, [aria-disabled='true']),
+.quiet-button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+/* A notice bar (FlowInbox.dc.html): one line on the well under a hairline,
+   40px tall — its icon in ink-3, its words in ink, its actions at the right
+   end, the first a secondary button and the rest ghost. An offer the Inbox
+
+/* Mode switches: a well as the track, the chosen option lifted onto the
+   surface with a hairline. */
+.segmented {
+  background: var(--track);
+  border-radius: var(--radius-control);
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+}
+
+.segmented__option {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-chip);
+  color: var(--ink-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-column);
+  font-weight: 500;
+  height: 24px;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.segmented__option:hover:not(.segmented__option--on) {
+  color: var(--ink);
+}
+
+.segmented__option--on {
+  background: var(--raised);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+}
+
+/* A preference rather than a mode: the same track, square options. */
+.segmented--quiet .segmented__option {
+  align-items: center;
+  color: var(--ink-3);
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  width: 28px;
+}
+
+.segmented--quiet .segmented__option--on {
+  color: var(--ink);
+}
+
+.segmented__option:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* A field is a 28px box on the surface with a hairline, and the focus ring
+   when it is being written in. */
+.field,
+.text-input {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-column);
+  height: 28px;
+  padding: 0 8px;
+  width: 100%;
+}
+
+/* Several lines of text: the box grows with them. */
+.field--block {
+  height: auto;
+  padding: 6px 8px;
+}
+
+.field::placeholder,
+.text-input::placeholder {
+  color: var(--ink-3);
+}
+
+.field:focus,
+.text-input:focus {
+  border-color: var(--focus);
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.field--invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+/* The chevron is drawn by the wrapper, since a styled `select` cannot draw
+   its own on WebKit without losing the native menu behavior. */
+.select {
+  display: inline-block;
+  position: relative;
+}
+
+.select__control {
+  padding-right: 24px;
+}
+
+.select::after {
+  color: var(--ink-3);
+  content: '▾';
+  font-size: var(--text-small);
+  pointer-events: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* A switch: a track with the knob on it. State is carried by the knob's
+   position as well as the track's color, so it still reads without color;
+   the inset ring gives the track an edge on any surface. */
+.toggle {
+  align-items: center;
+  appearance: none;
+  background: var(--track);
+  border: 0;
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--grid);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 30px;
+  padding: 3px;
+  transition: background 140ms ease;
+  width: 52px;
+}
+
+.toggle__knob {
+  background: var(--raised);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-soft);
+  height: 24px;
+  transition: transform 140ms ease;
+  width: 24px;
+}
+
+.toggle[aria-checked='true'] {
+  background: var(--accent-solid);
+  box-shadow: var(--shadow-accent);
+}
+
+.toggle[aria-checked='true'] .toggle__knob {
+  transform: translateX(22px);
+}
+
+.toggle:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.toggle:disabled,
+.toggle[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* A chip is a 20px tinted box of 12px text, with no icon: a value's kind is
+
+
+/* A hue (#413): any pill, chip or tag that carries `data-hue` is drawn in
+   that pastel. Each reads `--pill` and `--pill-ink`; the dot, where there is
+   one (a board column's head), is the ink. Chrome never carries a hue. */
+
+[data-hue='gray'] {
+  --pill: var(--hue-gray-bg);
+  --pill-ink: var(--hue-gray-ink);
+  --pill-dot: var(--hue-gray-ink);
+}
+
+[data-hue='brown'] {
+  --pill: var(--hue-brown-bg);
+  --pill-ink: var(--hue-brown-ink);
+  --pill-dot: var(--hue-brown-ink);
+}
+
+[data-hue='orange'] {
+  --pill: var(--hue-orange-bg);
+  --pill-ink: var(--hue-orange-ink);
+  --pill-dot: var(--hue-orange-ink);
+}
+
+[data-hue='yellow'] {
+  --pill: var(--hue-yellow-bg);
+  --pill-ink: var(--hue-yellow-ink);
+  --pill-dot: var(--hue-yellow-ink);
+}
+
+[data-hue='green'] {
+  --pill: var(--hue-green-bg);
+  --pill-ink: var(--hue-green-ink);
+  --pill-dot: var(--hue-green-ink);
+}
+
+[data-hue='blue'] {
+  --pill: var(--hue-blue-bg);
+  --pill-ink: var(--hue-blue-ink);
+  --pill-dot: var(--hue-blue-ink);
+}
+
+[data-hue='purple'] {
+  --pill: var(--hue-purple-bg);
+  --pill-ink: var(--hue-purple-ink);
+  --pill-dot: var(--hue-purple-ink);
+}
+
+[data-hue='pink'] {
+  --pill: var(--hue-pink-bg);
+  --pill-ink: var(--hue-pink-ink);
+  --pill-dot: var(--hue-pink-ink);
+}
+
+[data-hue='red'] {
+  --pill: var(--hue-red-bg);
+  --pill-ink: var(--hue-red-ink);
+  --pill-dot: var(--hue-red-ink);
+}
+
+/* A key, or a chord, is plain 11.5px metadata text: ⌘K, ↵, esc. No box.
+   Lite writes its keys as <kbd>, drawn the same. */
+.key,
+kbd {
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: var(--text-header);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* A notice bar (FlowInbox.dc.html): one line on the well under a hairline,
+   40px tall — its icon in ink-3, its words in ink, its actions at the right
+   end, the first a secondary button and the rest ghost. An offer the Inbox
+   makes, the band over a template or a corrected meeting, what making a
+   line a task did: each is this one bar, never a card. 40px is its least
+   height, the one line of the mockup: a long warning wraps and the bar
+   grows with it, and a preview grows it downwards. The Inbox's anchor
+   (list-anchor.ts) measures the bar's real rect when it arrives, so a
+   wrapped bar holds the list still as well as a one-line one. */
+.notice-bar {
+  align-items: center;
+  background: var(--well);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  display: flex;
+  /* Its min-height replaces a flex item's own floor (its content), so in a
+     page's full-height column (page.css `.page--wide`) the bar would be what
+     gives way, its preview drawn over what follows (#812). */
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  font-size: var(--text-column);
+  gap: var(--space-2) 10px;
+  line-height: var(--leading-body);
+  min-height: 40px;
+  padding: 6px 20px;
+}
+
+.notice-bar__icon {
+  color: var(--ink-3);
+  flex: none;
+}
+
+.notice-bar__text {
+  flex: 1;
+  min-width: 20ch;
+}
+
+.notice-bar__text p,
+.notice-bar__text ul {
+  margin: 0;
+}
+
+/* The explanation beside the words that matter: ink-3 clears AA on the
+   well in both themes (styles.notices.test.ts holds it there). */
+.notice-bar__text small,
+.notice-bar__why {
+  color: var(--ink-3);
+  font-size: inherit;
+}
+
+.notice-bar strong {
+  font-weight: 600;
+}
+
+/* A toast is the one word that something happened, bottom right, on a dark
+   surface in both themes, with Undo and a dismiss ×. It floats over the
+   content and never takes the focus. */
+.toast {
+  align-items: center;
+  background: var(--toast-bg);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  color: var(--toast-ink);
+  display: flex;
+  font-size: var(--text-column);
+  gap: 10px;
+  /* As wide as its words up to 340px, then they wrap: a long error carries
+     its remedy, and the remedy is the point. */
+  max-width: min(340px, 100% - 24px);
+  padding: 10px 10px 10px 14px;
+  /* Bottom right, where the retired add button rested (24px in from the
+     edge, 56px tall) with 12px of air, kept as it was (UI v2, Q5). The top
+     right, where slice 2 first put it, is the pane's bars — the nav bar's
+     star and menu, and since slice 4 the view bar's "New" — and under them
+     the table's sort headers and a board's "+": a toast there sat on a
+     control for 5 s. The bottom right holds none. */
+  bottom: calc(24px + 56px + 12px);
+  position: absolute;
+  right: 12px;
+  width: max-content;
+  /* Under every layer a person works in — menus (30), palettes, dialogs and
+     the peek (40) — so a toast hides none of their controls. While the peek
+     is up the toasts are drawn inside it instead (peek.css), in its focus
+     trap, where Tab and the pointer both reach their Undo (#468). */
+  z-index: 21;
+}
+
+/* The window's toasts, one column at the toast's own corner (#320): each
+   keeps its own place in it, oldest on top, and the column lets the pointer
+   through wherever no toast is. */
+.toast-stack {
+  bottom: calc(24px + 56px + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(340px, 100% - 24px);
+  pointer-events: none;
+  position: absolute;
+  right: 12px;
+  z-index: 21;
+}
+
+.toast-stack > .toast {
+  max-width: 100%;
+  pointer-events: auto;
+  position: static;
+}
+
+/* What the toast tells of, in a muted hue that reads on its dark surface. */
+.toast__dot {
+  border-radius: 50%;
+  flex: none;
+  height: 7px;
+  width: 7px;
+}
+
+.toast__dot--change {
+  background: var(--toast-dot-change);
+}
+
+.toast__dot--warning {
+  background: var(--toast-dot-warning);
+}
+
+.toast__dot--error {
+  background: var(--toast-dot-error);
+}
+
+.toast__message {
+  flex: 1;
+  line-height: var(--leading-body);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast__action {
+  align-items: center;
+  background: var(--toast-control);
+  border: 0;
+  border-radius: 5px;
+  color: var(--toast-ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font: inherit;
+  font-size: var(--text-small);
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+}
+
+.toast__action:hover,
+.toast__action:focus-visible {
+  box-shadow: 0 0 0 1px var(--toast-ink-2);
+  outline: none;
+}
+
+.toast__dismiss {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  color: var(--toast-ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
+}
+
+.toast__dismiss:hover,
+.toast__dismiss:focus-visible {
+  box-shadow: 0 0 0 1px var(--toast-ink-2);
+  color: var(--toast-ink);
+  outline: none;
+}

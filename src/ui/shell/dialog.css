@@ -1,95 +1,101 @@
+/* A dialog, drawn as DFAI draws its overlays (overlays.css, settings.css):
+   the scrim with a light blur behind, so what is behind stays recognizable;
+   the surface with a hairline, radius 8 and the one shadow content never
+   gets. A small form (rename, move) sits in it with 16px of air; the
+   keyboard shortcuts are a fixed page's list. */
+
 .dialog-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
+  -webkit-backdrop-filter: blur(6px) saturate(1.05);
   align-items: flex-start;
+  backdrop-filter: blur(6px) saturate(1.05);
+  background: var(--scrim);
+  display: flex;
+  inset: 0;
   justify-content: center;
-  padding: 12vh 16px 16px;
-  background: rgb(0 0 0 / 0.2);
+  padding: 12vh var(--space-4) var(--space-4);
+  position: fixed;
+  z-index: 60;
 }
 
 .dialog {
-  width: min(440px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border-radius: var(--radius-popover);
-  background: var(--surface);
-  box-shadow: var(--shadow-popover);
+  max-height: 70vh;
+  overflow: hidden;
+  padding: var(--space-4) var(--space-5);
+  width: min(440px, 100%);
 }
 
 .dialog-title {
-  margin: 0;
-  font-size: 15px;
+  font-size: var(--text-section);
   font-weight: 600;
+  margin: 0;
 }
 
 .dialog-field {
+  color: var(--ink-2);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  color: var(--ink-2);
-  font-size: var(--text-meta);
-}
-
-.dialog-field input {
-  font-size: var(--text-body);
-  color: var(--ink);
+  font-size: var(--text-column);
+  font-weight: 500;
+  gap: 6px;
 }
 
 .dialog-hint {
-  margin: 0;
   color: var(--ink-3);
   font-size: var(--text-meta);
+  margin: 0;
 }
 
 .dialog-actions {
   display: flex;
-  justify-content: flex-end;
   gap: var(--space-2);
+  justify-content: flex-end;
 }
 
+/* ---- Keyboard shortcuts ---- */
+
 .shortcuts-dialog {
-  width: min(520px, 100%);
   max-height: 76vh;
+  width: min(560px, 100%);
 }
 
 .shortcuts-list {
   margin: 0;
   min-height: 0;
   overflow: auto;
-  font-size: var(--text-meta);
 }
 
+/* A 34px row at body size divided by line-soft, the keys as plain metadata
+   text at its end (DFAI's `.key`: no box). */
 .shortcuts-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line-soft);
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  font-size: var(--text-body);
   gap: var(--space-3);
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line);
+  justify-content: space-between;
+  min-height: 34px;
 }
 
 .shortcuts-row:last-child {
   border-bottom: 0;
 }
 
+.shortcuts-row dt {
+  color: var(--ink);
+}
+
 .shortcuts-row dd {
   display: flex;
   flex-wrap: wrap;
+  gap: var(--space-2);
   justify-content: flex-end;
-  gap: 4px;
   margin: 0;
-}
-
-.shortcuts-row kbd {
-  font-family: var(--font-ui);
-  font-size: var(--text-label);
-  color: var(--ink-2);
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  padding: 0 5px;
-  white-space: nowrap;
 }
