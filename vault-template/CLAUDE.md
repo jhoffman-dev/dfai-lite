@@ -36,7 +36,7 @@ and the index disagree, the note is right.
 | `attachments/`           | Pictures pasted or dropped into notes.                          |
 | `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.       |
 | `_index/`                | Generated. Never edit.                                          |
-| `.dfai-lite/`            | The app's own state (favorites). Leave it alone.                |
+| `.dfai-lite/`            | The app's own state (favorites, imported meetings). Leave it.   |
 | `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.       |
 
 ## How a note is written
