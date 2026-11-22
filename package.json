@@ -22,6 +22,7 @@
     "rust:check": "cd src-tauri && export PATH=\"$HOME/.cargo/bin:$PATH\" && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"
   },
   "dependencies": {
+    "@base-ui/react": "^1.8.0",
     "@tanstack/react-virtual": "^3.14.26",
     "@tauri-apps/api": "~2.12.5",
     "@tauri-apps/plugin-dialog": "~2.8.4",
