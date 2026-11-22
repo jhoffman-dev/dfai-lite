@@ -16,7 +16,13 @@ import type { Command } from './shortcuts.ts';
 export type RunCommand = (command: Command, arg?: number) => void;
 
 /** What each command in the shortcut table does, on the active pane and tab. */
-export function createCommands({ actions, ui, layout, workspace }: AppContextValue): RunCommand {
+export function createCommands({
+  actions,
+  ui,
+  layout,
+  workspace,
+  theme,
+}: AppContextValue): RunCommand {
   const activeNote = () => {
     const { view } = currentTab(layout.getState());
     return view.kind === 'note' ? view.path : null;
@@ -56,6 +62,7 @@ export function createCommands({ actions, ui, layout, workspace }: AppContextVal
       if (isNarrow()) ui.setState({ drawerOpen: !ui.getState().drawerOpen });
       else actions.setSidebar({ collapsed: !ui.getState().sidebarCollapsed });
     },
+    'view.toggleTheme': () => theme.toggle(),
     'help.shortcuts': () => ui.setState({ paletteOpen: false, shortcutsOpen: true }),
   };
   return (command, arg = 0) => run[command](arg);

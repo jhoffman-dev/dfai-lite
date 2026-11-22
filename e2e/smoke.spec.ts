@@ -42,11 +42,11 @@ test('the core loop: new note, link, favorite, search, tags, graph', async ({ pa
   await expect(hit.locator('mark')).toHaveText(/payday/i);
   await page.keyboard.press('Escape');
 
-  // The tags view lists the tag and the note carrying it.
+  // The tags view lists the tag (on its pastel, without the #) and the note carrying it.
   await sidebar.getByRole('link', { name: 'Tags' }).click();
   const tags = page.getByRole('navigation', { name: 'Tags' });
   await tags
-    .getByRole('link', { name: /#ideas/ })
+    .getByRole('link', { name: /^ideas\b/ })
     .first()
     .click();
   await expect(page.getByRole('list', { name: 'Notes tagged ideas' })).toContainText('Untitled');

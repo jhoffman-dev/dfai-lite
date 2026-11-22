@@ -28,6 +28,7 @@ export type Command =
   | 'pane.focusLeft'
   | 'pane.focusRight'
   | 'sidebar.toggle'
+  | 'view.toggleTheme'
   | 'help.shortcuts';
 
 /** What each command does, in words: the keyboard shortcuts list reads these. */
@@ -48,6 +49,7 @@ export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
   'pane.focusLeft': 'Go to the left pane',
   'pane.focusRight': 'Go to the right pane',
   'sidebar.toggle': 'Show or hide the sidebar',
+  'view.toggleTheme': 'Switch between the light and dark theme',
   'help.shortcuts': 'Keyboard shortcuts',
 };
 
@@ -103,6 +105,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, alt: true, code: 'ArrowRight' }, command: 'pane.focusRight' },
   // ⌘B is the editor's bold, so the sidebar takes ⌘⌥S.
   { chord: { mod: true, alt: true, code: 'KeyS' }, command: 'sidebar.toggle' },
+  { chord: { mod: true, shift: true, code: 'KeyL' }, command: 'view.toggleTheme' },
   { chord: { mod: true, code: 'Slash' }, command: 'help.shortcuts' },
 ];
 

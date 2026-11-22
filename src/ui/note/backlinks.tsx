@@ -2,9 +2,10 @@ import { useMemo } from 'react';
 import { noteTitle } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
 import { useApp } from '../services.ts';
+import { Icon } from '../shell/icons.tsx';
 import { useVault } from '../state/vault-store.ts';
 
-/** The notes that link here: a quiet list under the note. Nothing when there are none. */
+/** The notes that link here, as DFAI's linked mentions: hairline rows under the note. Nothing when there are none. */
 export function Backlinks({ path }: { path: VaultPath }) {
   const { services } = useApp();
   const version = useVault((vault) => vault.version);
@@ -17,15 +18,18 @@ export function Backlinks({ path }: { path: VaultPath }) {
   if (sources.length === 0) return null;
 
   return (
-    <section className="backlinks" aria-labelledby="backlinks-heading">
-      <h2 id="backlinks-heading" className="backlinks-heading">
+    <section className="mentions" aria-labelledby="backlinks-heading">
+      <h2 id="backlinks-heading" className="mentions__heading">
         Linked from
       </h2>
-      <ul className="backlinks-list">
+      <ul className="mentions__list">
         {sources.map((source) => (
           <li key={source}>
-            <a href={`#/note/${encodeURIComponent(source)}`}>{noteTitle(source)}</a>
-            <span className="backlinks-summary">{services.session.index.summary(source)}</span>
+            <a className="mentions__link" href={`#/note/${encodeURIComponent(source)}`}>
+              <Icon name="doc" size={15} />
+              <span className="mentions__title">{noteTitle(source)}</span>
+              <span className="mentions__path">{services.session.index.summary(source)}</span>
+            </a>
           </li>
         ))}
       </ul>

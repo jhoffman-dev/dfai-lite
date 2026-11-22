@@ -116,7 +116,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
       onPointerDownCapture={focusThis}
       onFocusCapture={focusThis}
     >
-      <div className="pane-header">
+      <div className={`tab-strip${focused && split ? ' tab-strip--focused' : ''}`}>
         <TabBar
           pane={pane}
           paneIndex={index}
@@ -129,7 +129,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
         />
         <button
           type="button"
-          className="quiet-button pane-action"
+          className="tab-strip__add"
           aria-label="New tab"
           title={`New tab (${keyFor('tab.new', host)})`}
           onClick={() => {
@@ -142,7 +142,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
         {canSplit && !split ? (
           <button
             type="button"
-            className="quiet-button pane-action"
+            className="tab-strip__add"
             aria-label="Split right"
             title={`Split right (${keyFor('pane.toggleSplit', host)})`}
             onClick={() => arrange((current) => splitRight(current))}

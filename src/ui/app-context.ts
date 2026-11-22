@@ -7,6 +7,8 @@ import type { AppContextValue, AppServices } from './services.ts';
 import { createNoteActions } from './state/note-actions.ts';
 import { createUiStore } from './state/ui-store.ts';
 import { createVaultStore } from './state/vault-store.ts';
+import { browserThemeParts } from './theme/browser-theme.ts';
+import { createThemeController } from './theme/theme.ts';
 
 /** The stores and actions the components share, built once per app on its services. */
 export function createAppContext(services: AppServices, storage: LayoutStorage): AppContextValue {
@@ -48,5 +50,7 @@ export function createAppContext(services: AppServices, storage: LayoutStorage):
     workspace,
     openNotes: createOpenNotes(session),
     actions,
+    // Made while the app first renders, so the stored theme is on the root before it paints.
+    theme: createThemeController({ settings, ...browserThemeParts(window) }),
   };
 }

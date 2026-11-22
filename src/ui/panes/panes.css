@@ -1,11 +1,12 @@
-/* The main area: one pane, or two side by side with a divider. Each pane is a
-   column (tab bar, then its content), and the content scrolls on its own. */
-
+/* The main area, as DFAI's shell.css splits it: one pane, or two side by
+   side with a hairline between them and no inset, radius or shadow. Each
+   pane is a column (its tab strip, tabs.css, then its content), and the
+   content scrolls on its own. */
 .panes {
-  flex: 1;
-  min-height: 0;
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
 }
 
 .panes.is-split {
@@ -17,60 +18,29 @@
 }
 
 .pane {
+  background: var(--page);
   display: flex;
   flex-direction: column;
-  min-width: 0;
   min-height: 0;
-  background: var(--surface);
-}
-
-.pane-header {
-  position: relative;
-  display: flex;
-  align-items: stretch;
   min-width: 0;
-  background: var(--bg);
-}
-
-/* The bar's bottom hairline, drawn over the tabs so the selected tab can cover
-   it (tabs.css) without the bar changing height. */
-.pane-header::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  background: var(--line);
-  pointer-events: none;
-}
-
-.pane-action {
-  flex: none;
-  align-self: center;
-  margin: 0 2px;
-  padding: 4px;
-  color: var(--ink-3);
-}
-
-.pane-header .pane-action:last-child {
-  margin-right: var(--space-2);
 }
 
 .pane-body {
-  position: relative;
-  flex: 1;
-  min-height: 0;
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-height: 0;
+  position: relative;
 }
 
 /* Where a dragged tab would land: the whole pane, or the right half it would split into. */
 .pane-drop {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
   background: color-mix(in srgb, var(--focus) 8%, transparent);
   border: 2px solid color-mix(in srgb, var(--focus) 60%, transparent);
   border-radius: var(--radius-control);
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 .pane-drop.is-split {
@@ -78,34 +48,34 @@
 }
 
 .pane-panel {
-  flex: 1;
-  min-height: 0;
   display: flex;
+  flex: 1;
   flex-direction: column;
+  min-height: 0;
   overflow: auto;
 }
 
 /* A hairline to look at, with a wider band to grab: the band reaches over
    both panes' edges and lights up while pointed at, dragged or focused. */
 .pane-divider {
-  position: relative;
-  z-index: 2;
-  cursor: col-resize;
-  touch-action: none;
   background: var(--line);
+  cursor: col-resize;
   outline: none;
+  position: relative;
+  touch-action: none;
+  z-index: 2;
 }
 
 .pane-divider::before,
 .pane-divider::after {
   content: '';
-  position: absolute;
   inset: 0 -4px;
+  position: absolute;
 }
 
 .pane-divider::after {
-  inset: 0 -1px;
   background: transparent;
+  inset: 0 -1px;
   transition: background 120ms;
 }
 

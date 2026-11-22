@@ -1,0 +1,47 @@
+/* A menu, as DFAI's menus.css draws `.menu`: a popover on the surface with a
+   hairline, an 8px radius and the one shadow content never gets. Rows are
+   28px of body text; the focused one takes the hover fill. On Lite's names:
+   .row-menu = .menu, .row-menu-item = .menu button. */
+.row-menu {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-width: 200px;
+  padding: 4px;
+  position: fixed;
+  z-index: 50;
+}
+
+.row-menu-item {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: var(--text-column);
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.row-menu-item:hover,
+.row-menu-item:focus {
+  background: var(--hover);
+  color: var(--ink);
+  outline: none;
+}
+
+/* A destructive choice in DFAI's destructive ink. */
+.row-menu-item.is-danger {
+  color: var(--danger);
+}

@@ -12,7 +12,7 @@ const go = (hash: string) =>
 const tabs = (pane = 'Tabs') =>
   within(screen.getByRole('tablist', { name: pane }))
     .getAllByRole('tab')
-    .map((tab) => tab.querySelector('.tab-title')?.textContent);
+    .map((tab) => tab.querySelector('.tab-strip__title')?.textContent);
 
 /** A note's link in the sidebar: in the favorites if it is one, else in the tree. */
 const treeRow = (name: string) =>

@@ -1,29 +1,53 @@
+/* A note's page, as DFAI's page.css and mentions.css draw it: a 40px nav bar
+   with the breadcrumb, the page's own buttons and the star; then a reading
+   page on a 720px measure, its title at 24/600, the text, and the notes that
+   link here as hairline rows. */
+
 .note-pane {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: var(--space-7) var(--space-7) 0;
-  box-sizing: border-box;
-}
-
-.note-header {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  flex-direction: column;
+  min-height: 100%;
 }
 
-.note-title {
-  flex: 1;
+/* ---- The page ---- */
+
+.page {
+  margin: 0;
+}
+
+.page--note {
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 100%;
+  /* Room to type near the bottom of a long note. */
+  padding: 34px 32px 30vh;
+  width: calc(720px + 64px);
+}
+
+.page--note .page-head {
+  flex: none;
+  margin-bottom: 14px;
   min-width: 0;
+}
+
+/* The title is DFAI's `.page-head__title`: the text itself until it is
+   pressed (the hover fill of its title button), then a field on the track
+   with the ring (its title input). */
+.note-title {
+  appearance: none;
+  background: none;
   border: 0;
   border-radius: var(--radius-control);
-  background: transparent;
-  padding: 2px 4px;
-  margin-left: -4px;
-  font-size: var(--text-title);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  color: var(--ink);
+  font-size: var(--text-note-title);
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+  line-height: 1.28;
+  margin: 0 -6px;
+  outline: none;
+  padding: 0 6px;
+  width: calc(100% + 12px);
 }
 
 .note-title:hover {
@@ -31,84 +55,90 @@
 }
 
 .note-title:focus {
-  outline: none;
-  background: var(--hover);
+  background: var(--track);
+  box-shadow: var(--ring);
 }
 
-.note-tools {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+.note-editor-placeholder {
+  font-family: var(--font-ui);
+  font-size: var(--text-body-lg);
+  line-height: 1.6;
+  margin: 0;
+  min-height: 60vh;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
-.note-star.is-on {
-  color: var(--hue-yellow-ink);
-}
+/* ---- Linked from: DFAI's linked mentions ---- */
 
-.backlinks {
+.mentions {
   border-top: 1px solid var(--line);
-  margin: var(--space-4) 0 var(--space-7);
-  padding-top: var(--space-3);
-  color: var(--ink-3);
+  margin-top: 24px;
 }
 
-.backlinks-heading {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-label);
+.mentions__heading {
+  align-items: center;
+  color: var(--ink-2);
+  display: flex;
+  font-size: var(--text-emphasis);
   font-weight: 500;
+  height: 32px;
+  margin: 0;
 }
 
-.backlinks-list {
+.mentions__list {
+  display: flex;
+  flex-direction: column;
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
-.backlinks-list li {
+.mentions__link {
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink);
   display: flex;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.backlinks-list a {
-  color: var(--ink-2);
-  font-weight: 500;
+  font-size: var(--text-body);
+  font-weight: 400;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 4px;
   text-decoration: none;
+}
+
+.mentions__link:hover {
+  background: var(--hover);
+}
+
+.mentions__link:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+  position: relative;
+}
+
+.mentions__link .icon {
+  color: var(--ink-3);
+}
+
+.mentions__title {
+  flex: none;
   white-space: nowrap;
 }
 
-.backlinks-list a:hover {
-  color: var(--ink);
-  text-decoration: underline;
-}
-
-.backlinks-summary {
+.mentions__path {
+  color: var(--ink-3);
+  font-size: var(--text-meta);
+  font-weight: 400;
+  margin-left: auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--text-meta);
 }
 
 @media (max-width: 720px) {
-  .note-pane {
-    padding: var(--space-4) var(--space-4) 0;
+  .page--note {
+    padding: 24px 16px 30vh;
   }
-
-  .note-title {
-    font-size: 22px;
-  }
-}
-
-/* The note's text while the editor loads: set as the editor sets it, so nothing jumps. */
-.note-editor-placeholder {
-  min-height: 60vh;
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: var(--text-body-lg);
-  line-height: var(--leading-body);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }

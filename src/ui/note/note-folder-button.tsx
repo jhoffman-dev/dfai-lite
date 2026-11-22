@@ -13,13 +13,13 @@ export function NoteFolderButton({ path }: { path: VaultPath }) {
   return (
     <button
       type="button"
-      className="quiet-button"
+      className="btn btn--ghost page-bar__action"
       aria-label={`Move to another folder (now in ${folder === '' ? 'the top of the vault' : folder})`}
       title={`Move to… (${keyFor('note.move', host)})`}
       onClick={() => ui.setState({ moving: { kind: 'note', path } })}
     >
-      <Icon name="folder" />
-      <span>{folder === '' ? 'Move to…' : folder}</span>
+      <Icon name="folder" size={15} />
+      <span className="page-bar__action-label">{folder === '' ? 'Move to…' : folder}</span>
     </button>
   );
 }
