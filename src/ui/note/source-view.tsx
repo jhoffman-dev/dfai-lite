@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MarkdownPort } from '../../application/index.ts';
 import { latestOf, type EditorBridge } from '../editor/bridge.ts';
-import type { MirrorMember } from './note-mirror.ts';
-import type { EditorSteps, OpenNote } from './open-notes.ts';
+import type { OpenNote } from './open-notes.ts';
+import { createSourcePeer, type SourcePeer } from './source-peer.ts';
 
 interface SourceViewProps {
   /** The note's text in the vault, shown when no other view on it is live. */
@@ -25,27 +25,25 @@ export function SourceView({ text, markdown, autoFocus, bridge, note }: SourceVi
   });
   const [start] = useState(() => startingText(note, text, markdown));
   const [value, setValue] = useState(start.text);
-  const typed = useRef(start.text);
-  const member = useRef<MirrorMember<EditorSteps> | null>(null);
+  const source = useRef<SourcePeer | null>(null);
 
   useEffect(() => {
-    const show = (shown: string) => {
-      typed.current = shown;
-      setValue(shown);
-    };
-    const joined = note.mirror.join({
-      read: () => note.base.readingOf(typed.current, markdown).note.parsed.doc,
-      apply: (_steps, sourceDoc) => {
-        const reading = note.base.current();
-        if (reading !== null) show(markdown.serializeNote(reading.note, sourceDoc()));
-      },
-      adopt: show,
+    let broadcast: (typed: string) => void = () => undefined;
+    const made = createSourcePeer({
+      note,
+      markdown,
+      start,
+      show: setValue,
+      broadcastText: (typed) => broadcast(typed),
     });
-    member.current = joined;
-    if (joined.alone && start.fromVault) bridgeNow.get().opened(text);
+    const joined = note.mirror.join(made.peer);
+    broadcast = joined.broadcastText;
+    source.current = made;
+    if (joined.alone && start.doc === null) bridgeNow.get().opened(text);
     return () => {
+      made.dispose();
       joined.leave();
-      member.current = null;
+      source.current = null;
       bridgeNow.get().closed();
     };
     // Built once per tab and note: the parent keys it.
@@ -63,22 +61,27 @@ export function SourceView({ text, markdown, autoFocus, bridge, note }: SourceVi
       autoCorrect="off"
       autoCapitalize="off"
       autoFocus={autoFocus}
+      // Another pane's typing, not yet written out here, is shown before a key lands on it.
+      onFocus={() => source.current?.refresh()}
+      onKeyDown={() => source.current?.refresh()}
       onChange={(event) => {
         const next = event.currentTarget.value;
-        typed.current = next;
         setValue(next);
-        member.current?.broadcastText(next);
-        bridgeNow.get().changed(() => typed.current);
+        source.current?.typed(next);
+        bridgeNow.get().changed(() => source.current?.text() ?? next);
       }}
       onBlur={() => bridgeNow.get().blurred()}
     />
   );
 }
 
-/** The text the view opens on: a live view's, when the note is open already, else the vault's. */
+/**
+ * The text the view opens on, and the document it stands for: a live
+ * view's, when the note is open already, else the vault's text alone.
+ */
 function startingText(note: OpenNote, text: string, markdown: MarkdownPort) {
   const live = note.mirror.liveDoc();
   const reading = note.base.current();
-  if (live === null || reading === null) return { text, fromVault: true };
-  return { text: markdown.serializeNote(reading.note, live), fromVault: false };
+  if (live === null || reading === null) return { text, doc: null };
+  return { text: markdown.serializeNote(reading.note, live), doc: live };
 }

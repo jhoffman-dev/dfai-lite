@@ -210,4 +210,50 @@ describe('a note open in two panes', () => {
     // The first paragraph was not drawn again: the page does not jump.
     expect(left.view.dom.querySelector('p')).toBe(untouched);
   });
+
+  it('keeps untouched blocks’ bytes after the markdown view beside an editor turns into an editor', async () => {
+    const original = 'Intro.\n\n* star item\n\nSome __strong__ words.\n';
+    const layout = memoryLayoutStorage({
+      panes: [
+        { tabs: [{ id: 't1', view: { kind: 'note', path: PLAN }, source: true }], activeTab: 't1' },
+        {
+          tabs: [{ id: 't2', view: { kind: 'note', path: PLAN }, source: false }],
+          activeTab: 't2',
+        },
+      ],
+      activePane: 0,
+      split: 0.5,
+      nextId: 3,
+    });
+    const { services } = await renderApp({
+      files: { [PLAN]: original },
+      source: false,
+      loadMarkdown,
+      layout,
+    });
+    const right = editorOf(
+      await screen.findByRole('textbox', { name: 'Note text' }, { timeout: 8000 }),
+    );
+    await screen.findByRole('textbox', { name: 'Note markdown' });
+    // A paragraph added at the top: every block after it moves down one place.
+    act(() => {
+      right.commands.insertContentAt(0, {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'New top.' }],
+      });
+    });
+    await savedAs(services, PLAN, `New top.\n\n${original}`);
+    // The left pane goes from the markdown to the editor, while the right one stays.
+    await act(async () => {
+      screen.getAllByRole('button', { name: 'Markdown' })[0]!.click();
+    });
+    await waitFor(() =>
+      expect(screen.getAllByRole('textbox', { name: 'Note text' })).toHaveLength(2),
+    );
+    act(() => {
+      // At the end of `Intro.`, after the new first paragraph.
+      right.commands.insertContentAt(right.state.doc.child(0).nodeSize + 1 + 'Intro.'.length, 'Z');
+    });
+    await savedAs(services, PLAN, `New top.\n\nIntro.Z\n\n* star item\n\nSome __strong__ words.\n`);
+  });
 });
