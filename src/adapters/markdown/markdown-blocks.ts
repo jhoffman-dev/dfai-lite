@@ -11,6 +11,8 @@ import {
   type SourceBlock,
 } from '../../domain/markdown/index.ts';
 import type { Nodes, Root, RootContent } from 'mdast';
+import { defaultHandlers } from 'mdast-util-to-markdown';
+import type { Options as StringifyOptions } from 'remark-stringify';
 import './mdast-custom-nodes.ts';
 import { mdastBlockToEditorNode } from './mdast-to-editor.ts';
 import { editorNodeToMdastBlock } from './editor-to-mdast.ts';
@@ -36,25 +38,51 @@ const parser = unified().use(remarkParse).use(remarkGfm).use(remarkWikiLink);
 
 const stringifiers = new Map<string, ReturnType<typeof stringifierWith>>();
 
-function stringifierFor(markers: ListMarkers) {
-  const key = `${markers.bullet}${markers.ordered}`;
+/**
+ * How a block writes a hard line break: remark's `\` before the line end, or
+ * two spaces, as Gemini's meeting notes and many editors write them.
+ */
+type BreakStyle = 'backslash' | 'spaces';
+
+function stringifierFor(markers: ListMarkers, breaks: BreakStyle = 'backslash') {
+  const key = `${markers.bullet}${markers.ordered}${breaks}`;
   let stringifier = stringifiers.get(key);
   if (stringifier === undefined) {
-    stringifier = stringifierWith(markers);
+    stringifier = stringifierWith(markers, breaks);
     stringifiers.set(key, stringifier);
   }
   return stringifier;
 }
 
-const stringifierWith = (markers: ListMarkers) =>
-  unified()
-    // Cells are not padded out to a common width: a one-character edit would
-    // otherwise reflow every row of the table.
-    .use(remarkGfm, GFM_WRITE_OPTIONS)
-    .use(remarkStringify, stringifySettings(markers));
+/** A hard break as two spaces, wherever remark would write it `\`. */
+const writeBreakAsSpaces: NonNullable<NonNullable<StringifyOptions['handlers']>['break']> = (
+  ...args
+) => {
+  const written = defaultHandlers.break(...args);
+  return written === '\\\n' ? '  \n' : written;
+};
 
-const render = (root: Root, markers: ListMarkers = DEFAULT_MARKERS): string =>
-  wholeCharacterReferences(stringifierFor(markers).stringify(root).replace(/\n+$/, ''));
+const stringifierWith = (markers: ListMarkers, breaks: BreakStyle) => {
+  const settings = stringifySettings(markers);
+  const withBreaks =
+    breaks === 'spaces'
+      ? { ...settings, handlers: { ...settings.handlers, break: writeBreakAsSpaces } }
+      : settings;
+  return (
+    unified()
+      // Cells are not padded out to a common width: a one-character edit would
+      // otherwise reflow every row of the table.
+      .use(remarkGfm, GFM_WRITE_OPTIONS)
+      .use(remarkStringify, withBreaks)
+  );
+};
+
+const render = (
+  root: Root,
+  markers: ListMarkers = DEFAULT_MARKERS,
+  breaks: BreakStyle = 'backslash',
+): string =>
+  wholeCharacterReferences(stringifierFor(markers, breaks).stringify(root).replace(/\n+$/, ''));
 
 /** A block as remark writes it, every escape in place, with `written` images as their bytes. */
 function renderSafely(
@@ -105,7 +133,9 @@ export function renderBlock(
   writeTypedAddressesBare(root);
   return writeAsTyped({
     safe,
-    typed: render(root, markers),
+    // Its hard breaks as the block wrote them before; `safe` keeps remark's
+    // `\`, should the spaces not read back as the same block.
+    typed: render(root, markers, written.breaks),
     document: readingOf([expressible(node)]),
     read: (markdown) => readBlock(markdown, definitions),
   });
@@ -225,14 +255,34 @@ function inlineReading(node: Nodes): string | null {
 interface Written {
   readonly inlines: readonly WrittenInline[];
   readonly references: WrittenReferences;
+  /** How its hard line breaks were written. */
+  readonly breaks: BreakStyle;
 }
 
-const NOTHING_WRITTEN: Written = { inlines: [], references: new Map() };
+const NOTHING_WRITTEN: Written = { inlines: [], references: new Map(), breaks: 'backslash' };
 
 /** How `source` wrote `block`, from one parse of it. */
 function writtenIn(source: string, block: EditorNode): Written {
   const root = parser.parse(source) as Root;
-  return { inlines: writtenInlines(root, source, block), references: referencesIn(root, source) };
+  return {
+    inlines: writtenInlines(root, source, block),
+    references: referencesIn(root, source),
+    breaks: breakStyleIn(root, source),
+  };
+}
+
+/** Two spaces when every hard break the block wrote was two spaces (or more), else `\`. */
+function breakStyleIn(root: Root, source: string): BreakStyle {
+  let spaces = false;
+  let backslash = false;
+  const visit = (node: Nodes) => {
+    if (node.type === 'break') {
+      if (source.charAt(node.position?.start.offset ?? -1) === '\\') backslash = true;
+      else spaces = true;
+    } else if ('children' in node) (node.children as Nodes[]).forEach(visit);
+  };
+  visit(root);
+  return spaces && !backslash ? 'spaces' : 'backslash';
 }
 
 /**

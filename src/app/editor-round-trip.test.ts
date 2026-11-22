@@ -157,6 +157,30 @@ describe('saving a long note', () => {
   });
 });
 
+describe('a paragraph with hard line breaks, typed in', () => {
+  const typedIn = (text: string) => {
+    const { editor, save } = open(text);
+    editor.view.dispatch(editor.state.tr.insertText('Z', 1));
+    return save();
+  };
+
+  it('keeps writing them as two spaces where the block did, as meeting notes do', () => {
+    expect(typedIn('When: 2026-11-21  \nWith: [[Mara Quill]]  \nAbout: payroll\n')).toBe(
+      'ZWhen: 2026-11-21  \nWith: [[Mara Quill]]  \nAbout: payroll\n',
+    );
+  });
+
+  it('keeps writing them as `\\` where the block did', () => {
+    expect(typedIn('One\\\ntwo\n')).toBe('ZOne\\\ntwo\n');
+  });
+
+  it('writes one typed in a block that had none as `\\`, remark’s own', () => {
+    const { editor, save } = open('One\n');
+    editor.chain().focus('end').setHardBreak().insertContent('two').run();
+    expect(save()).toBe('One\\\ntwo\n');
+  });
+});
+
 describe('an aligned table', () => {
   const ALIGNED = NOTES['aligned table']!;
 
