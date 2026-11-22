@@ -48,11 +48,14 @@ export function createThemeController({
   system,
   root,
   remember,
+  follow = () => undefined,
 }: {
   settings: SettingsStore;
   system: SystemScheme;
   root: ThemeRoot;
   remember: (choice: ThemeChoice) => void;
+  /** Tells the window's own chrome (the Mac app's title bar); nothing in a browser. */
+  follow?: (choice: ThemeChoice) => void;
 }): ThemeController {
   let choice = settings.load().ui.theme;
   let theme = resolveTheme(choice, system.isDark());
@@ -65,6 +68,7 @@ export function createThemeController({
   };
   root.show(theme);
   remember(choice);
+  follow(choice);
   // Kept for the app's life: the controller is made once, at start.
   system.subscribe(() => {
     if (choice === 'system') apply();
@@ -76,6 +80,7 @@ export function createThemeController({
     const current = settings.load();
     settings.save({ ...current, ui: { ...current.ui, theme: next } });
     remember(next);
+    follow(next);
     apply();
   };
 

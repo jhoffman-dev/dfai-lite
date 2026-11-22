@@ -1,13 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the one window may ask of the host: its own commands, the folder picker, the capture hotkey, and bringing itself forward.",
+  "description": "What the one window may ask of the host: its own commands, the folder picker, the capture hotkey, bringing itself forward, and drawing its chrome in the chosen theme.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "core:window:allow-show",
     "core:window:allow-unminimize",
     "core:window:allow-set-focus",
+    "core:window:allow-set-theme",
     "dialog:allow-open",
     "dialog:allow-ask",
     "global-shortcut:allow-register",

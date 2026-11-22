@@ -51,6 +51,10 @@ export function createAppContext(services: AppServices, storage: LayoutStorage):
     openNotes: createOpenNotes(session),
     actions,
     // Made while the app first renders, so the stored theme is on the root before it paints.
-    theme: createThemeController({ settings, ...browserThemeParts(window) }),
+    theme: createThemeController({
+      settings,
+      ...browserThemeParts(window),
+      ...(services.desktop === null ? {} : { follow: services.desktop.followTheme }),
+    }),
   };
 }

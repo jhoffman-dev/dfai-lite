@@ -5,6 +5,7 @@ export {
   pickFolder,
   readSettingsText,
   setGlobalShortcut,
+  setWindowTheme,
   tauriGit,
   writeSettingsText,
 } from './host.ts';

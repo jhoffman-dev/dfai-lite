@@ -49,6 +49,11 @@ export async function bringWindowForward(): Promise<void> {
   await window.setFocus();
 }
 
+/** The window's own chrome (title bar, traffic lights) in a theme, or the system's for null. */
+export function setWindowTheme(theme: 'light' | 'dark' | null): Promise<void> {
+  return getCurrentWindow().setTheme(theme);
+}
+
 /**
  * Makes `accelerator` (Tauri's names, e.g. `Alt+Command+N`) the one global
  * shortcut, calling `onPressed` when it goes down; an empty one clears it.

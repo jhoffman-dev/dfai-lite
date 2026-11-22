@@ -15,10 +15,13 @@ import {
   pickFolder,
   readSettingsText,
   setGlobalShortcut,
+  setWindowTheme,
   tauriGit,
   writeSettingsText,
 } from '../adapters/tauri/index.ts';
 import { navigate } from '../ui/routing/use-route.ts';
+import { browserThemeParts } from '../ui/theme/browser-theme.ts';
+import { createThemeController, type ThemeChoice } from '../ui/theme/theme.ts';
 import type { AppServices } from '../ui/services.ts';
 import type { DesktopControls } from '../ui/settings/desktop-controls.ts';
 import {
@@ -50,13 +53,13 @@ export async function bootDesktop(): Promise<Boot> {
   });
   const choose = () => chooseVault(settings);
   const vaultPath = settings.load().vaultPath;
-  if (vaultPath === null) return { kind: 'welcome', problem: null, choose };
+  if (vaultPath === null) return welcome(settings, null, choose);
   let files: VaultFiles;
   try {
     files = await openTauriVaultFiles(vaultPath);
   } catch (error) {
     const why = error instanceof Error ? error.message : String(error);
-    return { kind: 'welcome', problem: `${vaultPath} could not be opened: ${why}`, choose };
+    return welcome(settings, `${vaultPath} could not be opened: ${why}`, choose);
   }
   return composeDesktop({ files, settings, vaultPath, choose });
 }
@@ -93,6 +96,7 @@ async function composeDesktop({
       await setGlobalShortcut(accelerator, quickCapture);
       settings.save({ ...settings.load(), captureHotkey: accelerator });
     },
+    followTheme,
   };
   const services: AppServices = {
     ...{ files: gated, session, search, settings, sync, desktop, pendingEdits },
@@ -107,6 +111,21 @@ async function composeDesktop({
     );
   };
   return { kind: 'app', services, layoutStorage: deviceLayoutStorage(), start };
+}
+
+/** The window's chrome in the theme chosen; System hands it back to macOS. */
+function followTheme(choice: ThemeChoice): void {
+  setWindowTheme(choice === 'system' ? null : choice).catch(reportQuietly('theme the window'));
+}
+
+/** The first-start question, in the theme chosen on this Mac before, if any. */
+function welcome(
+  settings: FileSettings,
+  problem: string | null,
+  choose: () => Promise<void>,
+): Boot {
+  createThemeController({ settings, ...browserThemeParts(window), follow: followTheme });
+  return { kind: 'welcome', problem, choose };
 }
 
 /** Changes on disk (Claude, git, an editor) reach the session one batch at a time, in order. */

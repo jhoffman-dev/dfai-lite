@@ -111,6 +111,19 @@ describe('the theme controller', () => {
     expect(controller.choice()).toBe('dark');
   });
 
+  it('tells the window’s chrome the choice at start and on every change', () => {
+    const followed: ThemeChoice[] = [];
+    const controller = createThemeController({
+      settings: memorySettings('dark'),
+      system: fakeSystem(false),
+      root: { show: () => undefined },
+      remember: () => undefined,
+      follow: (choice) => followed.push(choice),
+    });
+    controller.choose('system');
+    expect(followed).toEqual(['dark', 'system']);
+  });
+
   it('stops telling a listener once it has unsubscribed', () => {
     const { controller } = setUp('light', false);
     let heard = 0;
