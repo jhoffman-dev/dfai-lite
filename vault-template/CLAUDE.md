@@ -25,19 +25,19 @@ and the index disagree, the note is right.
 
 ## Layout
 
-| Folder                   | Holds                                                           |
-| ------------------------ | --------------------------------------------------------------- |
-| `Inbox/`                 | Quick notes, unfiled. New notes with no obvious home go here.   |
-| `Meetings/<YYYY>/<MM>/`  | One note per meeting (shape below).                             |
-| `People/`                | One note per person, named as they are linked: `Mara Quill.md`. |
-| `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                 |
-| `Resources/`             | Reference material and permanent notes.                         |
-| `Archive/`               | Finished or dormant. Move here; do not delete.                  |
-| `attachments/`           | Pictures pasted or dropped into notes.                          |
-| `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.       |
-| `_index/`                | Generated. Never edit.                                          |
-| `.dfai-lite/`            | The app's own state (favorites). Leave it alone.                |
-| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.       |
+| Folder                   | Holds                                                              |
+| ------------------------ | ------------------------------------------------------------------ |
+| `Inbox/`                 | Quick notes, unfiled. New notes with no obvious home go here.      |
+| `Meetings/<YYYY>/<MM>/`  | One note per meeting (shape below).                                |
+| `People/`                | One note per person, named as they are linked: `Mara Quill.md`.    |
+| `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                    |
+| `Resources/`             | Reference material and permanent notes.                            |
+| `Archive/`               | Finished or dormant. Move here; do not delete.                     |
+| `attachments/`           | Pictures pasted or dropped into notes.                             |
+| `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.          |
+| `_index/`                | Generated. Never edit.                                             |
+| `.dfai-lite/`            | The app's own state (favorites, icons and colors). Leave it alone. |
+| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.          |
 
 ## How a note is written
 

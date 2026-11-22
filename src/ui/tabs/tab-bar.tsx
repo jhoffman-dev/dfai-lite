@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
-import { noteTitle } from '../../application/index.ts';
+import { noteTitle, type ResolvedAppearances } from '../../application/index.ts';
 import type { Pane, Tab, TabView } from '../panes/layout.ts';
+import { LookGlyph } from '../appearance/look-glyph.tsx';
 import { Icon, type IconName } from '../shell/icons.tsx';
 import { draggedTabId, isTabDrag, startTabDrag } from './tab-drag.ts';
 import './tabs.css';
@@ -43,7 +44,11 @@ export interface TabBarProps {
   readonly onMenu: (tabId: string, at: { x: number; y: number }) => void;
   /** A tab dropped at `index` of this pane (counted without the dragged tab). */
   readonly onMove: (move: { tabId: string; toPane: number; index: number }) => void;
+  /** The notes' icons and tints, by path: a note's tab shows its own. */
+  readonly looks?: ResolvedAppearances;
 }
+
+const NO_LOOKS: ResolvedAppearances = new Map();
 
 /** Where a drop over `target` puts the dragged tab: before it, or after it past its middle. */
 function dropIndex(tabs: readonly Tab[], dragged: string, target: string, after: boolean): number {
@@ -57,7 +62,15 @@ function dropIndex(tabs: readonly Tab[], dragged: string, target: string, after:
  * move between tabs (and show them), Delete closes one; a middle click
  * closes, a drag reorders or moves a tab to the other pane.
  */
-export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }: TabBarProps) {
+export function TabBar({
+  pane,
+  paneIndex,
+  onActivate,
+  onClose,
+  onMenu,
+  onMove,
+  looks = NO_LOOKS,
+}: TabBarProps) {
   const list = useRef<HTMLDivElement>(null);
   const [dropAt, setDropAt] = useState<{ id: string; after: boolean } | null>(null);
 
@@ -144,7 +157,10 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
               onDragOver(event, tab.id);
             }}
           >
-            <Icon name={tabGlyph(tab.view)} size={15} />
+            <LookGlyph
+              look={tab.view.kind === 'note' ? (looks.get(tab.view.path) ?? null) : null}
+              fallback={tabGlyph(tab.view)}
+            />
             <span className="tab-strip__title">{title}</span>
             <button
               type="button"

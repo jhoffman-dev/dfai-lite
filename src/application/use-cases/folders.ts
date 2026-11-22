@@ -11,7 +11,8 @@ import {
 } from '../../domain/vault/index.ts';
 import { FileChangedError, FileExistsError, TrashRefusedError } from '../ports/index.ts';
 import type { VaultSession } from '../session/index.ts';
-import { deleteNote } from './delete-note.ts';
+import { appearancesFollowRemoval } from './appearance.ts';
+import { removeNoteFile } from './delete-note.ts';
 import { removeEmptyFolders } from './empty-folders.ts';
 import { renameFolder, type RenameFolderResult } from './rename-folder.ts';
 import { renameNote, type RenameResult } from './rename-note.ts';
@@ -123,11 +124,12 @@ function undeletable(session: VaultSession, path: VaultPath): VaultPath[] {
 
 /**
  * Deletes a folder: each note in it, at any depth, goes to the Trash one by
- * one through `deleteNote` (or for good when `permanently`), then the
+ * one (or for good when `permanently`), then the
  * emptied folders go. Refused, before anything is deleted, when it holds
  * what the note commands cannot delete. A note changed on disk since it was
  * read is kept and the rest go on; a Trash that refuses stops the run, so
- * the person can choose to delete the rest for good.
+ * the person can choose to delete the rest for good. The icons and colors
+ * of what went are dropped in one write at the end.
  */
 export async function deleteFolder(
   deps: VaultDeps,
@@ -161,10 +163,11 @@ export async function deleteFolder(
   let deleted = 0;
   for (const note of notes) {
     try {
-      await deleteNote(deps, { path: note, permanently });
+      await removeNoteFile(deps, { path: note, permanently });
       deleted += 1;
     } catch (error) {
       if (error instanceof TrashRefusedError) {
+        await appearancesFollowRemoval(deps, path);
         return { kind: 'deleted', deleted, total: notes.length, kept, trashRefused: true };
       }
       if (!(error instanceof FileChangedError)) throw error;
@@ -172,5 +175,6 @@ export async function deleteFolder(
     }
   }
   await removeEmptyFolders(deps, path);
+  await appearancesFollowRemoval(deps, path);
   return { kind: 'deleted', deleted, total: notes.length, kept, trashRefused: false };
 }

@@ -1,6 +1,8 @@
 import { memo, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { noteTitle } from '../../application/index.ts';
+import type { ResolvedAppearance } from '../../domain/appearance/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
+import { CustomIcon, iconKey } from '../appearance/look-glyph.tsx';
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { useVault } from '../state/vault-store.ts';
@@ -13,6 +15,7 @@ interface FavoriteRowProps {
   readonly at: number;
   readonly active: boolean;
   readonly dropping: boolean;
+  readonly look: ResolvedAppearance | null;
   readonly onMenu: (target: MenuTarget) => void;
   readonly onDragOverRow: (at: number | null) => void;
 }
@@ -22,9 +25,11 @@ const FavoriteRow = memo(function FavoriteRow({
   at,
   active,
   dropping,
+  look,
   onMenu,
   onDragOverRow,
 }: FavoriteRowProps) {
+  const icon = look?.icon ?? null;
   const { actions } = useApp();
   const openMenu = (event: MouseEvent) => {
     event.preventDefault();
@@ -50,7 +55,9 @@ const FavoriteRow = memo(function FavoriteRow({
 
   return (
     <li
-      className={`sidebar-row${active ? ' is-active' : ''}${dropping ? ' is-drop-target' : ''}`}
+      className={`sidebar-row${active ? ' is-active' : ''}${dropping ? ' is-drop-target' : ''}${icon === null ? '' : ' has-icon'}`}
+      data-hue={look?.hue ?? undefined}
+      data-look-icon={iconKey(look)}
       draggable
       onDragStart={(event) => event.dataTransfer.setData(DRAG_TYPE, path)}
       onDragOver={(event) => {
@@ -68,6 +75,11 @@ const FavoriteRow = memo(function FavoriteRow({
         aria-current={active ? 'page' : undefined}
         onKeyDown={onKeyDown}
       >
+        {icon === null ? null : (
+          <span className="tree-row-icon">
+            <CustomIcon icon={icon} />
+          </span>
+        )}
         <span className="sidebar-row-label">{noteTitle(path)}</span>
       </a>
       <button
@@ -103,6 +115,7 @@ export function FavoritesSection({
   onMenu: (target: MenuTarget) => void;
 }) {
   const favorites = useVault((vault) => vault.favorites);
+  const looks = useVault((vault) => vault.appearances);
   const [dropAt, setDropAt] = useState<number | null>(null);
   if (favorites.length === 0) return null;
 
@@ -119,6 +132,7 @@ export function FavoritesSection({
             at={at}
             active={path === activePath}
             dropping={dropAt === at}
+            look={looks.get(path) ?? null}
             onMenu={onMenu}
             onDragOverRow={setDropAt}
           />

@@ -1,0 +1,143 @@
+/* A folder or a note that wears a color is a box in that hue (James,
+   2026-11-22): the hue's pale fill, a 1px border a step toward its ink, and
+   the label, glyph and count in the ink. `data-hue` (controls.css) sets
+   `--pill` and `--pill-ink` from the theme's tokens, so the box reads in
+   both themes. Each state is layered on the box, not instead of it; the
+   drop highlight alone replaces it, while a drag is held. The box stands
+   1px in from its slot at top and bottom, so stacked boxes keep a 2px gap
+   without the virtualizer's 28px rows changing. */
+
+.tree-row[data-hue],
+.sidebar-row[data-hue] {
+  --look-border: color-mix(in srgb, var(--pill-ink) 40%, var(--pill));
+  background: var(--pill);
+  box-shadow: inset 0 0 0 1px var(--look-border);
+  color: var(--pill-ink);
+}
+
+.tree-row[data-hue] {
+  height: calc(100% - 2px);
+  margin-top: 1px;
+}
+
+.sidebar-row[data-hue] {
+  height: calc(var(--sidebar-row) - 2px);
+  margin: 1px 0;
+}
+
+.tree-row[data-hue]:hover,
+.sidebar-row[data-hue]:hover {
+  background: color-mix(in srgb, var(--pill) 94%, var(--pill-ink));
+}
+
+/* The open note: the full ink as a 2px border, so it stands apart from
+   every other box of its hue. */
+.tree-row.is-active[data-hue],
+.tree-row.is-active[data-hue]:hover,
+.sidebar-row.is-active[data-hue],
+.sidebar-row.is-active[data-hue]:hover {
+  background: var(--pill);
+  box-shadow: inset 0 0 0 2px var(--pill-ink);
+  color: var(--pill-ink);
+}
+
+.tree-row[data-hue]:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.tree-row[data-hue] .tree-chevron,
+.tree-row.is-note[data-hue]::before,
+.sidebar-row[data-hue] .sidebar-row-main::before,
+.tree-row.is-active[data-hue]::before,
+.sidebar-row.is-active[data-hue] .sidebar-row-main::before {
+  background: var(--pill-ink);
+}
+
+.tree-row[data-hue] .tree-count {
+  color: var(--pill-ink);
+}
+
+.tree-row-more[data-hue],
+.sidebar-row[data-hue] .sidebar-row-action.is-more {
+  color: var(--pill-ink);
+}
+
+.tree-row-more[data-hue]:hover,
+.sidebar-row[data-hue] .sidebar-row-action.is-more:hover {
+  background: color-mix(in srgb, var(--pill-ink) 14%, transparent);
+  color: var(--pill-ink);
+}
+
+/* While a drag is held over a colored folder, the drop highlight wins. */
+.tree-row.is-drop-target[data-hue],
+.tree-row.is-drop-target[data-hue]:hover {
+  background: var(--you);
+  box-shadow: inset 0 0 0 2px var(--focus);
+  color: var(--accent-text);
+}
+
+.tree-row.is-drop-target[data-hue] .tree-chevron {
+  background: var(--accent-text);
+}
+
+.sidebar-row.is-drop-target[data-hue] {
+  box-shadow:
+    inset 0 2px 0 var(--focus),
+    inset 0 0 0 1px var(--look-border);
+}
+
+/* ---- A row's own icon, in place of the folder or page glyph ---- */
+
+.tree-row-icon {
+  align-items: center;
+  color: var(--ink-3);
+  display: inline-flex;
+  flex: none;
+  height: 15px;
+  justify-content: center;
+  width: 15px;
+}
+
+.tree-row-icon .icon {
+  height: 15px;
+  width: 15px;
+}
+
+/* A note's glyph sits in its indent, where the page glyph was. */
+.tree-row-icon.is-note-icon {
+  margin-left: -20px;
+}
+
+.tree-row.is-note.has-icon::before,
+.sidebar-row.has-icon .sidebar-row-main::before {
+  display: none;
+}
+
+.tree-row.is-active .tree-row-icon,
+.sidebar-row.is-active .tree-row-icon {
+  color: var(--ink);
+}
+
+.tree-row[data-hue] .tree-row-icon,
+.sidebar-row[data-hue] .tree-row-icon {
+  color: var(--pill-ink);
+}
+
+.tree-row.is-drop-target .tree-row-icon {
+  color: var(--accent-text);
+}
+
+/* ---- Icon & color… ---- */
+
+.appearance-popover {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  position: fixed;
+  z-index: 50;
+}

@@ -23,6 +23,8 @@ export interface MenuContext {
   readonly askRenameFolder: (path: VaultPath) => void;
   /** Starts naming a new folder in place, in `parent`. */
   readonly startNewFolder: (parent: VaultPath) => void;
+  /** Opens the icon and color picker for the row, where the menu was. */
+  readonly askAppearance: (target: MenuTarget) => void;
 }
 
 function favoriteMoves(path: VaultPath, at: number, context: MenuContext): MenuItem[] {
@@ -47,6 +49,7 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
       { label: 'New folder here', run: () => context.startNewFolder(path) },
       { label: 'Rename folder…', run: () => context.askRenameFolder(path) },
       { label: 'Move to…', run: () => context.askMove({ kind: 'folder', path }) },
+      { label: 'Icon & color…', run: () => context.askAppearance(target) },
       { label: 'Delete folder…', danger: true, run: () => later(actions.deleteFolder(path)) },
     ];
   }
@@ -57,6 +60,7 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
     { label: 'Open to the side', run: () => actions.openNote(path, 'side') },
     { label: 'Rename', run: () => actions.startRename(path) },
     { label: 'Move to…', run: () => context.askMove({ kind: 'note', path }) },
+    { label: 'Icon & color…', run: () => context.askAppearance(target) },
     {
       label: isFavorite ? 'Remove from favorites' : 'Add to favorites',
       run: () => later(actions.toggleFavorite(path)),

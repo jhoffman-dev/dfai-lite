@@ -1,6 +1,6 @@
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { VaultSession } from '../../application/index.ts';
+import type { ResolvedAppearances, VaultSession } from '../../application/index.ts';
 import type { Favorites } from '../../domain/favorites/index.ts';
 import type { FolderNode } from '../../domain/vault/index.ts';
 import { useApp } from '../services.ts';
@@ -15,6 +15,8 @@ export interface VaultSnapshot {
   readonly version: number;
   readonly tree: FolderNode;
   readonly favorites: Favorites;
+  /** Each folder's and note's look as drawn, by path; replaced only when the appearance file changes. */
+  readonly appearances: ResolvedAppearances;
 }
 
 export type VaultStore = StoreApi<VaultSnapshot> & {
@@ -23,7 +25,12 @@ export type VaultStore = StoreApi<VaultSnapshot> & {
 };
 
 function snapshotOf(session: VaultSession): VaultSnapshot {
-  return { version: session.version, tree: session.folderTree(), favorites: session.favorites };
+  return {
+    version: session.version,
+    tree: session.folderTree(),
+    favorites: session.favorites,
+    appearances: session.resolvedAppearances,
+  };
 }
 
 /** A store that follows the session's change events once connected. */

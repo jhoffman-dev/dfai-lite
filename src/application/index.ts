@@ -37,3 +37,9 @@ export {
 } from '../domain/markdown/index.ts';
 export { IMAGE_PICKER_ACCEPT } from '../domain/attachments/index.ts';
 export { FAVORITES_PATH } from '../domain/favorites/index.ts';
+export {
+  APPEARANCE_HUES,
+  APPEARANCE_ICONS,
+  APPEARANCE_PATH,
+  isSingleEmoji,
+} from '../domain/appearance/index.ts';

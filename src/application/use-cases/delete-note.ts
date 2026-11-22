@@ -1,6 +1,7 @@
 import { favoritesAfterDelete } from '../../domain/favorites/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
 import { FileChangedError } from '../ports/index.ts';
+import { appearancesFollowDelete } from './appearance.ts';
 import { writeFavorites } from './favorites.ts';
 import { refreshPaths, type VaultDeps } from './vault-deps.ts';
 
@@ -9,9 +10,18 @@ import { refreshPaths, type VaultDeps } from './vault-deps.ts';
  * after the Trash refused), and from the remote on the next sync (its
  * history keeps it). Only the text the person last saw is deleted: a note
  * changed on disk since is read afresh and kept. It leaves the favorites
- * too. Links to it are left as written, and simply stop resolving.
+ * and the icons and colors too. Links to it are left as written, and simply stop resolving.
  */
 export async function deleteNote(
+  deps: VaultDeps,
+  request: { path: VaultPath; permanently?: boolean },
+): Promise<void> {
+  await removeNoteFile(deps, request);
+  await appearancesFollowDelete(deps, request.path);
+}
+
+/** `deleteNote` but for the icons and colors, which a folder's delete follows once, at its end. */
+export async function removeNoteFile(
   deps: VaultDeps,
   { path, permanently = false }: { path: VaultPath; permanently?: boolean },
 ): Promise<void> {

@@ -7,7 +7,9 @@ import { useApp } from '../services.ts';
 import { createCommands } from '../shell/commands.ts';
 import { keyFor, type Command } from '../shell/shortcuts.ts';
 import { useKeyHost } from '../shell/use-shortcuts.ts';
+import { LookGlyph } from '../appearance/look-glyph.tsx';
 import { Icon, type IconName } from '../shell/icons.tsx';
+import { useVault } from '../state/vault-store.ts';
 import { useTheme } from '../theme/use-theme.ts';
 import './search.css';
 
@@ -157,6 +159,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const app = useApp();
   const { actions, ui, theme } = app;
   const host = useKeyHost();
+  const looks = useVault((vault) => vault.appearances);
   const run = useMemo(() => createCommands(app), [app]);
   const shown = useTheme(theme).theme;
   const next = shown === 'dark' ? 'light' : 'dark';
@@ -234,7 +237,11 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
               onAuxClick={(event) => event.button === 1 && choose(row, 'new-tab')}
             >
               <span className="palette__kind">
-                <Icon name={glyphOf(row)} size={15} />
+                {'path' in row ? (
+                  <LookGlyph look={looks.get(row.path) ?? null} fallback={glyphOf(row)} />
+                ) : (
+                  <Icon name={glyphOf(row)} size={15} />
+                )}
               </span>
               <span className="palette__text">
                 <RowText row={row} query={query} next={next} />

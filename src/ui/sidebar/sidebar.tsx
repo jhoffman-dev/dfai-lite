@@ -9,6 +9,7 @@ import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { useVault } from '../state/vault-store.ts';
 import { SyncChip } from '../sync/sync-chip.tsx';
 import { ThemeSwitch } from '../theme/theme-switch.tsx';
+import { AppearancePopover } from './appearance-popover.tsx';
 import { FavoritesSection } from './favorites-section.tsx';
 import { FolderTree } from './folder-tree.tsx';
 import { menuItemsFor, type MenuTarget } from './menu-items.ts';
@@ -23,8 +24,10 @@ export function Sidebar({ route }: { route: Route }) {
   const favorites = useVault((vault) => vault.favorites);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<VaultPath | null>(null);
+  const [styling, setStyling] = useState<MenuTarget | null>(null);
   const activePath = route.kind === 'note' ? route.path : null;
   const closeMenu = useCallback(() => setMenu(null), []);
+  const closeStyling = useCallback(() => setStyling(null), []);
 
   return (
     <>
@@ -101,7 +104,16 @@ export function Sidebar({ route }: { route: Route }) {
             askMove: (entry) => ui.setState({ moving: entry }),
             askRenameFolder: setRenamingFolder,
             startNewFolder: (parent) => ui.setState({ namingFolderIn: parent }),
+            askAppearance: setStyling,
           })}
+        />
+      )}
+      {styling === null ? null : (
+        <AppearancePopover
+          path={styling.path}
+          name={rowName(styling)}
+          at={styling}
+          onClose={closeStyling}
         />
       )}
       {renamingFolder === null ? null : (
@@ -109,4 +121,9 @@ export function Sidebar({ route }: { route: Route }) {
       )}
     </>
   );
+}
+
+/** What a menu's row is called: a note's title, a folder's last part. */
+function rowName(target: MenuTarget): string {
+  return target.kind === 'note' ? noteTitle(target.path) : (target.path.split('/').at(-1) ?? '');
 }

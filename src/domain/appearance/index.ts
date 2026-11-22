@@ -1,0 +1,27 @@
+export {
+  APPEARANCE_PATH,
+  appearancesAfterDelete,
+  appearancesAfterMove,
+  parseAppearances,
+  pruneAppearances,
+  resolveAppearance,
+  serializeAppearances,
+  setAppearance,
+  type Appearance,
+  type AppearancePatch,
+  type Appearances,
+  type ParsedAppearances,
+  type ResolvedAppearance,
+} from './appearance.ts';
+export {
+  APPEARANCE_HUES,
+  APPEARANCE_ICONS,
+  isAppearanceHue,
+  isAppearanceIcon,
+  isSingleEmoji,
+  resolveHue,
+  resolveIcon,
+  type AppearanceHue,
+  type AppearanceIcon,
+  type ResolvedIcon,
+} from './appearance-options.ts';
