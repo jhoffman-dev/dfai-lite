@@ -42,6 +42,15 @@ first name is James, never guessed.
 4. Green: merge it (`gh pr merge --squash`). No ready note, no sweep, no trial.
 5. Broken on `main`? Fix forward or `git revert`, same flow.
 
+**Versions.** `package.json` holds the version; Tauri reads it, and
+`tools/version-sync.test.ts` fails when `Cargo.toml`, `Cargo.lock` or the top
+`CHANGELOG.md` section disagree. A PR that changes what the user sees or does
+runs `pnpm version:bump patch` (a fix) or `minor` (a feature) and writes its
+lines in the new `CHANGELOG.md` section, in words a user would read. An
+internal-only PR (a refactor, a test, CI) does neither. Two open PRs that both
+bump: the second to merge takes the next number. When a new version reaches
+`main`, `release-tag.yml` tags it `v<version>` with a GitHub Release.
+
 Held for James: anything that could rewrite or delete a vault's history (a
 force-push, a bulk delete or move of notes), and changes to this file's rules.
 
@@ -60,6 +69,7 @@ pnpm tauri dev    # run the app
 pnpm tauri build  # build the Mac app (local only)
 pnpm dev          # the UI alone in a browser, on a sample vault in memory
 pnpm check        # typecheck + lint + format:check + unit tests + build
+pnpm version:bump minor   # next version (patch|minor|major) and a new CHANGELOG.md section
 pnpm e2e          # build, then the Playwright smoke (Chromium, sample vault)
 pnpm rust:check   # cargo fmt --check, clippy, test
 pnpm index        # write _index/ for a vault folder: pnpm index <path-to-vault>

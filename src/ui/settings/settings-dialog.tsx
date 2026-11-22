@@ -4,6 +4,7 @@ import { Icon } from '../shell/icons.tsx';
 import '../shell/dialog.css';
 import { describeSyncStatus, syncStatusDetail } from '../sync/sync-chip.tsx';
 import type { SyncControls } from '../sync/sync-status.ts';
+import { AboutSection } from './about-section.tsx';
 import { AppearanceSection } from './appearance-section.tsx';
 import { CalloutsSection } from './callouts-section.tsx';
 import type { DesktopControls, RemoteInfo } from './desktop-controls.ts';
@@ -155,8 +156,8 @@ function VaultSection({ desktop }: { desktop: DesktopControls }) {
 /**
  * Settings, as DFAI's: a 44px head with the title and its Close, then the
  * sections as hairline groups under a 15/600 title. Appearance and the
- * vault's callout types, then the notes folder, sync and the capture key;
- * in a browser, only what it is.
+ * vault's callout types, then the notes folder, sync and the capture key
+ * (in a browser, only what it is), Granola, and last which build this is.
  */
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { services, theme } = useApp();
@@ -206,6 +207,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             </>
           )}
           <GranolaSection />
+          <AboutSection build={services.build} />
         </div>
       </div>
     </div>

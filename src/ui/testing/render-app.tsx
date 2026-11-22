@@ -81,6 +81,7 @@ export async function renderApp({
     granola: null,
     pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },
     loadMarkdown,
+    build: { version: '0.0.0-test', commit: 'test' },
   };
   return { services, layout, ...render(<App services={services} layoutStorage={layout} />) };
 }

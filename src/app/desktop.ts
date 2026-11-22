@@ -25,6 +25,7 @@ import { browserThemeParts } from '../ui/theme/browser-theme.ts';
 import { createThemeController, type ThemeChoice } from '../ui/theme/theme.ts';
 import type { AppServices } from '../ui/services.ts';
 import type { DesktopControls } from '../ui/settings/desktop-controls.ts';
+import { buildInfo } from './build-info.ts';
 import {
   createPendingEdits,
   deviceLayoutStorage,
@@ -106,6 +107,7 @@ async function composeDesktop({
     clock: systemClock,
     imageProbe: webviewImageProbe,
     loadMarkdown,
+    build: buildInfo,
   };
   const start = () => {
     followDisk(deps);
