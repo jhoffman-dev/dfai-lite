@@ -97,6 +97,59 @@
   background: var(--accent-text);
 }
 
+/* The rows of an open folder that would take the drop: one tinted band under
+   its lit row, so a note held over inside it reads as "into this folder". */
+.tree-slot.is-in-drop-target {
+  background: color-mix(in srgb, var(--you) 55%, transparent);
+}
+
+/* DFAI's `.tree__row--held`: the row being carried stays in place, faded,
+   so its old spot is clear. */
+.tree-row.is-dragged {
+  opacity: 0.45;
+}
+
+/* DFAI's `.tree__row--lifted`: the tile under the pointer while a row is
+   carried — its glyph and name on a raised card, a row tall, never wider
+   than 220px. `useTreeDrag` moves it; it never takes the pointer's events,
+   so the rows under it are what a drag is over. */
+.tree-drag-tile {
+  align-items: center;
+  background: var(--raised);
+  border-radius: var(--radius-row);
+  box-shadow: var(--shadow-overlay);
+  color: var(--ink);
+  display: flex;
+  font-size: var(--text-body);
+  gap: 8px;
+  height: var(--sidebar-row);
+  left: 0;
+  max-width: 220px;
+  opacity: 0.95;
+  padding: 0 10px 0 8px;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  z-index: 1000;
+}
+
+.tree-drag-tile .icon {
+  color: var(--ink-3);
+  flex: none;
+}
+
+.tree-drag-tile-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Out of the window, the tile waits for the drag to come back. */
+.tree-drag-tile[data-away] {
+  visibility: hidden;
+}
+
 /* The top of the vault, when a note is dragged over the tree's free space. */
 .sidebar-tree.is-drop-root .tree-scroller {
   border-radius: var(--radius-row);

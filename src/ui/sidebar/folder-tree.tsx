@@ -1,15 +1,17 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
-import { flattenFolderTree, folderOf } from '../../application/index.ts';
+import { flattenFolderTree, folderOf, isWithin } from '../../application/index.ts';
 import type { TreeRow, VaultPath } from '../../domain/vault/index.ts';
+import { DragTile } from './drag-tile.tsx';
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { useUi } from '../state/ui-store.ts';
@@ -90,20 +92,43 @@ export function FolderTree({
   const tree = useVault((vault) => vault.tree);
   const namingIn = useUi((state) => state.namingFolderIn);
   const { expanded, toggle, expand } = useExpandedFolders(activePath);
-  const drag = useTreeDrag({ expand, isOpen: (folder) => expanded.has(folder) });
+  const scroller = useRef<HTMLDivElement>(null);
+  const drag = useTreeDrag({ tree, scroller, expand, isOpen: (folder) => expanded.has(folder) });
   const rows = useMemo(
     () => withNamingRow(flattenFolderTree(tree, expanded), namingIn),
     [tree, expanded, namingIn],
   );
-  const scroller = useRef<HTMLDivElement>(null);
   const [focusIndex, setFocusIndex] = useState(0);
   const current = Math.min(focusIndex, Math.max(0, rows.length - 1));
+  const heldPath = drag.held?.path ?? null;
+  const heldAt = heldPath === null ? -1 : rows.findIndex((row) => row.path === heldPath);
+  const keepHeldRow = useCallback(
+    (range: Range) => {
+      const shown = defaultRangeExtractor(range);
+      if (heldAt === -1 || shown.includes(heldAt)) return shown;
+      return [...shown, heldAt].sort((left, right) => left - right);
+    },
+    [heldAt],
+  );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scroller.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 12,
+    // The dragged row stays drawn though scrolled away: its element is where its dragend is heard.
+    rangeExtractor: keepHeldRow,
   });
+
+  // Rows changing mid-drag keep the one under the pointer where it is.
+  const rowsBefore = useRef(rows);
+  const { keepHoveredRow } = drag;
+  useLayoutEffect(() => {
+    keepHoveredRow(rowsBefore.current, rows);
+    rowsBefore.current = rows;
+  }, [rows, keepHoveredRow]);
+  const target = drag.target;
+  const inTarget = (path: VaultPath) =>
+    target !== null && target !== '' && path !== target && isWithin(path, target);
 
   // Naming a folder inside another opens it, so the field shows where the folder goes.
   useEffect(() => {
@@ -129,11 +154,9 @@ export function FolderTree({
 
   return (
     <section
-      className={`sidebar-section sidebar-tree${drag.target === '' ? ' is-drop-root' : ''}`}
+      className={`sidebar-section sidebar-tree${target === '' ? ' is-drop-root' : ''}`}
       aria-labelledby="notes-heading"
-      onDragOver={(event) => drag.rowDrag.over('', event)}
-      onDragLeave={drag.rowDrag.leave}
-      onDrop={(event) => drag.rowDrag.drop('', event)}
+      {...drag.zone}
     >
       <div className="tree-heading">
         <h2 id="notes-heading" className="sidebar-heading">
@@ -162,8 +185,11 @@ export function FolderTree({
             return (
               <div
                 key={`${row.kind}:${row.path}`}
-                className="tree-slot"
+                className={`tree-slot${inTarget(row.path) ? ' is-in-drop-target' : ''}`}
                 style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
+                // What a drag over this slot points at, read by `useTreeDrag`.
+                data-entry-kind={row.kind}
+                data-entry-path={row.path}
               >
                 {row.kind === 'naming' ? (
                   <NewFolderRow
@@ -179,8 +205,9 @@ export function FolderTree({
                       index={item.index}
                       active={row.path === activePath}
                       focusable={item.index === current}
-                      dropTarget={row.kind === 'folder' && drag.target === row.path}
-                      drag={drag.rowDrag}
+                      dropTarget={row.kind === 'folder' && target === row.path}
+                      dragged={row.path === heldPath}
+                      onDragStart={drag.start}
                       onToggle={toggle}
                       onMenu={openMenu}
                       onFocusRow={setFocusIndex}
@@ -193,6 +220,7 @@ export function FolderTree({
           })}
         </div>
       </div>
+      {drag.held !== null && <DragTile entry={drag.held} tileRef={drag.tile} />}
     </section>
   );
 }

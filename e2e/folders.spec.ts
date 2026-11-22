@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type JSHandle, type Locator, type Page } from '@playwright/test';
 
 /** A folder's row in the tree, by its exact name. */
 const folderRow = (page: Page, name: string) =>
@@ -6,6 +6,78 @@ const folderRow = (page: Page, name: string) =>
     .getByRole('tree', { name: 'Notes' })
     .locator('[role="treeitem"][data-kind="folder"]')
     .filter({ has: page.locator('.sidebar-row-label').getByText(name, { exact: true }) });
+
+/**
+ * A drag driven by DOM drag events at each row's middle, one event per
+ * step. Playwright's mouse drag sends its `dragover`s only when it next
+ * moves, so a pointer resting on a row is never heard resting there; these
+ * events say exactly where the pointer is and when.
+ */
+async function dragEvents(page: Page, from: Locator) {
+  const dataTransfer: JSHandle<DataTransfer> = await page.evaluateHandle(() => new DataTransfer());
+  const fire = async (type: string, on: Locator) => {
+    const box = await on.boundingBox();
+    if (box === null) throw new Error(`nothing to ${type} on`);
+    const at = { clientX: box.x + 40, clientY: box.y + box.height / 2 };
+    await on.dispatchEvent(type, { dataTransfer, ...at });
+  };
+  // The source's own element: once moved, its row is gone, and the browser ends the drag on it anyway.
+  const source = await from.elementHandle();
+  await fire('dragstart', from);
+  return {
+    over: (on: Locator) => fire('dragover', on),
+    drop: async (on: Locator) => {
+      await fire('drop', on);
+      await source?.dispatchEvent('dragend', { dataTransfer });
+    },
+  };
+}
+
+test('a note held over one folder, then dropped on another, lands in the second', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await folderRow(page, 'Inbox').click();
+  const note = page.getByRole('tree', { name: 'Notes' }).getByRole('treeitem', {
+    name: 'Reading list',
+  });
+  const drag = await dragEvents(page, note);
+  const tile = page.getByTestId('tree-drag-tile');
+  await expect(tile).toHaveText('Reading list');
+  await expect(note).toHaveClass(/is-dragged/);
+
+  await drag.over(folderRow(page, 'Meetings'));
+  await expect(folderRow(page, 'Meetings')).toHaveClass(/is-drop-target/);
+  await drag.over(folderRow(page, 'People'));
+  await expect(folderRow(page, 'People')).toHaveClass(/is-drop-target/);
+  await expect(folderRow(page, 'Meetings')).not.toHaveClass(/is-drop-target/);
+  await drag.drop(folderRow(page, 'People'));
+
+  await expect(tile).toHaveCount(0);
+  // One row of that name, the moved note, now under People, never Meetings.
+  await folderRow(page, 'People').click();
+  await expect(page.getByRole('treeitem', { name: 'Reading list' })).toHaveAttribute(
+    'href',
+    '#/note/People%2FReading%20list.md',
+  );
+});
+
+test('a closed folder held over opens after a second, not before', async ({ page }) => {
+  await page.goto('/');
+  await page.clock.install();
+  await folderRow(page, 'Inbox').click();
+  const note = page.getByRole('tree', { name: 'Notes' }).getByRole('treeitem', {
+    name: 'Reading list',
+  });
+  const drag = await dragEvents(page, note);
+  await drag.over(folderRow(page, 'People'));
+  await page.clock.runFor(500);
+  await expect(folderRow(page, 'People')).toHaveAttribute('aria-expanded', 'false');
+  await page.clock.runFor(500);
+  await expect(folderRow(page, 'People')).toHaveAttribute('aria-expanded', 'true');
+  await expect(folderRow(page, 'People')).toHaveClass(/is-drop-target/);
+  await drag.drop(folderRow(page, 'People'));
+});
 
 const sidebarWidth = async (page: Page) =>
   (await page.getByRole('navigation', { name: 'Sidebar' }).boundingBox())?.width ?? 0;

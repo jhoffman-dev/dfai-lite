@@ -1,5 +1,4 @@
 import { memo, type DragEvent, type MouseEvent } from 'react';
-import { folderOf } from '../../application/index.ts';
 import type { TreeRow, VaultEntry, VaultPath } from '../../domain/vault/index.ts';
 import { Icon } from '../shell/icons.tsx';
 import type { MenuTarget } from './menu-items.ts';
@@ -7,14 +6,6 @@ import type { MenuTarget } from './menu-items.ts';
 export const ROW_HEIGHT = 28;
 export const INDENT = 14;
 const CHEVRON = 20;
-
-/** A row's drag and drop, by the folder a drop on it lands in. */
-export interface RowDrag {
-  readonly start: (entry: VaultEntry, event: DragEvent) => void;
-  readonly over: (folder: VaultPath, event: DragEvent) => void;
-  readonly drop: (folder: VaultPath, event: DragEvent) => void;
-  readonly leave: (event: DragEvent) => void;
-}
 
 /** The menu for a row, opened at a point. */
 export function menuTargetOf(row: TreeRow, at: { x: number; y: number }): MenuTarget {
@@ -28,9 +19,11 @@ interface TreeRowProps {
   readonly index: number;
   readonly active: boolean;
   readonly focusable: boolean;
-  /** A drop here would land in this folder: lit. */
+  /** A drop now would land in this folder: lit. */
   readonly dropTarget: boolean;
-  readonly drag: RowDrag;
+  /** This row is the one being dragged: faded in place. */
+  readonly dragged: boolean;
+  readonly onDragStart: (entry: VaultEntry, event: DragEvent) => void;
   readonly onToggle: (path: VaultPath) => void;
   readonly onMenu: (row: TreeRow, event: MouseEvent) => void;
   readonly onFocusRow: (index: number) => void;
@@ -43,14 +36,13 @@ export const TreeRowView = memo(function TreeRowView({
   active,
   focusable,
   dropTarget,
-  drag,
+  dragged,
+  onDragStart,
   onToggle,
   onMenu,
   onFocusRow,
 }: TreeRowProps) {
   const isFolder = row.kind === 'folder';
-  // A drop on a note lands beside it, in its folder.
-  const dropFolder = isFolder ? row.path : folderOf(row.path);
   const common = {
     role: 'treeitem',
     'data-index': index,
@@ -62,17 +54,15 @@ export const TreeRowView = memo(function TreeRowView({
     draggable: true,
     onFocus: () => onFocusRow(index),
     onContextMenu: (event: MouseEvent) => onMenu(row, event),
-    onDragStart: (event: DragEvent) => drag.start({ kind: row.kind, path: row.path }, event),
-    onDragOver: (event: DragEvent) => drag.over(dropFolder, event),
-    onDragLeave: drag.leave,
-    onDrop: (event: DragEvent) => drag.drop(dropFolder, event),
+    onDragStart: (event: DragEvent) => onDragStart({ kind: row.kind, path: row.path }, event),
   } as const;
+  const faded = dragged ? ' is-dragged' : '';
 
   if (isFolder) {
     return (
       <div
         {...common}
-        className={`tree-row is-folder${dropTarget ? ' is-drop-target' : ''}`}
+        className={`tree-row is-folder${dropTarget ? ' is-drop-target' : ''}${faded}`}
         aria-expanded={row.expanded}
         onClick={() => onToggle(row.path)}
       >
@@ -87,7 +77,7 @@ export const TreeRowView = memo(function TreeRowView({
   return (
     <a
       {...common}
-      className={`tree-row is-note${active ? ' is-active' : ''}`}
+      className={`tree-row is-note${active ? ' is-active' : ''}${faded}`}
       href={`#/note/${encodeURIComponent(row.path)}`}
       aria-current={active ? 'page' : undefined}
       aria-selected={active}
