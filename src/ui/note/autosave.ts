@@ -6,6 +6,8 @@ export interface Autosave {
   schedule(read: () => string): void;
   /** Saves now, if anything is waiting. Resolves when the save is kept. */
   flush(): Promise<void>;
+  /** Whether nothing typed is waiting to be saved. */
+  isIdle(): boolean;
 }
 
 /**
@@ -43,5 +45,6 @@ export function createAutosave({
       timer = setTimeout(() => void flush(), delayMs);
     },
     flush,
+    isIdle: () => pending === null,
   };
 }

@@ -37,7 +37,14 @@ const flush = async () => {
   for (let tick = 0; tick < 20; tick++) await Promise.resolve();
 };
 
-const SYNCED: SyncResult = { kind: 'synced', pulled: 0, pushed: 0, conflicts: [], headSha: 'h' };
+const SYNCED: SyncResult = {
+  kind: 'synced',
+  committed: false,
+  pulled: false,
+  pushed: false,
+  conflicts: [],
+  warnings: [],
+};
 
 function setup(results: SyncResult[] = []) {
   const timers = new ManualTimers();
@@ -115,19 +122,38 @@ describe('the sync scheduler', () => {
 
   it('says offline, then sign-in needed, and clears both on a good sync', async () => {
     const { scheduler } = setup([
-      { kind: 'failed', reason: 'unreachable', message: 'GitHub could not be reached.' },
-      { kind: 'failed', reason: 'auth', message: 'GitHub refused the token.' },
-      { ...SYNCED, conflicts: [{ path: 'A.md', copy: 'A (conflict 2026-11-21).md' }] },
+      { kind: 'failed', reason: 'unreachable', message: 'Could not fetch from the remote.' },
+      { kind: 'failed', reason: 'auth', message: 'Could not fetch: Authentication failed' },
+      { ...SYNCED, conflicts: [{ path: 'A.md', copy: 'A (conflict from Studio).md' }] },
     ]);
     await scheduler.wake();
     expect(scheduler.status()).toMatchObject({ phase: 'offline', lastSyncedAt: null });
     await scheduler.wake();
     expect(scheduler.status()).toMatchObject({
       phase: 'needs-sign-in',
-      message: 'GitHub refused the token.',
+      message: 'Could not fetch: Authentication failed',
     });
     await scheduler.wake();
     expect(scheduler.status()).toMatchObject({ phase: 'idle', conflicts: 1, message: null });
+  });
+
+  it('pushes at least every five minutes while changes keep coming', async () => {
+    const { scheduler, timers, calls, clock } = setup();
+    const start = clock.now().getTime();
+    for (let second = 0; second < 400; second += 2) {
+      clock.set(new Date(start + second * 1000));
+      scheduler.noteChanged();
+      await timers.advance(2000);
+    }
+    expect(calls()).toBe(1);
+  });
+
+  it('says sync is off, and why, for a vault with no remote', async () => {
+    const { scheduler } = setup([
+      { kind: 'off', reason: 'no-upstream', message: 'No remote to sync with.' },
+    ]);
+    await scheduler.wake();
+    expect(scheduler.status()).toMatchObject({ phase: 'off', message: 'No remote to sync with.' });
   });
 
   it('keeps syncing when a status listener throws', async () => {
@@ -177,5 +203,45 @@ describe('the sync scheduler', () => {
     await scheduler.start();
     expect(scheduler.status()).toMatchObject({ phase: 'error', message: 'bug' });
     expect(timers.scheduled).toBe(1);
+  });
+
+  it('gives up on a sync that never returns, so the next one can run', async () => {
+    const timers = new ManualTimers();
+    let calls = 0;
+    const scheduler = createSyncScheduler({
+      syncNow: () => {
+        calls += 1;
+        return new Promise<SyncResult>(() => undefined);
+      },
+      timers,
+      clock: new FixedClock(),
+      pushDelayMs: 3000,
+      pullEveryMs: 60_000,
+      watchdogMs: 120_000,
+    });
+    void scheduler.wake();
+    await flush();
+    await timers.advance(120_000);
+    expect(scheduler.status()).toMatchObject({
+      phase: 'error',
+      message: expect.stringMatching(/given up/),
+    });
+    void scheduler.wake();
+    await flush();
+    expect(calls).toBe(2);
+  });
+
+  it('shows a sync that waits on the person, with the deletions it asks about', async () => {
+    const { scheduler } = setup([
+      { kind: 'blocked', reason: 'merge-in-progress', message: 'Finish the merge.' },
+      { kind: 'needs-confirmation', deletions: ['a.md', 'b.md'], message: '2 notes are missing.' },
+    ]);
+    await scheduler.wake();
+    expect(scheduler.status()).toMatchObject({ phase: 'blocked', message: 'Finish the merge.' });
+    await scheduler.wake();
+    expect(scheduler.status()).toMatchObject({
+      phase: 'needs-confirmation',
+      deletions: ['a.md', 'b.md'],
+    });
   });
 });

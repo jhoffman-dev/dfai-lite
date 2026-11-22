@@ -60,6 +60,7 @@ One sentence on what was decided or discussed. #meeting
 - When: 2026-11-21 10:00–10:30
 - With: [[Mara Quill]], [[Tobias Fenn]]
 - About: [[Larkspur rollout]]
+- Source: https://docs.example.com/document/d/weekly-sync
 
 ## Summary
 
@@ -69,11 +70,15 @@ One sentence on what was decided or discussed. #meeting
 
 - [[Mara Quill]] sends the revised plan by Friday.
 
+## Notes
+
 ## Transcript
 ```
 
-Leave out a section that has nothing in it. The transcript, when there is
-one, goes last so a reader can stop before it.
+Leave out a line or a section that has nothing in it. `Source` is where the
+notes came from, when there is a link. `Notes` holds the detail behind the
+summary. The transcript, when there is one, goes last so a reader can stop
+before it.
 
 ## Rules for writing here
 
@@ -88,6 +93,7 @@ one, goes last so a reader can stop before it.
 5. **Do not touch `_index/` or `.dfai-lite/`.**
 6. If a push is refused because the branch moved, pull and try again. Never
    resolve it by overwriting.
-7. A file ending `(conflict <date>).md` is a second version of a note the app
-   kept because both sides changed. Leave it for the owner unless asked to
-   merge it.
+7. A file ending `(conflict from <Mac>).md` is the other Mac's version of a
+   note both Macs changed; the app kept this Mac's at the note's own name. One
+   ending `(conflict <date>).md` is text typed while the note changed on disk.
+   Leave either for the owner unless asked to merge it.

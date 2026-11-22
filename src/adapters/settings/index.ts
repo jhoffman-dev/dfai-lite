@@ -1,7 +1,6 @@
 import {
   DEFAULT_SETTINGS,
   DEFAULT_UI_PREFS,
-  type RepoSettings,
   type Settings,
   type SettingsStore,
   type UiPrefs,
@@ -11,23 +10,66 @@ import {
 export const SETTINGS_KEY = 'dfai-lite.settings';
 
 /**
- * Settings in `localStorage`, as one JSON value. Whatever cannot be read
- * (missing, not JSON, a field of the wrong shape) loads as its default,
- * field by field, so one bad field never costs the others. The token is
- * written and read like any field and appears in no message.
+ * Settings in `localStorage`, as one JSON value: the app's in a browser,
+ * where it runs on the sample vault.
  */
 export function createLocalSettingsStore(storage: Storage): SettingsStore {
   return {
-    load: () => settingsFrom(readJson(storage)),
+    load: () => parseSettings(storage.getItem(SETTINGS_KEY)),
     save: (settings) => storage.setItem(SETTINGS_KEY, JSON.stringify(settings)),
   };
 }
 
-function readJson(storage: Storage): unknown {
-  const raw = storage.getItem(SETTINGS_KEY);
-  if (raw === null) return null;
+/**
+ * Settings in a file the host keeps (the app's config folder on the Mac).
+ * The file is read once, before the first paint; `load` answers from
+ * memory, and each `save` writes the whole file in the background. A
+ * failed write goes to `onError`: the settings stay as saved in memory.
+ */
+export function createFileSettingsStore({
+  text,
+  write,
+  onError,
+}: {
+  /** The file's text at start; null when there is none yet. */
+  text: string | null;
+  write: (text: string) => Promise<void>;
+  onError: (error: unknown) => void;
+}): SettingsStore & { written(): Promise<void> } {
+  let current = parseSettings(text);
+  let writing = Promise.resolve();
+  return {
+    load: () => current,
+    save(settings) {
+      current = settings;
+      const json = `${JSON.stringify(settings, null, 2)}\n`;
+      // In order, so an older write never lands after a newer one.
+      writing = writing.then(() => write(json)).catch(onError);
+    },
+    /** Resolves once every save so far has been written (or its failure reported). */
+    written: () => writing,
+  };
+}
+
+/**
+ * Settings from their JSON. Whatever cannot be read (missing, not JSON, a
+ * field of the wrong shape) is its default, field by field, so one bad
+ * field never costs the others.
+ */
+export function parseSettings(text: string | null): Settings {
+  const raw = readJson(text);
+  if (!isRecord(raw)) return DEFAULT_SETTINGS;
+  return {
+    vaultPath: isString(raw.vaultPath) && raw.vaultPath !== '' ? raw.vaultPath : null,
+    captureHotkey: isString(raw.captureHotkey) ? raw.captureHotkey : DEFAULT_SETTINGS.captureHotkey,
+    ui: uiFrom(raw.ui),
+  };
+}
+
+function readJson(text: string | null): unknown {
+  if (text === null) return null;
   try {
-    return JSON.parse(raw) as unknown;
+    return JSON.parse(text) as unknown;
   } catch {
     // Unreadable settings load as the defaults, as the port promises.
     return null;
@@ -39,22 +81,6 @@ type Fields = Readonly<Record<string, unknown>>;
 const isRecord = (value: unknown): value is Fields =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const isString = (value: unknown): value is string => typeof value === 'string';
-
-function settingsFrom(raw: unknown): Settings {
-  if (!isRecord(raw)) return DEFAULT_SETTINGS;
-  return {
-    repo: repoFrom(raw.repo),
-    token: isString(raw.token) && raw.token !== '' ? raw.token : null,
-    ui: uiFrom(raw.ui),
-  };
-}
-
-function repoFrom(raw: unknown): RepoSettings | null {
-  if (!isRecord(raw)) return null;
-  const { owner, name, branch } = raw;
-  if (!isString(owner) || !isString(name) || !isString(branch)) return null;
-  return { owner, name, branch };
-}
 
 const THEMES: readonly UiPrefs['theme'][] = ['system', 'light', 'dark'];
 

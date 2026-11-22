@@ -1,14 +1,25 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createNoteFromLink, noteTitle, rankNoteSuggestions } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
 import type { EditorBridge } from '../editor/bridge.ts';
+import type { Tab } from '../panes/layout.ts';
+import type { TabMemory } from '../panes/workspace.ts';
 import { useApp, type AppContextValue } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { useUi } from '../state/ui-store.ts';
 import { useVault } from '../state/vault-store.ts';
 import type { Autosave } from './autosave.ts';
 import { Backlinks } from './backlinks.tsx';
-import { createNoteSaver, type NoteSaver } from './note-saver.ts';
+import type { OpenNote } from './open-notes.ts';
 import { NoteTitle } from './note-title.tsx';
 import './note.css';
 
@@ -24,8 +35,9 @@ const NoteEditor = lazy(() => preloadEditor().then(({ NoteEditor }) => ({ defaul
 
 const TAG_SUGGESTIONS = 12;
 
-function editorBridge(app: AppContextValue, { autosave, opened }: NoteSaver): EditorBridge {
+function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): EditorBridge {
   const { services, actions, deps } = app;
+  const { autosave, opened } = saver;
   const index = services.session.index;
   const resolve = (target: string) => index.resolve(target);
   return {
@@ -43,16 +55,19 @@ function editorBridge(app: AppContextValue, { autosave, opened }: NoteSaver): Ed
     createLinkedNote: (target) => {
       createNoteFromLink(deps, { target }).catch(actions.report);
     },
-    followLink: (target) => {
+    followLink: (target, openIn) => {
       autosave
         .flush()
-        .then(() => actions.followLink(target))
+        .then(() => actions.followLink(target, openIn))
         .catch(actions.report);
     },
-    openTag: (name) => actions.openTag(name),
+    openTag: (name, openIn) => actions.openTag(name, openIn),
     opened,
     changed: (read) => autosave.schedule(read),
     blurred: () => void autosave.flush(),
+    closed: () => {
+      autosave.flush().then(mirror.settled, actions.report);
+    },
   };
 }
 
@@ -88,17 +103,40 @@ function FavoriteToggle({ path }: { path: VaultPath }) {
   );
 }
 
-/** One note: its title, the editor or the rendered view, and what links here. Keyed by path. */
-export function NotePane({ path }: { path: VaultPath }) {
+/** Puts the tab's scroll back where it was left, and keeps it when the tab is hidden. */
+function useKeptScroll(memory: TabMemory) {
+  const article = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const scroller = article.current?.closest<HTMLElement>('[role="tabpanel"]') ?? null;
+    if (scroller === null) return;
+    scroller.scrollTop = memory.scrollTop;
+    return () => {
+      memory.scrollTop = scroller.scrollTop;
+    };
+  }, [memory]);
+  return article;
+}
+
+/**
+ * One note in one tab: its title, the editor or the rendered view, and what
+ * links here. Keyed by tab and path. `focused`: the tab is the active pane's.
+ */
+export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; focused: boolean }) {
   const app = useApp();
-  const { services, actions, ui } = app;
-  const [saver] = useState(() => createNoteSaver(app, path));
-  const { autosave } = saver;
+  const { services, actions, ui, workspace } = app;
+  const note = app.openNotes.get(app, path);
+  const { autosave } = note.saver;
   useFlushOnLeave(autosave);
-  const bridge = useMemo(() => editorBridge(app, saver), [app, saver]);
-  const preview = useUi((state) => state.preview);
+  // Sync writes what is typed before it commits. A flush of its own per tab: the
+  // tabs share the saver, and one closing must not take another's away.
+  useEffect(() => services.pendingEdits.add(() => autosave.flush()), [services, autosave]);
+  const bridge = useMemo(() => editorBridge(app, note), [app, note]);
+  const memory = workspace.memoryOf(tab.id);
+  const article = useKeptScroll(memory);
+  const preview = tab.preview;
   const wantsEditor = useUi(
-    (state) => state.pendingFocus?.path === path && state.pendingFocus.target === 'editor',
+    (state) =>
+      focused && state.pendingFocus?.path === path && state.pendingFocus.target === 'editor',
   );
   // Kept from the moment the pane opens: the editor may land a moment later, after the
   // request is cleared, and must still take the caret.
@@ -126,9 +164,9 @@ export function NotePane({ path }: { path: VaultPath }) {
   }
 
   return (
-    <article className="note-pane" aria-label={noteTitle(path)}>
+    <article ref={article} className="note-pane" aria-label={noteTitle(path)}>
       <header className="note-header">
-        <NoteTitle path={path} beforeRename={autosave.flush} />
+        <NoteTitle path={path} focused={focused} beforeRename={autosave.flush} />
         <div className="note-tools">
           <FavoriteToggle path={path} />
           <button
@@ -150,7 +188,13 @@ export function NotePane({ path }: { path: VaultPath }) {
           </Suspense>
         ) : (
           <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
-            <NoteEditor initialText={file.text} autoFocus={focusEditor} bridge={bridge} />
+            <NoteEditor
+              initialText={note.mirror.liveText() ?? file.text}
+              autoFocus={focusEditor}
+              bridge={bridge}
+              mirror={note.mirror}
+              memory={memory}
+            />
           </Suspense>
         )}
       </div>

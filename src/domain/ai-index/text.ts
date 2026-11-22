@@ -37,5 +37,11 @@ export function byteLength(text: string): number {
   return encoder.encode(text).length;
 }
 
+/** Line and paragraph separators and control characters: any of them would break an index line. */
+const LINE_BREAKING = /[\p{Cc}\p{Zl}\p{Zp}]/gu;
+
+/** `text` safe to put on one index line: every line-breaking or control character becomes a space. */
+export const oneLine = (text: string): string => text.replace(LINE_BREAKING, ' ');
+
 /** A wiki link to a note by name. */
 export const linkTo = (name: string): string => `[[${name}]]`;

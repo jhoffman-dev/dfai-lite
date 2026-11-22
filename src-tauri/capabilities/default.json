@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the one window may ask of the host: its own commands, the folder picker, the capture hotkey, and bringing itself forward.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "dialog:allow-open",
+    "dialog:allow-ask",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister-all"
+  ]
+}

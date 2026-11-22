@@ -1,5 +1,6 @@
 import {
   isConflictCopyPath,
+  type DeletionApprovals,
   type SyncScheduler,
   type SyncStatus as SchedulerStatus,
   type VaultChange,
@@ -16,24 +17,35 @@ export function chipStatus(status: SchedulerStatus, conflictCopies: number): Syn
       return { kind: 'offline' };
     case 'needs-sign-in':
       return { kind: 'needs-sign-in' };
+    case 'off':
+      return { kind: 'off', message: status.message ?? 'Sync is off.' };
     case 'error':
       return { kind: 'error', message: status.message ?? 'Sync stopped.' };
-    case 'idle':
+    case 'blocked':
+      return { kind: 'blocked', message: status.message ?? 'Sync is waiting.' };
+    case 'needs-confirmation':
+      return {
+        kind: 'needs-confirmation',
+        count: status.deletions.length,
+        examples: status.deletions.slice(0, 3),
+        message: status.message ?? 'Notes are missing from this folder.',
+      };
+    case 'idle': {
+      const notice = status.message === null ? {} : { notice: status.message };
       return conflictCopies > 0
         ? { kind: 'conflicts', count: conflictCopies, lastSyncedAt: status.lastSyncedAt }
-        : { kind: 'idle', lastSyncedAt: status.lastSyncedAt };
+        : { kind: 'idle', lastSyncedAt: status.lastSyncedAt, ...notice };
+    }
   }
 }
 
 /**
- * Whether a change was made here, by a person, and so is worth a push. Sync
- * writes what it pulls clean, so a pulled note never re-arms a push; a
- * delete or rename while a sync runs is that sync's own.
+ * Whether a change is worth a push: any change to the vault (typed here, or
+ * made by Claude or another editor), except what a sync writes itself while
+ * it runs, and the vault being read whole.
  */
-function madeHere(change: VaultChange, session: VaultSession, syncing: boolean): boolean {
-  if (change.kind === 'loaded') return false;
-  if (change.kind === 'written') return session.file(change.path)?.dirty === true;
-  return !syncing;
+function worthAPush(change: VaultChange, syncing: boolean): boolean {
+  return change.kind !== 'loaded' && !syncing;
 }
 
 /**
@@ -46,9 +58,12 @@ export function connectSync({
   scheduler,
   session,
   page,
+  approvals,
 }: {
   scheduler: SyncScheduler;
   session: VaultSession;
+  /** Where a yes to many deletions goes. */
+  approvals: DeletionApprovals;
   /** The window, or a stand-in in tests: where `online` and `visibilitychange` are heard. */
   page: { addEventListener(type: string, listener: () => void): void; isVisible(): boolean };
 }): SyncControls & { start(): void } {
@@ -76,7 +91,7 @@ export function connectSync({
 
   session.subscribe((change) => {
     recount(change);
-    if (madeHere(change, session, scheduler.status().phase === 'syncing')) {
+    if (worthAPush(change, scheduler.status().phase === 'syncing')) {
       scheduler.noteChanged();
     }
   });
@@ -94,6 +109,10 @@ export function connectSync({
       return () => listeners.delete(listener);
     },
     syncNow: wake,
+    confirmDeletions() {
+      approvals.approve(scheduler.status().deletions);
+      wake();
+    },
     start: () => void scheduler.start(),
   };
 }

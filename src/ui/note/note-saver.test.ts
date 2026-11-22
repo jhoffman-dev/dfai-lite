@@ -1,48 +1,40 @@
-import { openVault, VaultSession, type StoredFile } from '../../application/index.ts';
+import { applyExternalChanges, openVault, VaultSession } from '../../application/index.ts';
 import {
   FixedClock,
-  MemoryNoteStore,
   MemorySettingsStore,
+  MemoryVaultFiles,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
+import { createAppContext } from '../app-context.ts';
+import { memoryLayoutStorage } from '../panes/layout-storage.ts';
 import { parseRoute } from '../routing/route.ts';
-import type { AppContextValue } from '../services.ts';
-import { createNoteActions } from '../state/note-actions.ts';
-import { createUiStore } from '../state/ui-store.ts';
-import { createVaultStore } from '../state/vault-store.ts';
 import { createNoteSaver } from './note-saver.ts';
 
 const PLAN = 'Projects/Larkspur Payroll.md';
 
 async function setup() {
-  const noteStore = MemoryNoteStore.of({ [PLAN]: 'Parallel run.' });
+  const files = MemoryVaultFiles.of({ [PLAN]: 'Parallel run.' });
   const session = new VaultSession();
-  await openVault({ store: noteStore, session });
-  const deps = { store: noteStore, session };
-  const ui = createUiStore({ preview: false });
-  const settings = new MemorySettingsStore();
-  const app: AppContextValue = {
-    services: {
-      noteStore,
-      session,
-      settings,
-      clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
-      search: new SimpleSearchEngine(),
-      sync: null,
-      reconnect: () => undefined,
-    },
-    deps,
-    ui,
-    vault: createVaultStore(session),
-    actions: createNoteActions({ deps, ui, settings }),
+  await openVault({ files, session });
+  const services = {
+    files,
+    session,
+    settings: new MemorySettingsStore(),
+    clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
+    search: new SimpleSearchEngine(),
+    sync: null,
+    desktop: null,
+    pendingEdits: { add: () => () => undefined },
   };
-  return { app, session, ui };
+  const app = createAppContext(services, memoryLayoutStorage());
+  app.workspace.open({ kind: 'note', path: PLAN });
+  return { app, session, ui: app.ui, deps: { files, session } };
 }
 
-/** What a sync does when it pulls another device's edit: the note changes, clean. */
-function pulledEdit(session: VaultSession, text: string): void {
-  const file: StoredFile = { path: PLAN, text, baseSha: 'remote', dirty: false };
-  session.applyWrite(file);
+/** What a sync (or Claude) does: the note changes on disk, and the session hears. */
+async function editOnDisk(deps: { files: MemoryVaultFiles; session: VaultSession }, text: string) {
+  deps.files.edit(PLAN, text);
+  await applyExternalChanges(deps, [PLAN]);
 }
 
 describe('saving a note from the editor', () => {
@@ -57,11 +49,11 @@ describe('saving a note from the editor', () => {
     expect(session.file(PLAN)?.text).toBe('Parallel run for two cycles.');
   });
 
-  it('keeps both when a sync changed the note while typing, and opens the copy', async () => {
-    const { app, session, ui } = await setup();
+  it('keeps both when a sync changed the note while typing, and its tab moves to the copy', async () => {
+    const { app, session, ui, deps } = await setup();
     const saver = createNoteSaver(app, PLAN);
     saver.opened('Parallel run.');
-    pulledEdit(session, 'Parallel run, edited on the laptop.');
+    await editOnDisk(deps, 'Parallel run, edited on the laptop.');
     saver.autosave.schedule(() => 'Parallel run, typed here.');
     await saver.autosave.flush();
 
@@ -74,7 +66,7 @@ describe('saving a note from the editor', () => {
     expect(route.kind === 'note' && session.file(route.path)?.text).toBe(
       'Parallel run, typed here.',
     );
-    expect(ui.getState().notice).toMatch(/changed on another device/);
+    expect(ui.getState().notice).toMatch(/changed elsewhere/);
   });
 
   it('bases the next save on the last one, so its own saves never look like a sync', async () => {

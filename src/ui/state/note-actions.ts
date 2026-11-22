@@ -2,47 +2,51 @@ import {
   createNoteFromLink,
   createQuickNote,
   deleteNote,
-  pathAfterMove,
   renameFolder,
   renameNote,
   reorderFavorite,
   tagKey,
   toggleFavoriteNote,
+  TrashRefusedError,
   type RenameResult,
   type SettingsStore,
   type UiPrefs,
   type VaultDeps,
 } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
-import { parseRoute } from '../routing/route.ts';
-import { navigate } from '../routing/use-route.ts';
+import { currentTab, setPreview, type OpenIn } from '../panes/layout.ts';
+import type { LayoutStore } from '../panes/layout-store.ts';
+import type { Workspace } from '../panes/workspace.ts';
 import type { UiStore } from './ui-store.ts';
 
 /**
  * What a click or a key asks of the vault, in one place: each calls the
  * use-case, then moves the window to show the result. No rule lives here;
- * the use-cases decide, this only routes their answers.
+ * the use-cases decide, this only routes their answers. `openIn` says where
+ * a note opens: the active tab (the default), a new tab, or the other pane.
  */
 export interface NoteActions {
-  openNote(path: VaultPath): void;
+  openNote(path: VaultPath, openIn?: OpenIn): void;
   /**
-   * A new `Untitled` note (in the Inbox unless a folder is given), open with
-   * the caret in it. `replace` swaps the history entry (for `#/new`).
+   * A new `Untitled` note (in the Inbox unless a folder is given), open in a
+   * new tab with the caret in it. `replace` swaps the history entry (for `#/new`).
    */
   newNote(options?: { folder?: VaultPath; replace?: boolean }): Promise<void>;
   /** Opens the note a link names, making it first if no note answers. */
-  followLink(target: string): Promise<void>;
-  openTag(name: string): void;
+  followLink(target: string, openIn?: OpenIn): Promise<void>;
+  openTag(name: string, openIn?: OpenIn): void;
   toggleFavorite(path: VaultPath): Promise<void>;
   moveFavorite(path: VaultPath, index: number): Promise<void>;
-  rename(from: VaultPath, to: VaultPath, options?: { open: boolean }): Promise<RenameResult>;
-  remove(path: VaultPath, options?: { wasOpen: boolean }): Promise<void>;
-  /** Renames or moves a folder with every note in it; the open note follows. */
+  /** Renames or moves a note; the tabs showing it follow by themselves. */
+  rename(from: VaultPath, to: VaultPath): Promise<RenameResult>;
+  /** Deletes a note; the tabs showing it close by themselves. */
+  remove(path: VaultPath): Promise<void>;
+  /** Renames or moves a folder with every note in it; the open notes follow. */
   renameFolder(from: VaultPath, to: VaultPath): Promise<void>;
   /** Opens a note with its title ready to rename. */
   startRename(path: VaultPath): void;
   updatePrefs(patch: Partial<UiPrefs>): void;
-  /** Rendered view or editor, remembered on this device for the next note opened. */
+  /** The active tab's rendered view or editor, remembered on this device for the next tab. */
   togglePreview(): void;
   /** Shows `error`'s message as a notice: for a promise nobody else awaits. */
   report(error: unknown): void;
@@ -52,10 +56,17 @@ export function createNoteActions({
   deps,
   ui,
   settings,
+  layout,
+  workspace,
+  confirm,
 }: {
   deps: VaultDeps;
   ui: UiStore;
   settings: SettingsStore;
+  layout: LayoutStore;
+  workspace: Workspace;
+  /** A yes-or-no question for the person (the Mac's alert); absent where nothing can refuse. */
+  confirm?: (question: { message: string; yes: string }) => Promise<boolean>;
 }): NoteActions {
   const notice = (message: string) => ui.setState({ notice: message });
   const report = (error: unknown) =>
@@ -66,47 +77,49 @@ export function createNoteActions({
   };
 
   return {
-    openNote: (path) => navigate({ kind: 'note', path }),
+    openNote: (path, openIn) => workspace.open({ kind: 'note', path }, openIn),
     async newNote({ folder, replace = false } = {}) {
       const path = await createQuickNote(deps, folder === undefined ? {} : { folder });
-      ui.setState({ pendingFocus: { path, target: 'editor' }, preview: false });
-      navigate({ kind: 'note', path }, { replace });
+      ui.setState({ pendingFocus: { path, target: 'editor' } });
+      workspace.open({ kind: 'note', path }, 'new-tab', { replace, preview: false });
     },
-    async followLink(target) {
+    async followLink(target, openIn) {
       const result = await createNoteFromLink(deps, { target });
       if (result.kind === 'refused') notice(result.reason);
-      else navigate({ kind: 'note', path: result.path });
+      else workspace.open({ kind: 'note', path: result.path }, openIn);
     },
-    openTag: (name) => navigate({ kind: 'tags', tag: tagKey(name) }),
+    openTag: (name, openIn) => workspace.open({ kind: 'tags', tag: tagKey(name) }, openIn),
     toggleFavorite: (path) => toggleFavoriteNote(deps, { path }),
     moveFavorite: (path, index) => reorderFavorite(deps, { path, index }),
-    async rename(from, to, { open } = { open: false }) {
+    async rename(from, to) {
       const result = await renameNote(deps, { from, to });
       if (result.kind === 'refused') notice(result.reason);
-      else if (open) navigate({ kind: 'note', path: result.path }, { replace: true });
       return result;
     },
-    async remove(path, { wasOpen } = { wasOpen: false }) {
-      await deleteNote(deps, { path });
-      if (wasOpen) navigate({ kind: 'home' }, { replace: true });
+    async remove(path) {
+      try {
+        await deleteNote(deps, { path });
+      } catch (error) {
+        if (!(error instanceof TrashRefusedError) || confirm === undefined) throw error;
+        const message = `The Trash would not take “${path}”. Delete it for good? Its history in git keeps it once synced.`;
+        if (!(await confirm({ message, yes: 'Delete permanently' }))) return;
+        await deleteNote(deps, { path, permanently: true });
+      }
     },
     async renameFolder(from, to) {
       const result = await renameFolder(deps, { from, to });
-      if (result.kind === 'refused') {
-        notice(result.reason);
-        return;
-      }
-      const open = parseRoute(window.location.hash);
-      const moved = open.kind === 'note' ? pathAfterMove(open.path, { from, to }) : null;
-      if (moved !== null) navigate({ kind: 'note', path: moved }, { replace: true });
+      if (result.kind === 'refused') notice(result.reason);
     },
     startRename(path) {
       ui.setState({ pendingFocus: { path, target: 'title' } });
-      navigate({ kind: 'note', path });
+      workspace.open({ kind: 'note', path });
     },
     updatePrefs,
     togglePreview() {
-      const preview = !ui.getState().preview;
+      const tab = currentTab(layout.getState());
+      if (tab.view.kind !== 'note') return;
+      const preview = !tab.preview;
+      layout.apply((current) => setPreview(current, tab.id, preview));
       ui.setState({ preview });
       updatePrefs({ preview });
     },

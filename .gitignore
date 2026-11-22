@@ -2,3 +2,11 @@ node_modules
 dist
 test-results
 playwright-report
+
+# Local Claude Code state; the agents and shared settings are committed.
+.claude/worktrees/
+.claude/settings.local.json
+
+# The Rust host build output (several GB) and Tauri generated schemas.
+src-tauri/target/
+src-tauri/gen/

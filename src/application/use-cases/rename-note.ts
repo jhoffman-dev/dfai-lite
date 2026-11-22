@@ -12,7 +12,6 @@ import {
   withoutExtension,
   type VaultPath,
 } from '../../domain/vault/index.ts';
-import type { StoredFile } from '../ports/index.ts';
 import { writeFavorites } from './favorites.ts';
 import { writeFile, type VaultDeps } from './vault-deps.ts';
 
@@ -46,9 +45,9 @@ export async function renameNote(
   const sources = index.linkSources([...linkKeysOf(from), ...linkKeysOf(to)]);
 
   const own = retargetLinks(file.text, resolvers);
-  const moved: StoredFile = { path: to, text: own.text, baseSha: null, dirty: true };
-  await deps.store.rename(from, moved);
-  deps.session.applyRename(from, moved);
+  await deps.files.rename(from, to);
+  deps.session.applyRename(from, { path: to, text: file.text });
+  if (own.count > 0) await writeFile(deps, to, own.text);
 
   let retargeted = own.count;
   for (const source of sources) {
@@ -70,10 +69,8 @@ function renameProblem(deps: VaultDeps, from: VaultPath, to: VaultPath): string 
     if (problem !== null) return problem;
   }
   const wanted = foldedPath(to);
-  for (const other of deps.session.allFiles()) {
-    if (other.path !== from && foldedPath(other.path) === wanted) {
-      return `A note is already at ${other.path}.`;
-    }
+  for (const other of deps.session.takenPaths()) {
+    if (other !== from && foldedPath(other) === wanted) return `A note is already at ${other}.`;
   }
   return null;
 }

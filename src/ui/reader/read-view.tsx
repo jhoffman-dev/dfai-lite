@@ -1,4 +1,6 @@
 import { useMemo, type MouseEvent } from 'react';
+import type { OpenIn } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
 import { renderMarkdown } from './render-markdown.ts';
 import './reader.css';
 
@@ -13,15 +15,15 @@ export default function ReadView({
 }: {
   text: string;
   resolves: (target: string) => boolean;
-  onFollowLink: (target: string) => void;
+  onFollowLink: (target: string, openIn: OpenIn) => void;
 }) {
   const html = useMemo(() => renderMarkdown(text, { resolves }), [text, resolves]);
 
   const onClick = (event: MouseEvent) => {
     const link = (event.target as HTMLElement).closest<HTMLElement>('[data-wikilink]');
-    if (link === null) return;
+    if (link === null || event.button > 1) return;
     event.preventDefault();
-    onFollowLink(link.dataset['wikilink'] ?? '');
+    onFollowLink(link.dataset['wikilink'] ?? '', openInFor(event));
   };
 
   return (
@@ -31,6 +33,7 @@ export default function ReadView({
       className="read-view"
       aria-label="Rendered note"
       onClick={onClick}
+      onAuxClick={onClick}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

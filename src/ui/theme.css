@@ -130,6 +130,26 @@ body {
   font-size: var(--text-body);
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
+  /* A Mac app, not a page: the window never rubber-bands, and dragging across
+     the chrome selects nothing. WebKit before macOS 26 knows only the prefix. */
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+/* Where the words are the content, they select as text. */
+input,
+textarea,
+[contenteditable='true'],
+.read-view,
+.note-title,
+.backlinks {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button,

@@ -7,12 +7,18 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from '@codemirror/view';
+import type { OpenIn } from '../panes/layout.ts';
 import type { EditorBridge } from './bridge.ts';
 import { linkAt, noteSpans, tagAt } from './note-spans.ts';
 
-const linkMark = Decoration.mark({ class: 'cm-link-pill' });
-const ghostLinkMark = Decoration.mark({ class: 'cm-link-pill is-unresolved' });
-const tagMark = Decoration.mark({ class: 'cm-tag-pill' });
+// A note's name or a tag is not prose: no spelling underline under it.
+const notProse = { spellcheck: 'false' };
+const linkMark = Decoration.mark({ class: 'cm-link-pill', attributes: notProse });
+const ghostLinkMark = Decoration.mark({
+  class: 'cm-link-pill is-unresolved',
+  attributes: notProse,
+});
+const tagMark = Decoration.mark({ class: 'cm-tag-pill', attributes: notProse });
 
 function pillsOf(view: EditorView, bridge: EditorBridge): DecorationSet {
   const { links, tags } = view.state.field(noteSpans);
@@ -23,6 +29,18 @@ function pillsOf(view: EditorView, bridge: EditorBridge): DecorationSet {
     ...tags.map((tag) => tagMark.range(tag.from, tag.to)),
   ];
   return Decoration.set(ranges, true);
+}
+
+/**
+ * Where a click on a pill opens it. A plain click places the caret (this is
+ * an editor), so ⌘/Ctrl-click follows in the same tab; adding ⇧ opens a new
+ * tab and adding ⌥ the other pane. A middle click opens a new tab.
+ */
+function pillOpenIn(event: MouseEvent): OpenIn | null {
+  if (event.button === 1) return 'new-tab';
+  if (event.button !== 0 || !(event.metaKey || event.ctrlKey)) return null;
+  if (event.altKey) return 'side';
+  return event.shiftKey ? 'new-tab' : 'active';
 }
 
 /**
@@ -48,19 +66,20 @@ export function linkPills(bridge: () => EditorBridge): Extension {
     if (!main.empty) return false;
     const link = linkAt(view.state, main.head);
     if (link === null) return false;
-    bridge().followLink(link.target);
+    bridge().followLink(link.target, 'active');
     return true;
   };
 
   const clicks = EditorView.domEventHandlers({
     mousedown(event, view) {
-      if (!(event.metaKey || event.ctrlKey) || event.button !== 0) return false;
+      const openIn = pillOpenIn(event);
+      if (openIn === null) return false;
       const at = view.posAtCoords({ x: event.clientX, y: event.clientY });
       if (at === null) return false;
       const link = linkAt(view.state, at, { edges: true });
       const tag = link === null ? tagAt(view.state, at) : null;
-      if (link !== null) bridge().followLink(link.target);
-      else if (tag !== null) bridge().openTag(tag.name);
+      if (link !== null) bridge().followLink(link.target, openIn);
+      else if (tag !== null) bridge().openTag(tag.name, openIn);
       else return false;
       event.preventDefault();
       return true;
