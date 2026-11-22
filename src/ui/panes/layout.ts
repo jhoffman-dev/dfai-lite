@@ -184,7 +184,7 @@ function withoutTab(layout: Layout, tabId: string): { layout: Layout; pane: numb
   if (pane === undefined) return { layout, pane: -1 };
   const at = pane.tabs.findIndex((tab) => tab.id === tabId);
   const tabs = pane.tabs.filter((tab) => tab.id !== tabId);
-  // The neighbour to the right takes focus, as in a browser; else the one to the left.
+  // The neighbor to the right takes focus, as in a browser; else the one to the left.
   const next = tabs[Math.min(at, tabs.length - 1)];
   const activeTab = pane.activeTab === tabId ? (next?.id ?? '') : pane.activeTab;
   return { layout: withPane(layout, index, { tabs, activeTab }), pane: index };

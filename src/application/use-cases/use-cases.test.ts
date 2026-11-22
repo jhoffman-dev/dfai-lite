@@ -46,7 +46,7 @@ describe('opening the vault', () => {
     expect(session.file('_index/README.md')).not.toBeNull();
   });
 
-  it('reports a malformed favourites file', async () => {
+  it('reports a malformed favorites file', async () => {
     const deps = await opened({ [FAVORITES_PATH]: 'nope' });
     expect(deps.session.favorites).toEqual([]);
     expect(deps.session.favoritesProblem).toMatch(/JSON/);
@@ -187,7 +187,7 @@ describe('changes made on disk by someone else', () => {
 });
 
 describe('renaming a note', () => {
-  it('moves the file, rewrites links to it, and follows it in favourites', async () => {
+  it('moves the file, rewrites links to it, and follows it in favorites', async () => {
     const deps = await opened();
     const result = await renameNote(deps, { from: MARA, to: 'Contacts/Mara Q.md' });
     expect(result).toEqual({ kind: 'renamed', path: 'Contacts/Mara Q.md', retargeted: 2 });
@@ -218,7 +218,7 @@ describe('renaming a note', () => {
 });
 
 describe('renaming a folder', () => {
-  it('moves every note under it, rewriting links and favourites', async () => {
+  it('moves every note under it, rewriting links and favorites', async () => {
     const deps = await opened({ 'People/Team/Tobias Fenn.md': 'See [[People/Mara Quill]].' });
     expect(await renameFolder(deps, { from: 'People', to: 'Contacts' })).toEqual({
       kind: 'renamed',
@@ -245,7 +245,7 @@ describe('renaming a folder', () => {
 });
 
 describe('deleting a note', () => {
-  it('moves it to the Trash and drops it from the index and the favourites', async () => {
+  it('moves it to the Trash and drops it from the index and the favorites', async () => {
     const deps = await opened();
     await deleteNote(deps, { path: MARA });
     expect(deps.files.trashed).toEqual([MARA]);
@@ -274,7 +274,7 @@ describe('deleting a note that changed, or that the Trash refuses', () => {
   });
 });
 
-describe('favourites', () => {
+describe('favorites', () => {
   it('toggles and reorders through the vault file', async () => {
     const deps = await opened();
     await toggleFavoriteNote(deps, { path: PLAN });

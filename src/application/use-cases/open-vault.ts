@@ -3,7 +3,7 @@ import type { VaultDeps } from './vault-deps.ts';
 export interface OpenedVault {
   /** Visible notes, as the tree and search show them. */
   readonly noteCount: number;
-  /** Why the favourites file could not be read, or null. */
+  /** Why the favorites file could not be read, or null. */
   readonly favoritesProblem: string | null;
 }
 

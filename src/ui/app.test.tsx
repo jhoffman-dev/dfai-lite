@@ -14,24 +14,24 @@ beforeEach(() => {
 });
 
 describe('the sidebar', () => {
-  it('shows the favourites above the folder tree', async () => {
+  it('shows the favorites above the folder tree', async () => {
     await renderApp();
-    const favorites = screen.getByRole('list', { name: 'Favourites' });
+    const favorites = screen.getByRole('list', { name: 'Favorites' });
     const tree = screen.getByRole('tree', { name: 'Notes' });
     expect(within(favorites).getByText('Larkspur Payroll')).toBeInTheDocument();
     expect(favorites.compareDocumentPosition(tree) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(tree).getByText('Projects')).toBeInTheDocument();
   });
 
-  it('adds the open note to the favourites with its star, and takes it off again', async () => {
+  it('adds the open note to the favorites with its star, and takes it off again', async () => {
     const user = userEvent.setup();
     await renderApp();
     await go('#/note/Welcome.md');
-    await user.click(await screen.findByRole('button', { name: 'Add to favourites' }));
-    const favorites = screen.getByRole('list', { name: 'Favourites' });
+    await user.click(await screen.findByRole('button', { name: 'Add to favorites' }));
+    const favorites = screen.getByRole('list', { name: 'Favorites' });
     expect(await within(favorites).findByText('Welcome')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Remove from favourites' }));
+    await user.click(screen.getByRole('button', { name: 'Remove from favorites' }));
     await waitFor(() => expect(within(favorites).queryByText('Welcome')).toBeNull());
   });
 

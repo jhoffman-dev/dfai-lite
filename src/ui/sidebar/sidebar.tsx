@@ -16,7 +16,7 @@ import { RenameFolderDialog } from './rename-folder-dialog.tsx';
 import { RowMenu } from './row-menu.tsx';
 import './sidebar.css';
 
-/** The sidebar: new note and search on top, favourites, the folder tree, and sync in the footer. */
+/** The sidebar: new note and search on top, favorites, the folder tree, and sync in the footer. */
 export function Sidebar({ route }: { route: Route }) {
   const { actions, ui, services } = useApp();
   const host = useKeyHost();

@@ -94,8 +94,8 @@ function FavoriteToggle({ path }: { path: VaultPath }) {
       type="button"
       className={`quiet-button note-star${isFavorite ? ' is-on' : ''}`}
       aria-pressed={isFavorite}
-      aria-label={isFavorite ? 'Remove from favourites' : 'Add to favourites'}
-      title={isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+      aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       onClick={() => actions.toggleFavorite(path).catch(actions.report)}
     >
       <Icon name="star" filled={isFavorite} />

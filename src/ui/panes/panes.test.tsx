@@ -14,7 +14,7 @@ const tabs = (pane = 'Tabs') =>
     .getAllByRole('tab')
     .map((tab) => tab.querySelector('.tab-title')?.textContent);
 
-/** A note's link in the sidebar: in the favourites if it is one, else in the tree. */
+/** A note's link in the sidebar: in the favorites if it is one, else in the tree. */
 const treeRow = (name: string) =>
   within(screen.getByRole('navigation', { name: 'Sidebar' }))
     .getAllByText(name)[0]

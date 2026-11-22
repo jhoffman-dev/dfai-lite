@@ -11,7 +11,7 @@ import {
   type SimulationNodeDatum,
 } from 'd3-force';
 import type { VaultGraph } from '../../domain/index/index.ts';
-import { neighboursOf, nodeRadius } from './graph-scope.ts';
+import { neighborsOf, nodeRadius } from './graph-scope.ts';
 
 interface LaidNode extends SimulationNodeDatum {
   readonly id: string;
@@ -35,7 +35,7 @@ function shapeOf(graph: VaultGraph): string {
 
 /**
  * Where each note sits, worked out by a d3-force simulation: links pull,
- * notes push apart, a gentle pull keeps the whole centred on the origin.
+ * notes push apart, a gentle pull keeps the whole centered on the origin.
  *
  * The simulation is built again only when the graph's shape changes — never
  * on an ordinary render — and the nodes already placed are pinned while new
@@ -53,7 +53,7 @@ export function useForceLayout(graph: VaultGraph) {
 
   useEffect(() => {
     const { graph: current } = laidOut;
-    const degrees = neighboursOf(current.edges);
+    const degrees = neighborsOf(current.edges);
     const nodes: LaidNode[] = current.nodes.map((node) => {
       const at = placed.current.get(node.id);
       return {

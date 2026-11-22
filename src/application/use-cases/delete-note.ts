@@ -8,7 +8,7 @@ import { refreshPaths, type VaultDeps } from './vault-deps.ts';
  * Deletes a note: to the Trash here (or for good, when the person chose that
  * after the Trash refused), and from the remote on the next sync (its
  * history keeps it). Only the text the person last saw is deleted: a note
- * changed on disk since is read afresh and kept. It leaves the favourites
+ * changed on disk since is read afresh and kept. It leaves the favorites
  * too. Links to it are left as written, and simply stop resolving.
  */
 export async function deleteNote(

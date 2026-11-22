@@ -35,7 +35,7 @@ and the index disagree, the note is right.
 | `Archive/`               | Finished or dormant. Move here; do not delete.                  |
 | `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.       |
 | `_index/`                | Generated. Never edit.                                          |
-| `.dfai-lite/`            | The app's own state (favourites). Leave it alone.               |
+| `.dfai-lite/`            | The app's own state (favorites). Leave it alone.                |
 
 ## How a note is written
 

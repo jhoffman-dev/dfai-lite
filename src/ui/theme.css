@@ -1,7 +1,7 @@
 /* Tokens, lifted from DFAI's "Dense & Calm" palette (packages/shell/src/styles/tokens.css):
-   neutral chrome, a 1px hairline between things, and colour only as muted
+   neutral chrome, a 1px hairline between things, and color only as muted
    Notion-like pastels on pills, chips and tags. Components read these roles,
-   never a raw colour. */
+   never a raw color. */
 
 @font-face {
   font-family: 'Manrope Variable';
@@ -209,7 +209,7 @@ input {
   border-color: transparent;
 }
 
-/* Pills: the only colour on the page. */
+/* Pills: the only color on the page. */
 .tag-pill,
 .link-pill {
   display: inline-block;

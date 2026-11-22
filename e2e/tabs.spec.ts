@@ -17,7 +17,7 @@ test('tabs and split screen: new tab, open to the side, mirrored typing, restore
 
   // ⌘/Ctrl-click opens a second tab beside the first, and the address follows it.
   await sidebar
-    .getByRole('list', { name: 'Favourites' })
+    .getByRole('list', { name: 'Favorites' })
     .getByRole('link', { name: 'Larkspur Payroll' })
     .click({ modifiers: ['ControlOrMeta'] });
   await expect(tabTitles(page, 'Tabs')).toHaveText(['Welcome', 'Larkspur Payroll']);
@@ -72,7 +72,7 @@ test('tabs: drag onto a pane to split or move, keys to reorder', async ({ page }
   const left = page.getByRole('region', { name: 'Left pane' });
   const right = page.getByRole('region', { name: 'Right pane' });
   await sidebar
-    .getByRole('list', { name: 'Favourites' })
+    .getByRole('list', { name: 'Favorites' })
     .getByRole('link', { name: 'Larkspur Payroll' })
     .click({ modifiers: ['ControlOrMeta'] });
   await page.keyboard.press('ControlOrMeta+k');

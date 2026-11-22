@@ -106,7 +106,7 @@ describe('opening to the side', () => {
 });
 
 describe('closing tabs', () => {
-  it('focuses the neighbour to the right, else the left', () => {
+  it('focuses the neighbor to the right, else the left', () => {
     const three = open(open(open(initialLayout(), PLAN), MARA, 'new-tab'), SHED, 'new-tab');
     const middle = activate(three, three.panes[0]?.tabs[1]?.id ?? '');
     expect(shape(closeTab(middle, middle.panes[0]?.activeTab ?? ''))).toEqual([[PLAN, `*${SHED}`]]);

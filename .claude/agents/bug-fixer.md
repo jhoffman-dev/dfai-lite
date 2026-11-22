@@ -47,7 +47,7 @@ which win over any user-level rules. Node on James's Macs:
    fix only identical bugs, report the rest.
 6. **Gate**: the scoped gate where the project's `CLAUDE.md` describes one
    (the full gate then goes to `tester` and CI); otherwise typecheck, lint,
-   unit + integration, build, e2e/smoke if behaviour changed. New test passes;
+   unit + integration, build, e2e/smoke if behavior changed. New test passes;
    nothing regresses. Quote results.
 
 ## Rules

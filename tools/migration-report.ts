@@ -66,7 +66,7 @@ export function reportLines(report: MigrationReport, output: string): string[] {
     `Migrated into ${output}:`,
     `  Totals: ${totals.seen} source files seen = ${totals.converted} notes converted + ${totals.copied} files copied as-is + ${totals.skipped} skipped. ${reconciles(totals) ? 'Reconciled.' : 'DOES NOT RECONCILE: some files are unaccounted for.'}`,
     `  ${counts.meeting} meetings → Meetings/<YYYY>/<MM>/, ${counts.person} people → People/, ${counts.frontmatter} other notes had frontmatter converted, ${counts.plain} notes copied as they were, ${counts.template} templates → Templates/.`,
-    `  ${counts.copied} other files copied, ${counts.favorite} favourites, ${counts.linksRewritten} links re-pointed after moves.`,
+    `  ${counts.copied} other files copied, ${counts.favorite} favorites, ${counts.linksRewritten} links re-pointed after moves.`,
     `  From the template: ${report.templateFiles.length === 0 ? 'nothing (the vault had its own)' : report.templateFiles.join(', ')}.`,
     `  ${runSummary(report.index)}`,
     `Properties dropped, by key: ${countByKey(report.dropped)}. By note (${report.dropped.length}):`,
@@ -100,7 +100,7 @@ const noteKeyLines = (notes: readonly NoteKeys[]): string[] =>
 const sum = (notes: readonly { count: number }[]): number =>
   notes.reduce((total, { count }) => total + count, 0);
 
-/** Skipped files by reason: a summarised folder as one line with its count, anything else path by path. */
+/** Skipped files by reason: a summarized folder as one line with its count, anything else path by path. */
 function skippedLines(skipped: readonly SkippedFile[]): string[] {
   const byReason = new Map<string, SkippedFile[]>();
   for (const file of skipped) {

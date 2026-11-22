@@ -38,7 +38,7 @@ export interface CodeSpan {
  * starting its line, and a heading's or a table cell's ends with it. A table
  * row is split into cells at each unescaped `|` before a link is read, so an
  * alias's pipe there must be written `\|`. HTML blocks and tags, autolinks
- * and indented code are not modelled: a link in one is still read as a link.
+ * and indented code are not modeled: a link in one is still read as a link.
  */
 export function scanMarkdown(markdown: string): {
   links: WikiLinkSpan[];

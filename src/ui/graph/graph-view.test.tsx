@@ -114,7 +114,7 @@ describe('GraphView', () => {
     ]);
   });
 
-  it('titles only the open note, and the one pointed at with its neighbours, when there are many', () => {
+  it('titles only the open note, and the one pointed at with its neighbors, when there are many', () => {
     const ids = Array.from({ length: 40 }, (_, at) => `N${at}.md`);
     const many: VaultGraph = {
       nodes: ids.map(note),
@@ -129,7 +129,7 @@ describe('GraphView', () => {
     expect(labels(container).sort()).toEqual(['N0', 'N1', 'N2', 'N3']);
   });
 
-  it('limits the local graph to the open note and its neighbours, one or two steps out', () => {
+  it('limits the local graph to the open note and its neighbors, one or two steps out', () => {
     const { container } = setup();
     fireEvent.click(screen.getByRole('button', { name: 'Local graph' }));
     expect(nodes(container).sort()).toEqual([

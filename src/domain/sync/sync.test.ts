@@ -43,7 +43,7 @@ describe('conflict copies', () => {
     );
   });
 
-  it('recognises both kinds of copy', () => {
+  it('recognizes both kinds of copy', () => {
     expect(isConflictCopyPath('Idea (conflict 2026-11-21) 2.md')).toBe(true);
     expect(isConflictCopyPath('Idea (conflict from Tobias’s Mac (2)).md')).toBe(true);
     expect(isConflictCopyPath('Idea (conflict).md')).toBe(false);

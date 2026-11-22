@@ -3,7 +3,7 @@ import { isNotePath, type VaultPath } from './note-path.ts';
 /** The generated index: derived, never edited, never shown as notes. */
 export const INDEX_FOLDER = '_index';
 
-/** The app's own synced state, such as favourites. */
+/** The app's own synced state, such as favorites. */
 export const APP_FOLDER = '.dfai-lite';
 
 /**

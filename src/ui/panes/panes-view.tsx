@@ -29,7 +29,7 @@ import { useNarrow } from './narrow.ts';
 import { usePaneDrop } from './use-pane-drop.ts';
 import './panes.css';
 
-/** The note the graph centres its local view on: the active pane's, else the other pane's. */
+/** The note the graph centers its local view on: the active pane's, else the other pane's. */
 function graphFocus(layout: Layout): string | null {
   const order = [layout.activePane, layout.activePane === 0 ? 1 : 0];
   for (const index of order) {

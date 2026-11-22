@@ -55,7 +55,7 @@ items already resolved — verify in the current code, don't assume.
 ## Verify, push, reply
 
 The scoped gate where the project's `CLAUDE.md` describes one, otherwise the
-full gate (typecheck, lint, unit, integration, build, e2e if behaviour
+full gate (typecheck, lint, unit, integration, build, e2e if behavior
 changed); quote results. After the push, find your
 commit's run (`gh run list --commit "$(git rev-parse HEAD)" --json databaseId`;
 it can take a minute to appear), wait for it in the background with

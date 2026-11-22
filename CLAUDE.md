@@ -115,7 +115,7 @@ alike; the app obeys the same rules. The short form:
   Resolution follows Obsidian: a path if it has a slash, else that name
   anywhere, shallowest first. Following a link to a note that does not exist
   creates the note.
-- Favourites are `.dfai-lite/favorites.json`: a list of paths, synced.
+- Favorites are `.dfai-lite/favorites.json`: a list of paths, synced.
 - `_index/` is generated. Never edit it by hand, never treat it as truth.
 - Meetings land in `Meetings/<YYYY>/<MM>/<YYYY-MM-DD> <title>.md`.
 
@@ -136,6 +136,6 @@ A change to the contract changes `vault-template/CLAUDE.md`, the skill in
   No timestamps, no machine names, sorted keys and paths.
 - **Speed is the feature.** Opening the app, opening a note, typing, and a new
   note must feel instant on a 2,000-note vault. Read the vault in one host
-  call, keep work off the keystroke path, virtualise long lists.
+  call, keep work off the keystroke path, virtualize long lists.
 - **Rust lives in `~/.cargo`**, and a Tauri `target/` folder is several GB:
   one checkout builds at a time on this Mac.

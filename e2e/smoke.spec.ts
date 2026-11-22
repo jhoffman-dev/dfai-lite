@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-/** The core loop on the sample vault: write, link, follow, favourite, find, tag, graph. */
-test('the core loop: new note, link, favourite, search, tags, graph', async ({ page }) => {
+/** The core loop on the sample vault: write, link, follow, favorite, find, tag, graph. */
+test('the core loop: new note, link, favorite, search, tags, graph', async ({ page }) => {
   await page.goto('/');
   const sidebar = page.getByRole('navigation', { name: 'Sidebar' });
   await expect(sidebar).toBeVisible();
@@ -31,9 +31,9 @@ test('the core loop: new note, link, favourite, search, tags, graph', async ({ p
   await expect(title).toHaveValue('Untitled');
   await expect(editor).toContainText('Payday checklist');
 
-  // Favourite it: it joins the favourites above the tree.
-  await page.getByRole('button', { name: 'Add to favourites' }).click();
-  await expect(sidebar.getByRole('list', { name: 'Favourites' })).toContainText('Untitled');
+  // Favorite it: it joins the favorites above the tree.
+  await page.getByRole('button', { name: 'Add to favorites' }).click();
+  await expect(sidebar.getByRole('list', { name: 'Favorites' })).toContainText('Untitled');
 
   // Search finds the typed text.
   await page.keyboard.press('ControlOrMeta+k');

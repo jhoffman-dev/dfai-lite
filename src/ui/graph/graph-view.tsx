@@ -8,7 +8,7 @@ import './graph.css';
 
 export interface GraphViewProps {
   readonly graph: VaultGraph;
-  /** The note open now: highlighted, and the centre of the local graph. */
+  /** The note open now: highlighted, and the center of the local graph. */
   readonly activePath: string | null;
   readonly onOpenNote: (path: string, openIn: OpenIn) => void;
   /** A ghost (a link target with no note yet) was clicked: create the note and open it. */
@@ -28,10 +28,10 @@ export function GraphView({ graph, activePath, onOpenNote, onFollowLink }: Graph
   const [showing, setShowing] = useState<Showing>('graph');
   // Typing in the filter stays instant; the narrowed graph follows a beat behind.
   const deferredQuery = useDeferredValue(query);
-  const centre = local ? activePath : null;
+  const center = local ? activePath : null;
   const scoped = useMemo(
-    () => scopeGraph(graph, { centre, depth, query: deferredQuery }),
-    [graph, centre, depth, deferredQuery],
+    () => scopeGraph(graph, { center, depth, query: deferredQuery }),
+    [graph, center, depth, deferredQuery],
   );
   const notes = scoped.graph.nodes.filter((node) => node.kind === 'note').length;
 

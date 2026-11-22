@@ -76,7 +76,7 @@ Sync never guesses on your behalf:
   "Sync paused" until you finish it, and touches nothing.
 - If more than 20 notes, and more than a tenth of the vault, are gone from the
   folder, sync asks in Settings before it deletes them on every Mac. iCloud
-  stand-ins (`.Note.md.icloud`, from Optimise Mac Storage) pause sync instead.
+  stand-ins (`.Note.md.icloud`, from Optimize Mac Storage) pause sync instead.
 - The app keeps a block of its own at the end of the vault's `.gitignore`
   (temporary files, `.DS_Store`, `.claude/`, `.env`), plus files over
   GitHub's 100 MB limit and folders that are repositories of their own; it

@@ -12,7 +12,7 @@ export interface FolderNode {
   readonly noteCount: number;
 }
 
-/** One visible row of the tree, flattened for a virtualised list. */
+/** One visible row of the tree, flattened for a virtualized list. */
 export type TreeRow =
   | {
       readonly kind: 'folder';

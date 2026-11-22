@@ -41,7 +41,7 @@ export function askYesNo({ message, yes }: { message: string; yes: string }): Pr
   return ask(message, { title: 'DFAI Lite', kind: 'warning', okLabel: yes, cancelLabel: 'Cancel' });
 }
 
-/** Brings the window forward from anywhere: minimised, hidden or behind another app. */
+/** Brings the window forward from anywhere: minimized, hidden or behind another app. */
 export async function bringWindowForward(): Promise<void> {
   const window = getCurrentWindow();
   await window.unminimize();

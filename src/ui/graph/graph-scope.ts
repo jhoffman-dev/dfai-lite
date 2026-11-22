@@ -9,9 +9,9 @@ export type GraphDepth = 1 | 2;
  */
 export const GRAPH_NODE_LIMIT = 600;
 
-/** What the person asked to see: the whole vault or the open note's neighbourhood, narrowed by a filter. */
+/** What the person asked to see: the whole vault or the open note's neighborhood, narrowed by a filter. */
 export interface GraphScope {
-  readonly centre: string | null;
+  readonly center: string | null;
   readonly depth: GraphDepth;
   readonly query: string;
 }
@@ -22,21 +22,19 @@ export interface ScopedGraph {
   readonly hidden: number;
 }
 
-/** Each node's neighbours, either way along an edge. */
-export function neighboursOf(
-  edges: readonly GraphEdge[],
-): ReadonlyMap<string, ReadonlySet<string>> {
-  const neighbours = new Map<string, Set<string>>();
+/** Each node's neighbors, either way along an edge. */
+export function neighborsOf(edges: readonly GraphEdge[]): ReadonlyMap<string, ReadonlySet<string>> {
+  const neighbors = new Map<string, Set<string>>();
   const add = (from: string, to: string): void => {
-    const set = neighbours.get(from);
-    if (set === undefined) neighbours.set(from, new Set([to]));
+    const set = neighbors.get(from);
+    if (set === undefined) neighbors.set(from, new Set([to]));
     else set.add(to);
   };
   for (const { source, target } of edges) {
     add(source, target);
     add(target, source);
   }
-  return neighbours;
+  return neighbors;
 }
 
 /** How big a node is drawn: by how many notes it touches, on a square-root scale with a ceiling. */
@@ -45,20 +43,20 @@ export function nodeRadius(degree: number): number {
 }
 
 /**
- * The part of the graph on screen. The reach from the centre comes first, then
- * the filter (the centre always stays: it is the point of a local graph), then
+ * The part of the graph on screen. The reach from the center comes first, then
+ * the filter (the center always stays: it is the point of a local graph), then
  * the cap, so a big vault degrades to its best-connected notes.
  */
 export function scopeGraph(graph: VaultGraph, scope: GraphScope): ScopedGraph {
   let visible = graph;
-  if (scope.centre !== null) {
-    if (!graph.nodes.some((node) => node.id === scope.centre)) return { graph: EMPTY, hidden: 0 };
-    visible = restrict(visible, withinReach(visible.edges, scope.centre, scope.depth));
+  if (scope.center !== null) {
+    if (!graph.nodes.some((node) => node.id === scope.center)) return { graph: EMPTY, hidden: 0 };
+    visible = restrict(visible, withinReach(visible.edges, scope.center, scope.depth));
   }
   const query = scope.query.trim().toLowerCase();
   if (query !== '') {
     const matching = visible.nodes.filter(
-      (node) => node.id === scope.centre || matches(node, query),
+      (node) => node.id === scope.center || matches(node, query),
     );
     visible = restrict(visible, new Set(matching.map((node) => node.id)));
   }
@@ -71,18 +69,18 @@ const matches = (node: GraphNode, query: string): boolean =>
   node.title.toLowerCase().includes(query) ||
   (node.kind === 'note' && node.id.toLowerCase().includes(query));
 
-/** Breadth first from the centre, `depth` steps out along edges either way. */
-function withinReach(edges: readonly GraphEdge[], centre: string, depth: number): Set<string> {
-  const neighbours = neighboursOf(edges);
-  const reached = new Set([centre]);
-  let frontier = [centre];
+/** Breadth first from the center, `depth` steps out along edges either way. */
+function withinReach(edges: readonly GraphEdge[], center: string, depth: number): Set<string> {
+  const neighbors = neighborsOf(edges);
+  const reached = new Set([center]);
+  let frontier = [center];
   for (let step = 0; step < depth; step += 1) {
     const next: string[] = [];
     for (const id of frontier) {
-      for (const neighbour of neighbours.get(id) ?? []) {
-        if (reached.has(neighbour)) continue;
-        reached.add(neighbour);
-        next.push(neighbour);
+      for (const neighbor of neighbors.get(id) ?? []) {
+        if (reached.has(neighbor)) continue;
+        reached.add(neighbor);
+        next.push(neighbor);
       }
     }
     frontier = next;
@@ -93,8 +91,8 @@ function withinReach(edges: readonly GraphEdge[], centre: string, depth: number)
 /** At most `limit` nodes, the most connected first; ties by id, so the cut never moves between renders. */
 function capGraph(graph: VaultGraph, limit: number): ScopedGraph {
   if (graph.nodes.length <= limit) return { graph, hidden: 0 };
-  const neighbours = neighboursOf(graph.edges);
-  const degree = (node: GraphNode): number => neighbours.get(node.id)?.size ?? 0;
+  const neighbors = neighborsOf(graph.edges);
+  const degree = (node: GraphNode): number => neighbors.get(node.id)?.size ?? 0;
   const kept = [...graph.nodes]
     .sort(
       (left, right) =>

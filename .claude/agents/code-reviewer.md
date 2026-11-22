@@ -47,7 +47,7 @@ or a path) with enough surrounding code to judge it in context.
    domain; a component or adapter deciding business outcomes; import bypassing
    a module's public entry point.
 3. **Testing bar** — changed rule without a test; fix without its regression
-   test; snapshot as behaviour test; real time/unseeded RNG/order dependence;
+   test; snapshot as behavior test; real time/unseeded RNG/order dependence;
    high-impact slice < 90% or repo < 70% (run coverage if cheap, quote numbers).
 4. **Clean Code** — how-not-what names, `data`/`info`/`manager`/`helper`,
    shadowed built-ins, > ~30 lines, > 3 params, restating comments, dead code,

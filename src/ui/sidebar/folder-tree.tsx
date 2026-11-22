@@ -118,7 +118,7 @@ function useExpandedFolders(activePath: VaultPath | null) {
   return { expanded, toggle };
 }
 
-/** The vault's folders and notes, virtualised so a 2,000-note vault scrolls as one of ten. */
+/** The vault's folders and notes, virtualized so a 2,000-note vault scrolls as one of ten. */
 export function FolderTree({
   activePath,
   onMenu,

@@ -103,7 +103,7 @@ describe('migrate', () => {
     expect(text.startsWith('---')).toBe(false);
   });
 
-  it('moves a person to People/, settling a name clash, and records a favourite', async () => {
+  it('moves a person to People/, settling a name clash, and records a favorite', async () => {
     const report = await migrate(source, output);
     expect(report.collisions).toEqual(['Contacts/Mara Quill.md → People/Mara Quill 2.md']);
     expect(await read('People/Mara Quill 2.md')).toBe(

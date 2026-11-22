@@ -104,7 +104,7 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 
 const renderer = createRenderer();
 
-/** A note's markdown as HTML that is safe to put in the page: sanitised, always. */
+/** A note's markdown as HTML that is safe to put in the page: sanitized, always. */
 export function renderMarkdown(markdown: string, env: RenderEnv): string {
   return DOMPurify.sanitize(renderer.render(markdown, env));
 }

@@ -1,4 +1,4 @@
-/* The first-start screen: one question, centred, in the app's own chrome. */
+/* The first-start screen: one question, centered, in the app's own chrome. */
 .welcome {
   display: flex;
   flex-direction: column;

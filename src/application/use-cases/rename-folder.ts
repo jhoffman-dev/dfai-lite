@@ -39,7 +39,7 @@ function folderProblem(deps: VaultDeps, from: VaultPath, to: VaultPath): string 
 
 /**
  * Renames or moves a folder: every note in it, at any depth, moves with
- * `renameNote`, so every link to each is rewritten and favourites follow.
+ * `renameNote`, so every link to each is rewritten and favorites follow.
  * Checked whole first, so a clash refuses before anything moves. Files in
  * it that are not notes stay where they are (git has no folder to rename).
  */
