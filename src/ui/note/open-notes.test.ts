@@ -16,7 +16,7 @@ const PLAN = 'Projects/Larkspur Payroll.md';
 const COPY = 'Projects/Larkspur Payroll (conflict 2026-11-21).md';
 
 const tabOnPlan = (id: string) => ({
-  tabs: [{ id, view: { kind: 'note' as const, path: PLAN }, source: false }],
+  tabs: [{ id, view: { kind: 'note' as const, path: PLAN }, source: false, back: [], forward: [] }],
   activeTab: id,
 });
 

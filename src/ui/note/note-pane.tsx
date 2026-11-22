@@ -11,7 +11,7 @@ import type { Tab } from '../panes/layout.ts';
 import type { TabMemory } from '../panes/workspace.ts';
 import { useApp, type AppContextValue, type LoadMarkdown } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
-import { PageBar } from '../shell/page-bar.tsx';
+import { PageBar, type PageHistory } from '../shell/page-bar.tsx';
 import { useUi } from '../state/ui-store.ts';
 import { useVault } from '../state/vault-store.ts';
 import type { Autosave } from './autosave.ts';
@@ -141,7 +141,17 @@ function useKeptScroll(memory: TabMemory) {
  * One note in one tab: its title, the editor or the rendered view, and what
  * links here. Keyed by tab and path. `focused`: the tab is the active pane's.
  */
-export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; focused: boolean }) {
+export function NotePane({
+  tab,
+  path,
+  focused,
+  history,
+}: {
+  tab: Tab;
+  path: VaultPath;
+  focused: boolean;
+  history: PageHistory;
+}) {
   const app = useApp();
   const { services, actions, ui, workspace } = app;
   const note = app.openNotes.get(app, path);
@@ -151,7 +161,7 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
   // tabs share the saver, and one closing must not take another's away.
   useEffect(() => services.pendingEdits.add(() => autosave.flush()), [services, autosave]);
   const bridge = useMemo(() => editorBridge(app, note), [app, note]);
-  const memory = workspace.memoryOf(tab.id);
+  const memory = workspace.memoryOf(tab.id, tab.view);
   const article = useKeptScroll(memory);
   const showSource = tab.source;
   const wantsEditor = useUi(
@@ -180,6 +190,7 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
   return (
     <article ref={article} className="note-pane" aria-label={noteTitle(path)}>
       <PageBar
+        history={history}
         icon={folderName(path) === null ? 'doc' : 'folder'}
         place={folderName(path)}
         name={noteTitle(path)}

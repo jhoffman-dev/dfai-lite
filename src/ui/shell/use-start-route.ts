@@ -20,7 +20,7 @@ export function useStartRoute(route: Route): void {
       if (making.current) return;
       making.current = true;
       actions
-        .newNote({ replace: true })
+        .newNote()
         .catch(actions.report)
         .finally(() => {
           making.current = false;

@@ -114,6 +114,8 @@ const GLYPHS = {
       <path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M8 14h8" {...round} />
     </>
   ),
+  'arrow-left': <path d="M19 12H5.5M11 6l-6 6 6 6" {...round} {...joined} strokeWidth={1.9} />,
+  'arrow-right': <path d="M5 12h13.5M13 6l6 6-6 6" {...round} {...joined} strokeWidth={1.9} />,
   code: <path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5" {...round} {...joined} />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" {...round} />,
 } as const;

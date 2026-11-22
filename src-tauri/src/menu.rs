@@ -184,6 +184,8 @@ mod tests {
         "Cmd+9",
         "Shift+Cmd+M",
         "Alt+Cmd+S",
+        "Cmd+[",
+        "Cmd+]",
     ];
 
     fn entries() -> impl Iterator<Item = Entry> {

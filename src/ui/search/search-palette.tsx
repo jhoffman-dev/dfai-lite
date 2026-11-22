@@ -33,6 +33,8 @@ const PALETTE_COMMANDS: readonly { readonly command: Command; readonly title: st
   { command: 'sidebar.toggle', title: 'Show or hide the sidebar' },
   { command: 'note.rename', title: 'Rename note' },
   { command: 'note.new', title: 'New note' },
+  { command: 'history.back', title: 'Go back' },
+  { command: 'history.forward', title: 'Go forward' },
 ];
 
 /** The commands every typed word is in, case aside. */
@@ -117,6 +119,8 @@ const COMMAND_GLYPHS: Partial<Readonly<Record<Command, IconName>>> = {
   'note.move': 'folder',
   'sidebar.toggle': 'sidebar',
   'note.new': 'plus',
+  'history.back': 'arrow-left',
+  'history.forward': 'arrow-right',
 };
 
 function glyphOf(row: PaletteRow): IconName {

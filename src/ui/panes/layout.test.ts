@@ -16,6 +16,7 @@ import {
   setSplit,
   shiftTab,
   splitRight,
+  stepTab,
   toggleSplit,
   type Layout,
   type OpenIn,
@@ -310,5 +311,92 @@ describe('restoring a saved layout', () => {
   it('falls back to the first tab when the saved active tab is not there', () => {
     const raw = { panes: [{ tabs: [{ id: 't4', view: { kind: 'graph' } }], activeTab: 't9' }] };
     expect(restoreLayout(raw, () => true)?.panes[0]?.activeTab).toBe('t4');
+  });
+});
+
+describe('each tab’s Back and Forward', () => {
+  const backOf = (layout: Layout, tabId: string) =>
+    layout.panes
+      .flatMap((pane) => pane.tabs)
+      .find((tab) => tab.id === tabId)
+      ?.back.map((view) => (view.kind === 'note' ? view.path : view.kind));
+  const activeId = (layout: Layout) => currentTab(layout).id;
+
+  it('an open in the active tab is a step Back undoes, and Forward redoes', () => {
+    const layout = open(open(initialLayout(), PLAN), MARA);
+    const back = stepTab(layout, activeId(layout), 'back');
+    expect(shape(back)).toEqual([[`*${PLAN}`]]);
+    expect(shape(stepTab(back, activeId(back), 'forward'))).toEqual([[`*${MARA}`]]);
+  });
+
+  it('keeps each tab’s own: a new tab starts empty, and stepping one leaves the other', () => {
+    const first = open(open(initialLayout(), PLAN), MARA);
+    const both = open(open(first, SHED, 'new-tab'), PLAN);
+    const firstId = first.panes[0]?.activeTab ?? '';
+    expect(backOf(both, firstId)).toEqual([PLAN]);
+    expect(backOf(both, activeId(both))).toEqual([SHED]);
+    const stepped = stepTab(both, firstId, 'back');
+    expect(shape(stepped)).toEqual([[`*${PLAN}`, PLAN]]);
+    expect(backOf(stepped, activeId(both))).toEqual([SHED]);
+  });
+
+  it('focusing a tab that already shows the note is not a step', () => {
+    const two = open(open(open(initialLayout(), PLAN), MARA, 'new-tab'), PLAN);
+    expect(two.panes[0]?.tabs.every((tab) => tab.back.length === 0)).toBe(true);
+  });
+
+  it('steps the tab it is asked to, and focuses its pane', () => {
+    const split = open(open(open(initialLayout(), PLAN), MARA), SHED, 'side');
+    const leftId = split.panes[0]?.activeTab ?? '';
+    const stepped = stepTab(split, leftId, 'back');
+    expect(shape(stepped)).toEqual([[`*${PLAN}`], [`*${SHED}`]]);
+    expect(stepped.activePane).toBe(0);
+    expect(stepTab(split, activeId(split), 'back')).toBe(split);
+  });
+
+  it('goes with a tab moved to the other pane', () => {
+    const layout = open(open(open(initialLayout(), PLAN), MARA), SHED, 'new-tab');
+    const moved = moveToOtherPane(layout, layout.panes[0]?.tabs[0]?.id ?? '');
+    expect(backOf(moved, moved.panes[1]?.activeTab ?? '')).toEqual([PLAN]);
+  });
+
+  it('follows a rename, and a deleted note’s tab goes back instead of closing', () => {
+    const layout = open(open(open(initialLayout(), PLAN), MARA), SHED);
+    const renamed = retargetNote(layout, PLAN, 'Projects/Payroll.md');
+    expect(backOf(renamed, activeId(renamed))).toEqual(['Projects/Payroll.md', MARA]);
+    const deleted = closeMissingNotes(renamed, (path) => path !== SHED);
+    expect(shape(deleted)).toEqual([[`*${MARA}`]]);
+    expect(backOf(deleted, activeId(deleted))).toEqual(['Projects/Payroll.md']);
+  });
+
+  it('is saved and restored with the layout, notes gone since skipped', () => {
+    const layout = open(open(open(initialLayout(), PLAN), MARA), SHED);
+    const raw: unknown = JSON.parse(JSON.stringify(layout));
+    expect(restoreLayout(raw, () => true)).toEqual(layout);
+    const restored = restoreLayout(raw, (path) => path !== MARA);
+    expect(restored === null ? null : backOf(restored, 't1')).toEqual([PLAN]);
+  });
+
+  it('restores a saved history bounded, skipping places it cannot read', () => {
+    const many = Array.from({ length: 60 }, (_, at) => ({ kind: 'note', path: `N${at}.md` }));
+    const raw = {
+      panes: [
+        {
+          tabs: [
+            {
+              id: 't1',
+              view: { kind: 'graph' },
+              back: [{ kind: 'table' }, 'tags', ...many],
+              forward: { kind: 'note' },
+            },
+          ],
+          activeTab: 't1',
+        },
+      ],
+    };
+    const tab = restoreLayout(raw, () => true)?.panes[0]?.tabs[0];
+    expect(tab?.back).toHaveLength(50);
+    expect(tab?.back[0]).toEqual({ kind: 'note', path: 'N10.md' });
+    expect(tab?.forward).toEqual([]);
   });
 });
