@@ -36,6 +36,9 @@ Say which notes an answer came from, by path.
   `Inbox/`.
 - No frontmatter. Title is the file name. Tags inline (`#meeting`). People,
   projects and earlier meetings as `[[links]]`.
+- A picture goes in `attachments/`, never over a file already there, and is
+  shown as `![alt](../attachments/name.png)`: relative to the note,
+  percent-encoded. `![alt|400](…)` draws it 400px wide.
 - One small commit per piece of work, on `main`, with a message that says what
   changed. Pull first. If the push is refused, pull and retry.
 - Never force-push, never delete notes (move to `Archive/`), never edit
