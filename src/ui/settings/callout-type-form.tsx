@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import { CALLOUT_HUES, CALLOUT_ICONS, checkCalloutDraft } from '../../application/index.ts';
+import { checkCalloutDraft } from '../../application/index.ts';
 import type {
   CalloutDraft,
   CalloutDraftProblems,
@@ -10,7 +10,9 @@ import type {
 } from '../../domain/callouts/index.ts';
 import { Icon } from '../shell/icons.tsx';
 import '../shell/callout.css';
-import { ChoiceGrid } from './choice-grid.tsx';
+import { HuePicker } from '../pickers/hue-picker.tsx';
+import { IconPicker } from '../pickers/icon-picker.tsx';
+import { CALLOUT_ICON_OPTIONS, HUE_OPTIONS } from '../pickers/picker-options.ts';
 
 const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -133,35 +135,25 @@ export function CalloutTypeForm({
           )}
         </label>
       </div>
-      <div className="callout-form__field">
-        <span className="callout-form__label">Color</span>
-        <ChoiceGrid<CalloutHue>
-          label="Color"
-          className="choice-grid choice-grid--hues"
-          choices={CALLOUT_HUES}
-          value={CALLOUT_HUES.find((hue) => hue === draft.hue) ?? null}
-          onChange={(hue) => change({ hue })}
-          nameOf={capitalized}
-          draw={(hue) => <span className="choice-grid__hue" data-hue={hue} />}
-        />
-      </div>
-      <div className="callout-form__field">
-        <span className="callout-form__label">Icon</span>
-        <ChoiceGrid<CalloutIcon>
-          label="Icon"
-          className="choice-grid choice-grid--icons"
-          choices={CALLOUT_ICONS}
-          value={CALLOUT_ICONS.find((icon) => icon === draft.icon) ?? null}
-          onChange={(icon) => change({ icon })}
-          nameOf={(icon) => capitalized(icon)}
-          draw={(icon) => <Icon name={icon} size={16} />}
-        />
-      </div>
+      <HuePicker
+        label="Color"
+        required
+        options={HUE_OPTIONS}
+        value={draft.hue}
+        onChange={(hue) => hue !== null && change({ hue })}
+      />
+      <IconPicker
+        label="Icon"
+        required
+        options={CALLOUT_ICON_OPTIONS}
+        value={draft.icon}
+        onChange={(icon) => icon !== null && change({ icon })}
+      />
       <div className="callout-form__field">
         <span className="callout-form__label">Preview</span>
         <CalloutPreview
           type={{
-            // Only the grids set these, from the domain's own sets.
+            // Only the pickers set these, from the domain's own sets.
             hue: draft.hue as CalloutHue,
             icon: draft.icon as CalloutIcon,
             label: label === '' ? 'Name' : label,

@@ -1,3 +1,5 @@
+import { APPEARANCE_HUES } from '../appearance/index.ts';
+
 /**
  * The kinds of callout a note can hold: `> [!warning] Title`. The app comes
  * with Obsidian's set; the person adds their own, kept in the vault so the
@@ -6,18 +8,11 @@
  * that is unknown here (deleted, or made in another app) still round-trips.
  */
 
-/** The hues a callout is drawn in: DFAI's pastel set, each with a light and a dark pair. */
-export const CALLOUT_HUES = [
-  'gray',
-  'brown',
-  'orange',
-  'yellow',
-  'green',
-  'blue',
-  'purple',
-  'pink',
-  'red',
-] as const;
+/**
+ * The hues a callout is drawn in: DFAI's pastel set, each with a light and a
+ * dark pair — the same set a folder or a note is colored from.
+ */
+export const CALLOUT_HUES = APPEARANCE_HUES;
 
 export type CalloutHue = (typeof CALLOUT_HUES)[number];
 
@@ -52,6 +47,25 @@ export const CALLOUT_ICONS = [
   'code',
   'cloud',
   'sun',
+  // The sidebar's glyphs too (Icon & color…), so both pick from one set.
+  'folder',
+  'spark',
+  'bolt',
+  'inbox',
+  'archive',
+  'school',
+  'work',
+  'people',
+  'home',
+  'money',
+  'health',
+  'travel',
+  'globe',
+  'wrench',
+  'camera',
+  'music',
+  'shopping',
+  'chart',
 ] as const;
 
 export type CalloutIcon = (typeof CALLOUT_ICONS)[number];

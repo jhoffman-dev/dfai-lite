@@ -13,7 +13,7 @@ export interface IconOption {
 const COLUMNS = 9;
 
 /**
- * A grid of glyphs, "Default" first, and, when `acceptsEmoji` is given, a
+ * A grid of glyphs, "Default" first unless `required`, and, when `acceptsEmoji` is given, a
  * field for one typed emoji. Generic: it says which value was picked, and
  * an emoji is passed on as its own text.
  */
@@ -24,6 +24,7 @@ export function IconPicker({
   label,
   defaultLabel = 'Default',
   acceptsEmoji,
+  required = false,
 }: {
   /** The value chosen now: an option's, an emoji's text, or null for the default. */
   value: string | null;
@@ -33,8 +34,12 @@ export function IconPicker({
   defaultLabel?: string;
   /** Whether typed text is one emoji; leave it out for no emoji field. */
   acceptsEmoji?: (text: string) => boolean;
+  /** A glyph must be picked: no "Default" cell (a callout type always has one). */
+  required?: boolean;
 }) {
-  const anyChecked = value === null || options.some((option) => option.value === value);
+  const first = required ? 0 : 1;
+  const anyChecked =
+    (!required && value === null) || options.some((option) => option.value === value);
   return (
     <fieldset className="picker">
       <legend className="picker__label">{label}</legend>
@@ -44,18 +49,20 @@ export function IconPicker({
         aria-label={label}
         onKeyDown={gridKeys(COLUMNS)}
       >
-        <button
-          type="button"
-          role="radio"
-          aria-checked={value === null}
-          aria-label={defaultLabel}
-          title={defaultLabel}
-          tabIndex={tabStopOf(value === null, 0, anyChecked)}
-          className="picker__cell is-default"
-          onClick={() => onChange(null)}
-        >
-          <span aria-hidden="true">∅</span>
-        </button>
+        {required ? null : (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={value === null}
+            aria-label={defaultLabel}
+            title={defaultLabel}
+            tabIndex={tabStopOf(value === null, 0, anyChecked)}
+            className="picker__cell is-default"
+            onClick={() => onChange(null)}
+          >
+            <span aria-hidden="true">∅</span>
+          </button>
+        )}
         {options.map((option, index) => {
           const checked = option.value === value;
           return (
@@ -66,7 +73,7 @@ export function IconPicker({
               aria-checked={checked}
               aria-label={option.label}
               title={option.label}
-              tabIndex={tabStopOf(checked, index + 1, anyChecked)}
+              tabIndex={tabStopOf(checked, index + first, anyChecked)}
               className="picker__cell"
               onClick={() => onChange(option.value)}
             >

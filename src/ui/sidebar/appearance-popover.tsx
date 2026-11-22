@@ -2,7 +2,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { isSingleEmoji } from '../../application/index.ts';
 import type { AppearancePatch } from '../../domain/appearance/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
-import { HUE_OPTIONS, ICON_OPTIONS } from '../appearance/appearance-options.ts';
+import { HUE_OPTIONS, ICON_OPTIONS } from '../pickers/picker-options.ts';
 import { iconKey, useLook } from '../appearance/look-glyph.tsx';
 import { HuePicker } from '../pickers/hue-picker.tsx';
 import { IconPicker } from '../pickers/icon-picker.tsx';

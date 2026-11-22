@@ -2,7 +2,7 @@ import type { ResolvedAppearance, ResolvedIcon } from '../../domain/appearance/i
 import type { VaultPath } from '../../domain/vault/index.ts';
 import { Icon, type IconName } from '../shell/icons.tsx';
 import { useVault } from '../state/vault-store.ts';
-import { glyphOf } from './appearance-options.ts';
+import { glyphOf } from '../pickers/picker-options.ts';
 import './appearance.css';
 
 /** A path's look as drawn, or null for the default: one map lookup. */

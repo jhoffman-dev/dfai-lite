@@ -8,7 +8,7 @@ export interface HueOption {
 }
 
 /**
- * A row of the theme's pastel swatches, "None" first. Generic: it knows the
+ * A row of the theme's pastel swatches, "None" first unless `required`. Generic: it knows the
  * hues only by the `data-hue` names it is given, and says which was picked.
  */
 export function HuePicker({
@@ -17,6 +17,7 @@ export function HuePicker({
   options,
   label,
   noneLabel = 'None',
+  required = false,
 }: {
   /** The hue chosen now; null for none. */
   value: string | null;
@@ -25,8 +26,13 @@ export function HuePicker({
   /** The group's name, read out and shown as its heading. */
   label: string;
   noneLabel?: string;
+  /** A hue must be picked: no "None" cell (a callout type always has one). */
+  required?: boolean;
 }) {
-  const cells = [{ value: null, label: noneLabel }, ...options];
+  const none = { value: null, label: noneLabel };
+  const cells: readonly { value: string | null; label: string }[] = required
+    ? options
+    : [none, ...options];
   const anyChecked = cells.some((cell) => cell.value === value);
   return (
     <fieldset className="picker">
