@@ -127,14 +127,26 @@ describe('the folder tree', () => {
 });
 
 describe('folders', () => {
+  it('keeps the Inbox first at the top level, and nowhere else', () => {
+    const tree = buildFolderTree(
+      ['Areas/Inbox/Nested.md', 'inbox/Idea.md', 'Archive/Old.md', 'Areas/Health.md'],
+      ['Areas/Archive'],
+    );
+    expect(tree.folders.map((folder) => folder.path)).toEqual(['inbox', 'Archive', 'Areas']);
+    expect(tree.folders[2]?.folders.map((folder) => folder.path)).toEqual([
+      'Areas/Archive',
+      'Areas/Inbox',
+    ]);
+  });
+
   it('shows an empty folder the disk lists, but never a hidden one', () => {
     const tree = buildFolderTree(
       ['Inbox/Idea.md'],
       ['Inbox', 'Areas', 'Areas/Garden', '_index', '.dfai-lite', 'Areas/.obsidian'],
     );
-    expect(tree.folders.map((folder) => folder.path)).toEqual(['Areas', 'Inbox']);
-    expect(tree.folders[0]?.folders.map((folder) => folder.path)).toEqual(['Areas/Garden']);
-    expect(tree.folders[0]?.noteCount).toBe(0);
+    expect(tree.folders.map((folder) => folder.path)).toEqual(['Inbox', 'Areas']);
+    expect(tree.folders[1]?.folders.map((folder) => folder.path)).toEqual(['Areas/Garden']);
+    expect(tree.folders[1]?.noteCount).toBe(0);
     expect(isVisibleFolder('')).toBe(false);
   });
 

@@ -1,3 +1,4 @@
+import { INBOX_FOLDER } from './new-note.ts';
 import { fileNameOf, joinPath, noteTitle, VAULT_ROOT, type VaultPath } from './note-path.ts';
 import { isVisibleFolder, isVisibleNote } from './visibility.ts';
 
@@ -36,6 +37,17 @@ const NAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 export function compareNames(left: string, right: string): number {
   return NAMES.compare(left, right) || (left < right ? -1 : left > right ? 1 : 0);
 }
+
+/**
+ * Orders two folders for display: by name, but the Inbox, at the top level,
+ * comes first, because it is where new notes land and are filed from.
+ */
+function compareFolders(left: FolderNode, right: FolderNode): number {
+  const inboxFirst = Number(isInbox(right.path)) - Number(isInbox(left.path));
+  return inboxFirst || compareNames(left.name, right.name);
+}
+
+const isInbox = (path: VaultPath) => path.toLowerCase() === INBOX_FOLDER.toLowerCase();
 
 interface Building {
   path: VaultPath;
@@ -77,9 +89,7 @@ function folderAt(root: Building, parts: readonly string[]): Building {
 }
 
 function finish(folder: Building): FolderNode {
-  const folders = [...folder.folders.values()]
-    .map(finish)
-    .sort((left, right) => compareNames(left.name, right.name));
+  const folders = [...folder.folders.values()].map(finish).sort(compareFolders);
   const notes = [...folder.notes].sort((left, right) =>
     compareNames(noteTitle(left), noteTitle(right)),
   );
