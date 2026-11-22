@@ -37,9 +37,12 @@ test('tabs and split screen: new tab, open to the side, mirrored typing, restore
   // The same note in both panes stays one text: typing on the left shows on the right.
   await left.getByRole('tab', { name: /Welcome/ }).click();
   const leftText = left.getByRole('textbox', { name: 'Note text' });
-  await leftText.click();
-  await page.keyboard.press('ControlOrMeta+End');
-  await page.keyboard.type(' Mirrored across panes.');
+  // At the very start of the first line, clear of the note's link and tag pills.
+  await leftText
+    .locator('p')
+    .first()
+    .click({ position: { x: 1, y: 4 } });
+  await page.keyboard.type('Mirrored across panes. ');
   await expect(right.getByRole('textbox', { name: 'Note text' })).toContainText(
     'Mirrored across panes.',
   );

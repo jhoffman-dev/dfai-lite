@@ -16,12 +16,11 @@ test('the core loop: new note, link, favorite, search, tags, graph', async ({ pa
   const editor = page.getByRole('textbox', { name: 'Note text' });
   await expect(editor).toBeFocused();
   await page.keyboard.type('Payday checklist with [[New Linked Note]] and #ideas/lite ');
-  await expect(page.locator('.cm-tag-pill', { hasText: '#ideas/lite' })).toBeVisible();
+  await expect(editor.locator('.tag', { hasText: '#ideas/lite' })).toBeVisible();
 
-  // Following a link to a note that does not exist makes it and opens it.
-  await page
-    .locator('.cm-link-pill', { hasText: 'New Linked Note' })
-    .click({ modifiers: ['ControlOrMeta'] });
+  // Following a link to a note that does not exist makes it and opens it: a
+  // link is one atom in the text, and a plain click follows it.
+  await editor.locator('.wikilink', { hasText: 'New Linked Note' }).click();
   await expect(title).toHaveValue('New Linked Note');
   await expect(page).toHaveURL(/#\/note\/Inbox%2FNew%20Linked%20Note\.md$/);
   await expect(page.getByRole('region', { name: 'Linked from' })).toContainText('Untitled');
