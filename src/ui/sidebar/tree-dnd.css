@@ -51,6 +51,13 @@
   color: var(--ink);
 }
 
+/* The "…" sits on a row that already has the hover (or selected) fill, so
+   its own hover is a control's border tone, which shows on either. */
+.tree-slot .tree-row-more:hover,
+.sidebar-row .sidebar-row-action.is-more:hover {
+  background: var(--line-strong);
+}
+
 .tree-heading-action:focus-visible,
 .tree-row-more:focus-visible {
   box-shadow: var(--ring);

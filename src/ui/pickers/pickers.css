@@ -1,0 +1,129 @@
+/* The generic pickers: a row of pastel swatches, a grid of glyphs. Each
+   swatch is drawn from the theme's hue tokens through `data-hue`
+   (controls.css), so a picker never carries a color of its own. */
+
+.picker {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.picker__label {
+  color: var(--ink-3);
+  font-size: var(--text-meta);
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.picker__grid {
+  display: grid;
+  gap: 4px;
+}
+
+.picker__grid--hues {
+  grid-template-columns: repeat(10, 22px);
+}
+
+.picker__grid--icons {
+  grid-template-columns: repeat(9, 28px);
+}
+
+.picker__swatch,
+.picker__cell {
+  appearance: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.picker__swatch {
+  background: var(--pill);
+  border: 1px solid color-mix(in srgb, var(--pill-ink) 45%, var(--pill));
+  border-radius: var(--radius-pill);
+  height: 22px;
+  width: 22px;
+}
+
+/* "None": an empty ring struck through, the way a cleared color reads. */
+.picker__swatch.is-none {
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 1px),
+    var(--ink-3) calc(50% - 1px),
+    var(--ink-3) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+  border-color: var(--line-strong);
+}
+
+.picker__swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--ink);
+}
+
+.picker__cell {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  display: inline-flex;
+  font: inherit;
+  font-size: var(--text-meta);
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.picker__cell:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.picker__cell[aria-checked='true'] {
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+}
+
+.picker__cell.is-default {
+  color: var(--ink-3);
+}
+
+.picker__swatch:focus-visible,
+.picker__cell:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.picker__emoji {
+  align-items: center;
+  color: var(--ink-3);
+  display: flex;
+  font-size: var(--text-meta);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.picker__emoji-input {
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-body);
+  height: 26px;
+  padding: 0 6px;
+  text-align: center;
+  width: 44px;
+}
+
+.picker__emoji-input:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.picker__emoji-input[aria-invalid='true'] {
+  border-color: var(--hue-red-ink);
+}

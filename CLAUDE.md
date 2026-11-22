@@ -116,6 +116,7 @@ alike; the app obeys the same rules. The short form:
   anywhere, shallowest first. Following a link to a note that does not exist
   creates the note.
 - Favorites are `.dfai-lite/favorites.json`: a list of paths, synced.
+- Folder and note icons and colors are `.dfai-lite/appearance.json`: path → `{color, icon}`, synced.
 - `_index/` is generated. Never edit it by hand, never treat it as truth.
 - Meetings land in `Meetings/<YYYY>/<MM>/<YYYY-MM-DD> <title>.md`.
 

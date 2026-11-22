@@ -7,6 +7,7 @@ import {
   rankTagSuggestions,
 } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
+import { useLook } from '../appearance/look-glyph.tsx';
 import type { EditorBridge } from '../editor/bridge.ts';
 import type { Tab } from '../panes/layout.ts';
 import type { TabMemory } from '../panes/workspace.ts';
@@ -64,6 +65,9 @@ function editorBridge(
     openTag: (name, openIn) => actions.openTag(name, openIn),
     loadImage: (src) => images.load(src),
     watchImages: (listener) => images.watch(listener),
+    calloutSettings: () => services.session.calloutSettings,
+    watchCallouts: (listener) =>
+      app.vault.subscribe((now, before) => now.callouts !== before.callouts && listener()),
     embedImage: (file, origin) =>
       embedImage(
         { ...deps, probe: services.imageProbe, clock: services.clock },
@@ -225,6 +229,7 @@ export function NotePane({
   const [caret] = useState(createPageCaret);
   // The tree changes when paths do: enough to notice this note was deleted or moved.
   useVault((vault) => vault.tree);
+  const look = useLook(path);
   const file = services.session.file(path);
 
   useEffect(() => {
@@ -249,6 +254,7 @@ export function NotePane({
       <PageBar
         history={history}
         icon={folderName(path) === null ? 'doc' : 'folder'}
+        look={look}
         place={folderName(path)}
         name={noteTitle(path)}
       >

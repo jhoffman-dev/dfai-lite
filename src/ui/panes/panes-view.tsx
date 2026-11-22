@@ -8,6 +8,7 @@ import type { PageHistory } from '../shell/page-bar.tsx';
 import { keyFor } from '../shell/shortcuts.ts';
 import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { RowMenu, type MenuItem } from '../sidebar/row-menu.tsx';
+import { useVault } from '../state/vault-store.ts';
 import { TabBar, panelElementId, tabElementId } from '../tabs/tab-bar.tsx';
 import { TagsPage } from '../tags/tags-page.tsx';
 import { Divider } from './divider.tsx';
@@ -105,6 +106,7 @@ function useTabMenu(canSplit: boolean) {
 /** One pane: its tab bar, and the active tab's content (the hidden tabs mount nothing). */
 function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
   const { workspace, ui } = useApp();
+  const looks = useVault((vault) => vault.appearances);
   const host = useKeyHost();
   const pane = useLayout((layout) => layout.panes[index]);
   const focused = useLayout((layout) => layout.activePane === index);
@@ -127,6 +129,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
     >
       <div className={`tab-strip${focused && split ? ' tab-strip--focused' : ''}`}>
         <TabBar
+          looks={looks}
           pane={pane}
           paneIndex={index}
           onActivate={(tabId) => arrange((current) => activate(current, tabId))}

@@ -52,7 +52,8 @@
   overflow: hidden;
 }
 
-.page-bar__crumbs > .icon {
+.page-bar__crumbs > .icon,
+.page-bar__crumbs > .look-glyph {
   flex: none;
 }
 

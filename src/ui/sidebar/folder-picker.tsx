@@ -1,6 +1,7 @@
 import { useMemo, useState, type KeyboardEvent } from 'react';
 import { folderOf, noteTitle, pathMovedInto } from '../../application/index.ts';
 import type { FolderNode, VaultEntry, VaultPath } from '../../domain/vault/index.ts';
+import { LookGlyph } from '../appearance/look-glyph.tsx';
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { useVault } from '../state/vault-store.ts';
@@ -61,6 +62,7 @@ function choicesFor(root: FolderNode, entry: VaultEntry, query: string): Choice[
 export function FolderPicker({ entry, onClose }: { entry: VaultEntry; onClose: () => void }) {
   const { actions } = useApp();
   const tree = useVault((vault) => vault.tree);
+  const looks = useVault((vault) => vault.appearances);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const choices = useMemo(() => choicesFor(tree, entry, query), [tree, entry, query]);
@@ -135,7 +137,11 @@ export function FolderPicker({ entry, onClose }: { entry: VaultEntry; onClose: (
               onClick={() => void choose(choice).catch(actions.report)}
             >
               <span className="palette__kind">
-                <Icon name={choice.kind === 'create' ? 'folder-plus' : 'folder'} size={15} />
+                {choice.kind === 'create' ? (
+                  <Icon name="folder-plus" size={15} />
+                ) : (
+                  <LookGlyph look={looks.get(choice.path) ?? null} fallback="folder" />
+                )}
               </span>
               <span className="palette__title">
                 {choice.kind === 'create'

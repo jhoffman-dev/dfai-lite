@@ -179,6 +179,7 @@ describe('the block menu', () => {
     const menu = await menuAt(editor, 1);
     const rows = within(menu).getAllByRole('menuitem');
     expect(rows.map((row) => row.textContent)).toEqual([
+      'Turn into callout',
       'Add block above⌥⇧↩',
       'Add block below⌥↩',
       'Duplicate⌘D',
@@ -242,6 +243,8 @@ describe('the block menu', () => {
     await waitFor(() => expect(menu).toContainElement(document.activeElement as HTMLElement));
     await userEvent.keyboard('{ArrowDown}');
     const highlighted = () => menu.querySelector('[data-highlighted]')?.textContent;
+    await waitFor(() => expect(highlighted()).toBe('Turn into callout'));
+    await userEvent.keyboard('{ArrowDown}');
     await waitFor(() => expect(highlighted()).toBe('Add block above⌥⇧↩'));
     await userEvent.keyboard('{ArrowDown}{ArrowDown}');
     await waitFor(() => expect(highlighted()).toBe('Duplicate⌘D'));

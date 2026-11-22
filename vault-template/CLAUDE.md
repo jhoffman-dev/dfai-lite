@@ -25,19 +25,19 @@ and the index disagree, the note is right.
 
 ## Layout
 
-| Folder                   | Holds                                                           |
-| ------------------------ | --------------------------------------------------------------- |
-| `Inbox/`                 | Quick notes, unfiled. New notes with no obvious home go here.   |
-| `Meetings/<YYYY>/<MM>/`  | One note per meeting (shape below).                             |
-| `People/`                | One note per person, named as they are linked: `Mara Quill.md`. |
-| `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                 |
-| `Resources/`             | Reference material and permanent notes.                         |
-| `Archive/`               | Finished or dormant. Move here; do not delete.                  |
-| `attachments/`           | Pictures pasted or dropped into notes.                          |
-| `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.       |
-| `_index/`                | Generated. Never edit.                                          |
-| `.dfai-lite/`            | The app's own state (favorites, imported meetings). Leave it.   |
-| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.       |
+| Folder                   | Holds                                                                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `Inbox/`                 | Quick notes, unfiled. New notes with no obvious home go here.                                        |
+| `Meetings/<YYYY>/<MM>/`  | One note per meeting (shape below).                                                                  |
+| `People/`                | One note per person, named as they are linked: `Mara Quill.md`.                                      |
+| `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                                                      |
+| `Resources/`             | Reference material and permanent notes.                                                              |
+| `Archive/`               | Finished or dormant. Move here; do not delete.                                                       |
+| `attachments/`           | Pictures pasted or dropped into notes.                                                               |
+| `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.                                            |
+| `_index/`                | Generated. Never edit.                                                                               |
+| `.dfai-lite/`            | The app's own state (favorites, icons and colors, callout types, imported meetings). Leave it alone. |
+| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.                                            |
 
 ## How a note is written
 
@@ -49,6 +49,8 @@ and the index disagree, the note is right.
 - Link with `[[Note name]]`, or `[[Note name|shown text]]`. Link people,
   projects and earlier meetings whenever they are mentioned: links are how
   notes are found later. A link to a note that does not exist yet is fine.
+- A callout is a quote whose first line is `> [!type] Title`: `note`, `tip`,
+  `warning` and the rest of Obsidian's, or a type of the vault's own; any type is fine.
 - File names: plain words, no `/ \ : * ? " < > | #  ^ [ ]`.
 - A picture is a file in `attachments/`, shown with a standard image whose
   path is relative to the note and percent-encoded:

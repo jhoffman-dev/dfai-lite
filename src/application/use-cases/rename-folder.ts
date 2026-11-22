@@ -13,6 +13,7 @@ import {
   type PathMove,
   type VaultPath,
 } from '../../domain/vault/index.ts';
+import { appearancesFollowMove } from './appearance.ts';
 import { writeFavorites } from './favorites.ts';
 import { followMoveInLedger } from './import-ledger.ts';
 import { filesNow, imagesFollowingMove } from './images-across-move.ts';
@@ -66,7 +67,7 @@ function picturesOf(deps: VaultDeps): VaultPath[] {
  * image a note shows never stays behind and a change of case is real. Then
  * every link the move broke is rewritten, and every relative image source
  * (in a note that moved, or reaching into the folder), as DFAI does; and
- * favorites follow. Checked
+ * favorites and the icons and colors follow. Checked
  * first; if the disk refuses, nothing in the session or the links changes.
  */
 export async function renameFolder(deps: VaultDeps, move: PathMove): Promise<RenameFolderResult> {
@@ -93,6 +94,7 @@ export async function renameFolder(deps: VaultDeps, move: PathMove): Promise<Ren
     await writeFile(deps, path, images.text);
   }
   await writeFavorites(deps, favoritesAfterMove(deps.session.favorites, move));
+  await appearancesFollowMove(deps, move);
   await followMoveInLedger(deps, move);
   return { kind: 'renamed', moved: across.moved.size, retargeted };
 }

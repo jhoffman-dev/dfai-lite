@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm';
 import {
   BLOCK_ID_ATTR,
   blockIdOf,
+  calloutKindOf,
+  withCalloutKind,
   type EditorDocument,
   type EditorNode,
   type ParsedBody,
@@ -512,7 +514,8 @@ export function serializeMarkdownBody({
   // Each block's own bytes where it was not changed.
   const kept = nodes.map((node) => {
     const block = byId.get(blockIdOf(node) ?? '') ?? null;
-    return block !== null && rendered(node) === block.normalized ? block.source : null;
+    if (block === null) return null;
+    return rendered(node) === block.normalized ? block.source : retypedCallout(node, block);
   });
 
   nodes.forEach((node, index) => {
@@ -560,6 +563,21 @@ export function serializeMarkdownBody({
 
   pieces.push(trailing({ originalBody, parsed, previous, nodes }) ?? lineEnding);
   return pieces.join('');
+}
+
+/**
+ * A callout whose type alone changed, in its own bytes with only the `kind`
+ * of its `[!kind]` rewritten: its title, fold marker and body — however
+ * they were written — stay as the file has them. Null when anything else
+ * changed too, or the block is no callout.
+ */
+function retypedCallout(node: EditorNode, block: SourceBlock): string | null {
+  if (node.type !== 'callout') return null;
+  const before = calloutKindOf(block.source);
+  const kind = node.attrs?.['kind'];
+  if (before === null || typeof kind !== 'string') return null;
+  const asBefore: EditorNode = { ...node, attrs: { ...node.attrs, kind: before } };
+  return renderSafely(asBefore) === block.normalized ? withCalloutKind(block.source, kind) : null;
 }
 
 /**
