@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { MarkdownPort } from '../../application/index.ts';
 import { latestOf, type EditorBridge } from '../editor/bridge.ts';
 import type { OpenNote } from './open-notes.ts';
+import type { PageCaret } from './page-caret.ts';
+import { sourceCaretTarget } from './source-caret.ts';
 import { createSourcePeer, type SourcePeer } from './source-peer.ts';
 
 interface SourceViewProps {
@@ -11,6 +13,8 @@ interface SourceViewProps {
   autoFocus: boolean;
   bridge: EditorBridge;
   note: OpenNote;
+  /** The page's presses outside the field, and keys typed while it loaded. */
+  caret: PageCaret;
 }
 
 /**
@@ -18,7 +22,7 @@ interface SourceViewProps {
  * typed in as text. One more view on the note: what is typed here reaches
  * the note's editors in other tabs, and what they type reaches it.
  */
-export function SourceView({ text, markdown, autoFocus, bridge, note }: SourceViewProps) {
+export function SourceView({ text, markdown, autoFocus, bridge, note, caret }: SourceViewProps) {
   const [bridgeNow] = useState(() => latestOf(bridge));
   useEffect(() => {
     bridgeNow.set(bridge);
@@ -26,6 +30,18 @@ export function SourceView({ text, markdown, autoFocus, bridge, note }: SourceVi
   const [start] = useState(() => startingText(note, text, markdown));
   const [value, setValue] = useState(start.text);
   const source = useRef<SourcePeer | null>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  // Reads only what lasts the view's life (the setter, the peer's ref, the latest bridge).
+  const [typed] = useState(() => (next: string) => {
+    setValue(next);
+    source.current?.typed(next);
+    bridgeNow.get().changed(() => source.current?.text() ?? next);
+  });
+  useEffect(() => {
+    if (field.current === null) return;
+    return caret.attach(sourceCaretTarget(field.current, typed));
+  }, [caret, typed]);
 
   useEffect(() => {
     let broadcast: (typed: string) => void = () => undefined;
@@ -52,6 +68,7 @@ export function SourceView({ text, markdown, autoFocus, bridge, note }: SourceVi
 
   return (
     <textarea
+      ref={field}
       className="note-source"
       aria-label="Note markdown"
       value={value}
@@ -64,12 +81,7 @@ export function SourceView({ text, markdown, autoFocus, bridge, note }: SourceVi
       // Another pane's typing, not yet written out here, is shown before a key lands on it.
       onFocus={() => source.current?.refresh()}
       onKeyDown={() => source.current?.refresh()}
-      onChange={(event) => {
-        const next = event.currentTarget.value;
-        setValue(next);
-        source.current?.typed(next);
-        bridgeNow.get().changed(() => source.current?.text() ?? next);
-      }}
+      onChange={(event) => typed(event.currentTarget.value)}
       onBlur={() => bridgeNow.get().blurred()}
     />
   );

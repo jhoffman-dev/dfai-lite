@@ -1,4 +1,4 @@
-import { lazy, Suspense, use, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createNoteFromLink,
   embedImage,
@@ -21,7 +21,10 @@ import type { OpenNote } from './open-notes.ts';
 import { NoteFolderButton } from './note-folder-button.tsx';
 import { createNoteImages, type NoteImages } from './note-images.ts';
 import { useKeptScroll } from './kept-scroll.ts';
+import { NoteTags } from './note-tags.tsx';
 import { NoteTitle } from './note-title.tsx';
+import { createPageCaret, heldKeyOf, type PageCaret } from './page-caret.ts';
+import { LOADING_TEXT_CLASS, pressToType } from './page-press.ts';
 import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
 import './note.css';
@@ -144,12 +147,40 @@ function NoteView({
   bridge: EditorBridge;
   note: OpenNote;
   memory: TabMemory;
+  caret: PageCaret;
 }) {
   const markdown = use(loadMarkdown());
   return source ? (
     <SourceView {...view} markdown={markdown} />
   ) : (
     <NoteEditor {...view} markdown={markdown} />
+  );
+}
+
+/**
+ * The note's text as it is, while the editor loads. It holds the focus a
+ * new note asks for, or a press on the page gave it, and keeps the keys
+ * typed on it for the editor to type in when it lands.
+ */
+function LoadingText({ text, focus, caret }: { text: string; focus: boolean; caret: PageCaret }) {
+  const element = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    if (focus) element.current?.focus({ preventScroll: true });
+  }, [focus]);
+  return (
+    <pre
+      ref={element}
+      className={LOADING_TEXT_CLASS}
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        const key = heldKeyOf(event);
+        if (key === null) return;
+        event.preventDefault();
+        caret.hold(key);
+      }}
+    >
+      {text}
+    </pre>
   );
 }
 
@@ -191,6 +222,7 @@ export function NotePane({
   // Kept from the moment the pane opens: the editor may land a moment later, after the
   // request is cleared, and must still take the caret.
   const [focusEditor] = useState(wantsEditor);
+  const [caret] = useState(createPageCaret);
   // The tree changes when paths do: enough to notice this note was deleted or moved.
   useVault((vault) => vault.tree);
   const file = services.session.file(path);
@@ -208,7 +240,12 @@ export function NotePane({
   }
 
   return (
-    <article ref={article} className="note-pane" aria-label={noteTitle(path)}>
+    <article
+      ref={article}
+      className="note-pane"
+      aria-label={noteTitle(path)}
+      onMouseDown={pressToType(caret)}
+    >
       <PageBar
         history={history}
         icon={folderName(path) === null ? 'doc' : 'folder'}
@@ -234,12 +271,13 @@ export function NotePane({
         <header className="page-head">
           <NoteTitle path={path} focused={focused} beforeRename={autosave.flush} />
         </header>
+        {!showSource && <NoteTags path={path} />}
         <div className="page__body">
           <LoadFailedBoundary
             text={file.text}
             onRetry={() => void services.loadMarkdown({ afresh: true }).catch(() => undefined)}
           >
-            <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
+            <Suspense fallback={<LoadingText text={file.text} focus={focusEditor} caret={caret} />}>
               <NoteView
                 source={showSource}
                 text={file.text}
@@ -248,6 +286,7 @@ export function NotePane({
                 bridge={bridge}
                 note={note}
                 memory={memory}
+                caret={caret}
               />
             </Suspense>
           </LoadFailedBoundary>

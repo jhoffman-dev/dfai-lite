@@ -5,10 +5,12 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import type { MarkdownPort } from '../../application/index.ts';
 import type { EditorDocument } from '../../domain/markdown/index.ts';
 import type { EditorSteps, OpenNote } from '../note/open-notes.ts';
+import type { PageCaret } from '../note/page-caret.ts';
 import { openInFor } from '../panes/open-in.ts';
 import { useBlockMenu } from './block-menu.tsx';
 import { latestOf, type EditorBridge } from './bridge.ts';
 import { editable } from './editable-doc.ts';
+import { editorCaretTarget } from './editor-caret.ts';
 import { createEditorExtensions } from './extensions.ts';
 import { ImagePicker } from './image-picker.tsx';
 import type { EmbedImage } from './image-uploads.ts';
@@ -33,6 +35,8 @@ interface NoteEditorProps {
   note: OpenNote;
   /** The tab's caret, kept while the tab is hidden. */
   memory: { cursor: number | null };
+  /** The page's presses outside the text, and keys typed while the editor loaded. */
+  caret: PageCaret;
 }
 
 /**
@@ -47,7 +51,15 @@ interface NoteEditorProps {
  * mirror, as the same steps, so a note open twice stays one document and
  * the caret never jumps.
  */
-export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: NoteEditorProps) {
+export function NoteEditor({
+  text,
+  markdown,
+  autoFocus,
+  bridge,
+  note,
+  memory,
+  caret,
+}: NoteEditorProps) {
   const [bridgeNow] = useState(() => latestOf(bridge));
   useEffect(() => {
     bridgeNow.set(bridge);
@@ -128,7 +140,9 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
     editor.on('blur', onBlur);
     if (member.alone && start.fromVault) bridgeNow.get().opened(text);
     placeCaret(editor, memory.cursor, autoFocus);
+    const detach = caret.attach(editorCaretTarget(editor));
     return () => {
+      detach();
       memory.cursor = editor.state.selection.head;
       editor.off('transaction', onTransaction);
       editor.off('blur', onBlur);
