@@ -105,3 +105,167 @@
 .settings__key {
   width: 160px;
 }
+
+.settings__subheading {
+  color: var(--ink-3);
+  font-size: var(--text-header);
+  font-weight: 500;
+  margin: var(--space-2) 0 0;
+}
+
+.settings__lede code,
+.callout-types__name {
+  background: var(--code-bg);
+  border-radius: var(--radius-chip);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  padding: 1px 4px;
+}
+
+/* Something about a section's file the person must know: a notice bar's look, in the section. */
+.settings__notice {
+  align-items: center;
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  display: flex;
+  font-size: var(--text-body);
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* ---- Callouts ---- */
+
+.callout-types {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* A type: its preview, as wide as it can be, its [!name], then its controls. */
+.callout-types__row {
+  align-items: center;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) 132px 136px;
+  min-height: 36px;
+}
+
+.callout-types__row > .settings__actions {
+  justify-content: flex-end;
+}
+
+.callout-types__row .callout {
+  margin: 0;
+  padding: 6px 10px;
+}
+
+.callout-types__row .callout__title {
+  margin-bottom: 0;
+}
+
+.callout-types__name {
+  color: var(--ink-2);
+  justify-self: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.callout-types__row--asking {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* The form: a hairline card under the list, fields above the preview. */
+.callout-form {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.callout-form__fields {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr 1fr;
+}
+
+.callout-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.callout-form__label {
+  font-size: var(--text-meta);
+  font-weight: 500;
+}
+
+.callout-form .callout {
+  margin: 0;
+}
+
+.callout-form__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* A choice grid: swatches or glyphs, the chosen one ringed. */
+.choice-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.choice-grid__option {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  width: 30px;
+}
+
+.choice-grid__option:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.choice-grid__option[aria-checked='true'] {
+  background: var(--selected);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.choice-grid__option:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* A hue's swatch: its ink, the color a callout's title is drawn in, which
+   stands out on the page in both themes (its pastel fill does not in dark). */
+.choice-grid__hue {
+  background: var(--pill-ink);
+  border: 1.5px solid var(--pill);
+  border-radius: var(--radius-pill);
+  height: 18px;
+  width: 18px;
+}

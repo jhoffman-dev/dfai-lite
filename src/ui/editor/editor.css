@@ -274,49 +274,7 @@
   color: var(--ink-2);
 }
 
-/* ---- callouts ---- */
-
-/* A callout is a hairline card with a badge before its title: a faint wash
-   of its type's hue, never a heavy rule down its edge or a filled block.
-   The hue is DFAI's pastel set (controls.css draws `[data-hue]` as `--pill`
-   and `--pill-ink`, light and dark), so a type the person makes looks as
-   right in either theme as a built-in. The editor's view sets `data-hue`;
-   one with none (a copy pasted elsewhere) is the fallback's gray. */
-.callout {
-  --callout-tint: var(--hue-gray-ink);
-  --callout-wash: var(--hue-gray-bg);
-  background: color-mix(in srgb, var(--callout-wash) 45%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--callout-wash) 80%, var(--line));
-  border-radius: var(--radius-chip);
-  margin: 1em 0;
-  padding: 10px 14px;
-}
-
-.callout[data-hue] {
-  --callout-tint: var(--pill-ink);
-  --callout-wash: var(--pill);
-}
-
-.callout__title {
-  align-items: center;
-  color: var(--callout-tint);
-  display: flex;
-  font-size: var(--text-body);
-  font-weight: 600;
-  gap: 8px;
-  margin-bottom: 4px;
-  user-select: none;
-}
-
-/* The badge: the type's glyph in its ink, drawn by the view, never written. */
-.callout__badge {
-  display: inline-flex;
-  flex: none;
-}
-
-.callout__body > *:first-child {
-  margin-top: 0;
-}
+/* ---- callouts: drawn by ../shell/callout.css, as Settings draws their previews ---- */
 
 /* ---- tables ---- */
 

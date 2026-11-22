@@ -159,16 +159,3 @@
   display: inline-flex;
   margin-left: auto;
 }
-
-/* A callout type's badge in a menu or a list: its glyph on its hue. */
-.callout-swatch {
-  align-items: center;
-  background: var(--pill);
-  border-radius: var(--radius-chip);
-  color: var(--pill-ink);
-  display: inline-flex;
-  flex: none;
-  height: 20px;
-  justify-content: center;
-  width: 20px;
-}

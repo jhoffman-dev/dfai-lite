@@ -50,7 +50,6 @@ export const CALLOUT_ICONS = [
   'tag',
   'doc',
   'code',
-  'gear',
   'cloud',
   'sun',
 ] as const;

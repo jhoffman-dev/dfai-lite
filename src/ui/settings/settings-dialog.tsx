@@ -5,6 +5,7 @@ import '../shell/dialog.css';
 import { describeSyncStatus, syncStatusDetail } from '../sync/sync-chip.tsx';
 import type { SyncControls } from '../sync/sync-status.ts';
 import { AppearanceSection } from './appearance-section.tsx';
+import { CalloutsSection } from './callouts-section.tsx';
 import type { DesktopControls, RemoteInfo } from './desktop-controls.ts';
 import { acceleratorOf, shortcutLabel } from './hotkey.ts';
 import './settings.css';
@@ -152,8 +153,9 @@ function VaultSection({ desktop }: { desktop: DesktopControls }) {
 
 /**
  * Settings, as DFAI's: a 44px head with the title and its Close, then the
- * sections as hairline groups under a 15/600 title. Appearance, then the
- * notes folder, sync and the capture key; in a browser, only what it is.
+ * sections as hairline groups under a 15/600 title. Appearance and the
+ * vault's callout types, then the notes folder, sync and the capture key;
+ * in a browser, only what it is.
  */
 export default function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { services, theme } = useApp();
@@ -186,6 +188,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
         </header>
         <div className="settings__body">
           <AppearanceSection theme={theme} />
+          <CalloutsSection />
           {desktop === null ? (
             <section className="settings__section" aria-label="Notes folder">
               <h3 className="settings__heading">Notes folder</h3>

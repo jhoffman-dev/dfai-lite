@@ -4,6 +4,7 @@ import type { NodeView, ViewMutationRecord } from '@tiptap/pm/view';
 import { calloutLabel, resolveCallout } from '../../application/index.ts';
 import type { CalloutSettings } from '../../domain/callouts/index.ts';
 import { glyphElement } from '../shell/glyphs.ts';
+import '../shell/callout.css';
 
 /** The vault's callout types as the editor reads them: now, and when they change. */
 export interface CalloutCatalog {

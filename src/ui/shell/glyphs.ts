@@ -67,6 +67,13 @@ const CHROME = {
   'arrow-left': [path('M19 12H5.5M11 6l-6 6 6 6', 'both', 1.9)],
   'arrow-right': [path('M5 12h13.5M13 6l6 6-6 6', 'both', 1.9)],
   menu: [path('M4 7h16M4 12h16M4 17h16', 'round')],
+  gear: [
+    circle(12, 12, 3.2),
+    path(
+      'M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8',
+      'round',
+    ),
+  ],
 } satisfies Record<string, readonly GlyphShape[]>;
 
 /** The glyphs a callout may show; the chrome's own among them are drawn once, here. */
@@ -84,13 +91,6 @@ const CALLOUT_GLYPHS: Readonly<Record<CalloutIcon, readonly GlyphShape[]>> = {
   doc: [
     path(
       'M7 3.5h6.8l4.7 4.7v11.3a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5v-14.5A1.5 1.5 0 0 1 7 3.5zM13.5 3.5v5h5',
-    ),
-  ],
-  gear: [
-    circle(12, 12, 3.2),
-    path(
-      'M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8',
-      'round',
     ),
   ],
   close: [path('M6.5 6.5l11 11M17.5 6.5l-11 11', 'round', 1.9)],
