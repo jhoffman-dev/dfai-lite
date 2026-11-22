@@ -68,6 +68,11 @@ export interface VaultFiles {
    */
   readBinary(path: VaultPath): Promise<Uint8Array | null>;
   /**
+   * Whether a file is at `path` (case aside, as the Mac's disk finds it),
+   * without reading it. Rejects when something other than a file is there.
+   */
+  exists(path: VaultPath): Promise<boolean>;
+  /**
    * Writes `bytes` as a new file, the folders above it made as needed, never
    * over a file already there ({@link FileExistsError}).
    */

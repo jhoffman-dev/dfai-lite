@@ -40,9 +40,9 @@ async function refreshPictures(
 ): Promise<VaultPath[] | null> {
   for (const path of new Set(paths)) {
     try {
-      session.applyOtherFile(path, (await files.readBinary(path)) !== null);
+      session.applyOtherFile(path, await files.exists(path));
     } catch {
-      // Not a file the host reads (a folder, or one past its ceiling): a whole read settles it.
+      // Not a file (a folder named like a picture, a link): a whole read settles it.
       return null;
     }
   }

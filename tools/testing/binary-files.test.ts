@@ -45,6 +45,13 @@ describe.each(adapters)('the %s vault’s pictures', (_name, make) => {
     expect(await files.readBinary('p.png')).toEqual(PNG);
   });
 
+  it('are looked for without being read', async () => {
+    const files = make();
+    await files.writeBinary({ path: 'attachments/a.png', bytes: PNG });
+    expect(await files.exists('attachments/a.png')).toBe(true);
+    expect(await files.exists('attachments/none.png')).toBe(false);
+  });
+
   it('read a missing file as null', async () => {
     expect(await make().readBinary('none.png')).toBeNull();
   });

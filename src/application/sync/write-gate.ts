@@ -67,6 +67,7 @@ export function gatedVaultFiles(files: VaultFiles, gate: WriteGate): VaultFiles 
     read: (path) => pass().then(() => files.read(path)),
     write: (request) => pass().then(() => files.write(request)),
     readBinary: (path) => pass().then(() => files.readBinary(path)),
+    exists: (path) => pass().then(() => files.exists(path)),
     writeBinary: (request) => pass().then(() => files.writeBinary(request)),
     rename: (from, to) => pass().then(() => files.rename(from, to)),
     remove: (request) => pass().then(() => files.remove(request)),

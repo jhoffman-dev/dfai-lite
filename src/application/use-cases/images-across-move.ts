@@ -1,5 +1,5 @@
 import { retargetImageSources } from '../../domain/markdown/index.ts';
-import type { PathMove, VaultPath } from '../../domain/vault/index.ts';
+import { foldedPath, type PathMove, type VaultPath } from '../../domain/vault/index.ts';
 import type { VaultDeps } from './vault-deps.ts';
 
 /**
@@ -7,8 +7,9 @@ import type { VaultDeps } from './vault-deps.ts';
  * move, after the session has it, so it knows where every file is now.
  */
 export function filesNow({ session }: VaultDeps): (path: VaultPath) => boolean {
-  const files = new Set(session.takenPaths());
-  return (path) => files.has(path);
+  // Case aside, as the Mac's disk finds a file: `attachments/x.png` is in `Attachments/`.
+  const files = new Set(session.takenPaths().map(foldedPath));
+  return (path) => files.has(foldedPath(path));
 }
 
 /**

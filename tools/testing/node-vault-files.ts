@@ -114,6 +114,16 @@ export class NodeVaultFiles implements VaultFiles {
     }
   }
 
+  async exists(path: string): Promise<boolean> {
+    try {
+      if ((await lstat(onDisk(this.root, path))).isFile()) return true;
+      throw new Error(`${path} is not a file`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+      throw error;
+    }
+  }
+
   async writeBinary({ path, bytes }: { path: string; bytes: Uint8Array }): Promise<void> {
     if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB`);
     const absolute = onDisk(this.root, path);

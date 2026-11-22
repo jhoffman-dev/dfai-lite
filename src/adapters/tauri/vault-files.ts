@@ -67,6 +67,7 @@ export async function openTauriVaultFiles(folder: string): Promise<VaultFiles> {
     read: (path) => call<string | null>('read_file', { path }),
     write: ({ path, text, expected }) => call('write_file', { path, text, expected }),
     readBinary,
+    exists: (path) => call<boolean>('file_exists', { path }),
     writeBinary: ({ path, bytes }) =>
       call('write_binary_file', bytes, { headers: { [PATH_HEADER]: encodeURIComponent(path) } }),
     rename: (from, to) => call('rename_file', { from, to }),

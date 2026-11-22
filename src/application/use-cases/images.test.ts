@@ -235,7 +235,48 @@ describe('a folder moved with its pictures', () => {
   });
 });
 
+describe('a vault whose attachments folder is spelled another way', () => {
+  const image = { name: 'shot.png', mimeType: 'image/png', size: 11, origin: 'file' } as const;
+
+  it('saves into that folder, and the note links its real spelling', async () => {
+    const deps = await opened({ binaries: { 'Attachments/old.png': PNG } });
+    const saved = await embedImage(deps, { notePath: NOTE, image, readBytes: readPng });
+    expect(saved).toMatchObject({
+      path: 'Attachments/shot.png',
+      src: '../Attachments/shot.png',
+    });
+    expect(deps.files.peekBinary('Attachments/shot.png')).toEqual(PNG);
+    expect(deps.session.folders().filter((folder) => /^attachments$/i.test(folder))).toEqual([
+      'Attachments',
+    ]);
+  });
+
+  it('numbers past a name its files already have', async () => {
+    const deps = await opened({ binaries: { 'Attachments/shot.png': PNG } });
+    const saved = await embedImage(deps, { notePath: NOTE, image, readBytes: readPng });
+    expect(saved.path).toBe('Attachments/shot 2.png');
+  });
+
+  it('is followed when it moves, from a note that spells it otherwise', async () => {
+    const deps = await opened({
+      texts: { [NOTE]: '![](../attachments/x.png)\n' },
+      binaries: { 'Attachments/x.png': PNG },
+    });
+    await renameFolder(deps, { from: 'Attachments', to: 'Media' });
+    expect(deps.files.peek(NOTE)).toBe('![](../Media/x.png)\n');
+  });
+});
+
 describe('a picture added or removed on disk by someone else', () => {
+  it('is looked for without reading its bytes', async () => {
+    const deps = await opened();
+    await deps.files.writeBinary({ path: 'attachments/big.png', bytes: PNG });
+    deps.files.readBinary = () => Promise.reject(new Error('read the whole file'));
+    deps.files.readAll = () => Promise.reject(new Error('read the whole vault'));
+    await applyExternalChanges(deps, ['attachments/big.png']);
+    expect(deps.session.otherPaths()).toContain('attachments/big.png');
+  });
+
   it('is listed without reading the vault again', async () => {
     const deps = await opened();
     const changes: VaultChange[] = [];

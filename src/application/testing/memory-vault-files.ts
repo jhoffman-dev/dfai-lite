@@ -129,19 +129,45 @@ export class MemoryVaultFiles implements VaultFiles {
   }
 
   async readBinary(path: VaultPath): Promise<Uint8Array | null> {
-    const text = this.texts.get(path);
+    const found = this.onDisk(path);
+    if (found === null) return null;
+    const text = this.texts.get(found);
     if (text !== undefined) return new TextEncoder().encode(text);
-    if (!this.others.has(path)) return null;
-    const bytes = this.bytes.get(path) ?? new Uint8Array();
+    const bytes = this.bytes.get(found) ?? new Uint8Array();
     if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB.`);
     return bytes;
   }
 
+  async exists(path: VaultPath): Promise<boolean> {
+    return this.onDisk(path) !== null;
+  }
+
+  /** As on a Mac's disk: a new file goes in the folders already there, whatever case it was named in. */
   async writeBinary({ path, bytes }: { path: VaultPath; bytes: Uint8Array }): Promise<void> {
     if (this.isTaken(path)) throw new FileExistsError(`${path} exists.`);
     if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB.`);
-    this.others.add(path);
-    this.bytes.set(path, bytes);
+    const spelled = this.spelledOnDisk(path);
+    this.others.add(spelled);
+    this.bytes.set(spelled, bytes);
+  }
+
+  /** The file at `path`, found case aside as a Mac's disk finds it; null when there is none. */
+  private onDisk(path: VaultPath): VaultPath | null {
+    const wanted = foldedPath(path);
+    const files = [...this.texts.keys(), ...this.others];
+    return files.find((other) => foldedPath(other) === wanted) ?? null;
+  }
+
+  /** `path` with each folder spelled as the disk already holds it. */
+  private spelledOnDisk(path: VaultPath): VaultPath {
+    const folders = this.folders();
+    const parts = path.split('/');
+    let folder: VaultPath = '';
+    for (const part of parts.slice(0, -1)) {
+      const wanted = foldedPath(joinPath(folder, part));
+      folder = folders.find((known) => foldedPath(known) === wanted) ?? joinPath(folder, part);
+    }
+    return joinPath(folder, parts.at(-1) ?? '');
   }
 
   async rename(from: VaultPath, to: VaultPath): Promise<void> {

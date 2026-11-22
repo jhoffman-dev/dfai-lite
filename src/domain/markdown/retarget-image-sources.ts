@@ -1,5 +1,5 @@
 import { relativeImageSource, vaultImageSource } from '../attachments/image-placement.ts';
-import { isWithin, pathAfterMove, type PathMove, type VaultPath } from '../vault/note-path.ts';
+import { foldedPath, isWithin, type PathMove, type VaultPath } from '../vault/note-path.ts';
 import { imageSourceCandidates } from './image-source.ts';
 
 /** A move of a note or a folder, as the image sources of one note see it. */
@@ -116,6 +116,20 @@ function pathBefore({ move, path }: ImageSourcesAcrossMove): VaultPath {
   return isWithin(path, move.to) ? `${move.from}${path.slice(move.to.length)}` : path;
 }
 
+/**
+ * Where `path` is after the move, or null when the move leaves it be; case
+ * aside, as the Mac's disk moves a folder: `attachments/x.png` goes with `Attachments`.
+ */
+function pathAfterMove(path: VaultPath, { from, to }: PathMove): VaultPath | null {
+  const [folded, moved] = [foldedPath(path), foldedPath(from)];
+  if (folded === moved) return to;
+  return folded.startsWith(`${moved}/`) ? `${to}${path.slice(from.length)}` : null;
+}
+
+/** Whether two paths name the same file on a Mac's disk. */
+const sameFile = (left: VaultPath | undefined, right: VaultPath) =>
+  left !== undefined && foldedPath(left) === foldedPath(right);
+
 /** The file `src`, in the note at `notePath`, resolves to among those that exist. */
 const resolvedFrom = (src: string, notePath: VaultPath, exists: (path: VaultPath) => boolean) =>
   imageSourceCandidates({ src, notePath }).find(exists);
@@ -149,7 +163,7 @@ function rewritten(src: string, image: VaultPath, across: ImageSourcesAcrossMove
   if (!readFromRoot(src, across)) return relative;
   const vault = `${src.startsWith('/') ? '/' : ''}${vaultImageSource(image)}`;
   // A file of the same name beside the note would answer first: then it goes relative.
-  return resolvedFrom(vault, across.path, across.exists) === image ? vault : relative;
+  return sameFile(resolvedFrom(vault, across.path, across.exists), image) ? vault : relative;
 }
 
 /**
@@ -178,7 +192,8 @@ export function retargetImageSources({
   let cursor = 0;
   for (const { src, start, end } of destinations) {
     const image = imageNow(src, across);
-    if (image === undefined || resolvedFrom(src, across.path, across.exists) === image) continue;
+    if (image === undefined || sameFile(resolvedFrom(src, across.path, across.exists), image))
+      continue;
     const anchor = src.includes('#') ? src.slice(src.indexOf('#')) : '';
     out += text.slice(cursor, start) + rewritten(src, image, across) + anchor;
     cursor = end;

@@ -107,10 +107,25 @@ pub async fn write_binary_file(
     };
     let path = header(&request, PATH_HEADER)?;
     let target = inside(&root.get()?, &path)?;
-    let bytes = bytes.clone();
-    tauri::async_runtime::spawn_blocking(move || create_binary(&target, &path, &bytes))
-        .await
-        .map_err(|error| format!("the write did not finish: {error}"))?
+    // Written on the runtime's worker, from the body as it is borrowed: no second copy.
+    create_binary(&target, &path, bytes)
+}
+
+/// Whether a file is at `path`, case aside as the Mac's disk finds it; an
+/// error when something other than a plain file is there.
+pub fn exists_at(target: &Path, label: &str) -> Result<bool, String> {
+    match target.symlink_metadata() {
+        Ok(meta) if meta.is_file() => Ok(true),
+        Ok(_) => Err(format!("{label} is not a file")),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(format!("cannot look at {label}: {error}")),
+    }
+}
+
+/// Whether a file is at `path`, without reading it: how the watcher's news of a picture is checked.
+#[tauri::command]
+pub fn file_exists(root: State<'_, VaultRoot>, path: String) -> Result<bool, String> {
+    exists_at(&inside(&root.get()?, &path)?, &path)
 }
 
 #[cfg(test)]
@@ -179,6 +194,17 @@ mod tests {
         assert!(!root.join("big.png").exists());
         fs::write(root.join("big.png"), &big).unwrap();
         assert!(read_binary(&root.join("big.png"), "big.png").is_err());
+    }
+
+    #[test]
+    fn a_file_is_looked_for_without_reading_it() {
+        let root = temp_folder();
+        fs::write(root.join("a.png"), PNG).unwrap();
+        fs::create_dir(root.join("pics.png")).unwrap();
+        assert_eq!(exists_at(&root.join("a.png"), "a.png"), Ok(true));
+        assert_eq!(exists_at(&root.join("none.png"), "none.png"), Ok(false));
+        assert!(exists_at(&root.join("pics.png"), "pics.png").is_err());
+        assert!(inside(&root, "../a.png").is_err());
     }
 
     #[test]

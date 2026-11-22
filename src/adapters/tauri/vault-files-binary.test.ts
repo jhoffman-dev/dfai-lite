@@ -45,6 +45,16 @@ describe('pictures through the Rust host', () => {
     expect(await files.readBinary('a.png')).toBeNull();
   });
 
+  it('are looked for with the host’s stat, not read', async () => {
+    answer = (command) => command === 'file_exists';
+    const files = await openTauriVaultFiles('/vault');
+    expect(await files.exists('attachments/a.png')).toBe(true);
+    expect(calls.at(-1)).toMatchObject({
+      command: 'file_exists',
+      args: { path: 'attachments/a.png' },
+    });
+  });
+
   it('reject with the host’s reason for anything else', async () => {
     answer = (command) => {
       if (command === 'read_binary_file') throw 'big.png is over 32 MB';

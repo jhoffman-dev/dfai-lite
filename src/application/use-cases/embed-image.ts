@@ -10,7 +10,13 @@ import {
   undrawableImageMessage,
   type IncomingImage,
 } from '../../domain/attachments/index.ts';
-import { fileNameOf, folderOf, joinPath, type VaultPath } from '../../domain/vault/index.ts';
+import {
+  fileNameOf,
+  foldedPath,
+  folderOf,
+  joinPath,
+  type VaultPath,
+} from '../../domain/vault/index.ts';
 import type { Clock } from '../ports/clock.ts';
 import type { ImageProbe } from '../ports/image-probe.ts';
 import { FileExistsError } from '../ports/vault-files.ts';
@@ -77,13 +83,25 @@ export async function embedImage(
     );
   }
 
-  const path = await writeUnderFreeName(deps, { folder: ATTACHMENTS_FOLDER, name, bytes });
+  const folder = attachmentsFolder(deps);
+  const path = await writeUnderFreeName(deps, { folder, name, bytes });
   deps.session.applyOtherFile(path, true);
   return {
     path,
     src: relativeImageSource({ notePath, imagePath: path }),
     alt: defaultAltText(image),
   };
+}
+
+/**
+ * The attachments folder as the vault already spells it — `Attachments/`, say
+ * — so the note links the name git records; `attachments` when there is none.
+ * A Mac's disk would put the file in the existing folder whatever it was
+ * called, and a link spelled otherwise breaks on GitHub and on Linux clones.
+ */
+function attachmentsFolder({ session }: VaultDeps): VaultPath {
+  const wanted = foldedPath(ATTACHMENTS_FOLDER);
+  return session.folders().find((folder) => foldedPath(folder) === wanted) ?? ATTACHMENTS_FOLDER;
 }
 
 /** How many names are tried when each one is taken between listing and writing. */
@@ -124,9 +142,10 @@ async function writeUnderFreeName(
   }
 }
 
-/** The names of the entries directly in `folder`, among `paths`. */
+/** The names of the entries directly in `folder`, among `paths`: case aside, as the disk finds them. */
 function namesIn(folder: VaultPath, paths: Iterable<VaultPath>): string[] {
-  return [...paths].filter((path) => folderOf(path) === folder).map(fileNameOf);
+  const wanted = foldedPath(folder);
+  return [...paths].filter((path) => foldedPath(folderOf(path)) === wanted).map(fileNameOf);
 }
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));

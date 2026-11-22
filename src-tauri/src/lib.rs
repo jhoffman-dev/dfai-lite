@@ -39,6 +39,7 @@ pub fn run() {
             vault::find_unsyncable,
             binary::read_binary_file,
             binary::write_binary_file,
+            binary::file_exists,
             git::git_run,
             git::mac_name,
             settings::read_settings,
