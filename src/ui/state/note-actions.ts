@@ -34,9 +34,9 @@ export interface NoteActions {
   openNote(path: VaultPath, openIn?: OpenIn): void;
   /**
    * A new `Untitled` note (in the Inbox unless a folder is given), open in a
-   * new tab with the caret in it. `replace` swaps the history entry (for `#/new`).
+   * new tab with the caret in it.
    */
-  newNote(options?: { folder?: VaultPath; replace?: boolean }): Promise<void>;
+  newNote(options?: { folder?: VaultPath }): Promise<void>;
   /** Opens the note a link names, making it first if no note answers. */
   followLink(target: string, openIn?: OpenIn): Promise<void>;
   openTag(name: string, openIn?: OpenIn): void;
@@ -129,10 +129,10 @@ export function createNoteActions({
 
   return {
     openNote: (path, openIn) => workspace.open({ kind: 'note', path }, openIn),
-    async newNote({ folder, replace = false } = {}) {
+    async newNote({ folder } = {}) {
       const path = await createQuickNote(deps, folder === undefined ? {} : { folder });
       ui.setState({ pendingFocus: { path, target: 'editor' } });
-      workspace.open({ kind: 'note', path }, 'new-tab', { replace, source: false });
+      workspace.open({ kind: 'note', path }, 'new-tab', { source: false });
     },
     async followLink(target, openIn) {
       const result = await createNoteFromLink(deps, { target });

@@ -1,5 +1,14 @@
 import type { VaultPath } from '../../domain/vault/index.ts';
 import type { Route } from '../routing/route.ts';
+import {
+  HISTORY_LIMIT,
+  followRename,
+  forgetMissing,
+  sameView,
+  step,
+  visit,
+  type HistoryStep,
+} from './tab-history.ts';
 
 /**
  * How the main area is arranged: one or two panes side by side, each with a
@@ -19,6 +28,10 @@ export interface Tab {
   readonly view: TabView;
   /** Rendered view (true) or the editor (false), per tab. */
   readonly source: boolean;
+  /** Where Back goes, oldest first (`tab-history.ts`). */
+  readonly back: readonly TabView[];
+  /** Where Forward goes, nearest first. */
+  readonly forward: readonly TabView[];
 }
 
 export interface Pane {
@@ -44,18 +57,11 @@ const MAX_SPLIT = 0.8;
 
 export function initialLayout({ view = BLANK, source = false } = {}): Layout {
   return {
-    panes: [{ tabs: [{ id: 't1', view, source }], activeTab: 't1' }],
+    panes: [{ tabs: [{ id: 't1', view, source, back: [], forward: [] }], activeTab: 't1' }],
     activePane: 0,
     split: EVEN_SPLIT,
     nextId: 2,
   };
-}
-
-export function sameView(left: TabView, right: TabView): boolean {
-  if (left.kind !== right.kind) return false;
-  if (left.kind === 'note' && right.kind === 'note') return left.path === right.path;
-  if (left.kind === 'tags' && right.kind === 'tags') return left.tag === right.tag;
-  return true;
 }
 
 export function activePaneOf(layout: Layout): Pane {
@@ -75,6 +81,11 @@ export function currentTab(layout: Layout): Tab {
   return activeTabOf(activePaneOf(layout));
 }
 
+/** The tab `tabId`, in whichever pane holds it. */
+export function tabById(layout: Layout, tabId: string): Tab | undefined {
+  return layout.panes.flatMap((pane) => pane.tabs).find((tab) => tab.id === tabId);
+}
+
 /** Which pane holds `tabId`, or -1. */
 export function paneIndexOf(layout: Layout, tabId: string): number {
   return layout.panes.findIndex((pane) => pane.tabs.some((tab) => tab.id === tabId));
@@ -84,8 +95,9 @@ function withPane(layout: Layout, index: number, pane: Pane): Layout {
   return { ...layout, panes: layout.panes.map((old, at) => (at === index ? pane : old)) };
 }
 
+/** A new tab starts with an empty history, as a browser's does. */
 function mintTab(layout: Layout, view: TabView, source: boolean): [Layout, Tab] {
-  const tab = { id: `t${layout.nextId}`, view, source };
+  const tab = { id: `t${layout.nextId}`, view, source, back: [], forward: [] };
   return [{ ...layout, nextId: layout.nextId + 1 }, tab];
 }
 
@@ -96,15 +108,15 @@ function insertAfterActive(pane: Pane, tab: Tab): Pane {
 }
 
 /**
- * Shows `view` in the active tab, replacing what it showed, unless a tab of
- * the active pane already shows it: then that tab is focused instead.
+ * Shows `view` in the active tab, a step Back can undo, unless a tab of the
+ * active pane already shows it: then that tab is focused instead.
  */
 export function openInActive(layout: Layout, view: TabView): Layout {
   const pane = activePaneOf(layout);
   const existing = pane.tabs.find((tab) => sameView(tab.view, view));
   if (existing !== undefined)
     return withPane(layout, layout.activePane, { ...pane, activeTab: existing.id });
-  const tabs = pane.tabs.map((tab) => (tab.id === pane.activeTab ? { ...tab, view } : tab));
+  const tabs = pane.tabs.map((tab) => (tab.id === pane.activeTab ? visit(tab, view) : tab));
   return withPane(layout, layout.activePane, { ...pane, tabs });
 }
 
@@ -254,10 +266,7 @@ export function moveToOtherPane(layout: Layout, tabId: string): Layout {
 /** A second pane to the right, showing what `tabId` shows (the active tab if not given). */
 export function splitRight(layout: Layout, tabId?: string): Layout {
   if (layout.panes.length >= MAX_PANES) return layout;
-  const source =
-    tabId === undefined
-      ? currentTab(layout)
-      : layout.panes.flatMap((pane) => pane.tabs).find((tab) => tab.id === tabId);
+  const source = tabId === undefined ? currentTab(layout) : tabById(layout, tabId);
   if (source === undefined) return layout;
   const [minted, tab] = mintTab(layout, source.view, source.source);
   return { ...minted, panes: [...layout.panes, { tabs: [tab], activeTab: tab.id }], activePane: 1 };
@@ -339,12 +348,15 @@ export function setSource(layout: Layout, tabId: string, source: boolean): Layou
   return withPane(layout, index, { ...pane, tabs });
 }
 
-/** Points tab `tabId` at `view`, as the history entry being returned to says. */
-export function showInTab(layout: Layout, tabId: string, view: TabView): Layout {
+/** Back or Forward in tab `tabId`, which takes the focus, as a click in its bar does. */
+export function stepTab(layout: Layout, tabId: string, direction: HistoryStep): Layout {
   const index = paneIndexOf(layout, tabId);
   const pane = layout.panes[index];
-  if (pane === undefined) return layout;
-  const tabs = pane.tabs.map((tab) => (tab.id === tabId ? { ...tab, view } : tab));
+  const tab = pane?.tabs.find((candidate) => candidate.id === tabId);
+  if (pane === undefined || tab === undefined) return layout;
+  const stepped = step(tab, direction);
+  if (stepped === tab) return layout;
+  const tabs = pane.tabs.map((candidate) => (candidate.id === tabId ? stepped : candidate));
   return activate(withPane(layout, index, { ...pane, tabs }), tabId);
 }
 
@@ -356,25 +368,37 @@ export function clampSplit(split: number): number {
   return Number.isFinite(split) ? Math.min(MAX_SPLIT, Math.max(MIN_SPLIT, split)) : EVEN_SPLIT;
 }
 
-/** A renamed or moved note: every tab that showed it follows. */
-export function retargetNote(layout: Layout, from: VaultPath, to: VaultPath): Layout {
-  const follows = (tab: Tab) => tab.view.kind === 'note' && tab.view.path === from;
-  if (!layout.panes.some((pane) => pane.tabs.some(follows))) return layout;
-  const panes = layout.panes.map((pane) => ({
-    ...pane,
-    tabs: pane.tabs.map((tab): Tab =>
-      follows(tab) ? { ...tab, view: { kind: 'note', path: to } } : tab,
-    ),
-  }));
-  return { ...layout, panes };
+/** Applies `rule` to every tab, keeping the layout itself when no tab changed. */
+function mapTabs(layout: Layout, rule: (tab: Tab) => Tab): Layout {
+  let changed = false;
+  const panes = layout.panes.map((pane) => {
+    const tabs = pane.tabs.map((tab) => {
+      const next = rule(tab);
+      changed ||= next !== tab;
+      return next;
+    });
+    return { ...pane, tabs };
+  });
+  return changed ? { ...layout, panes } : layout;
 }
 
-/** Closes every tab whose note no longer exists (deleted, or gone after a reload). */
+/** A renamed or moved note: every tab that showed it, or holds it in its history, follows. */
+export function retargetNote(layout: Layout, from: VaultPath, to: VaultPath): Layout {
+  return mapTabs(layout, (tab) => followRename(tab, from, to));
+}
+
+/**
+ * Notes that no longer exist (deleted, or gone after a reload) leave every
+ * history; a tab on one goes back to its last place before it, or closes.
+ */
 export function closeMissingNotes(layout: Layout, exists: (path: VaultPath) => boolean): Layout {
-  const missing = layout.panes.flatMap((pane) =>
-    pane.tabs.filter((tab) => tab.view.kind === 'note' && !exists(tab.view.path)),
-  );
-  return missing.reduce((next, tab) => closeTab(next, tab.id, { source: tab.source }), layout);
+  const orphans: Tab[] = [];
+  const kept = mapTabs(layout, (tab) => {
+    const next = forgetMissing(tab, exists);
+    if (next === null) orphans.push(tab);
+    return next ?? tab;
+  });
+  return orphans.reduce((next, tab) => closeTab(next, tab.id, { source: tab.source }), kept);
 }
 
 /**
@@ -419,7 +443,19 @@ function tabFrom(raw: unknown): Tab | null {
   if (!isRecord(raw) || typeof raw['id'] !== 'string' || !/^t\d+$/.test(raw['id'])) return null;
   const view = viewFrom(raw['view']);
   if (view === null) return null;
-  return { id: raw['id'], view, source: raw['source'] === true };
+  return {
+    id: raw['id'],
+    view,
+    source: raw['source'] === true,
+    back: historyFrom(raw['back']).slice(-HISTORY_LIMIT),
+    forward: historyFrom(raw['forward']).slice(0, HISTORY_LIMIT),
+  };
+}
+
+/** A saved Back or Forward list; a place that cannot be read is skipped, not fatal. */
+function historyFrom(raw: unknown): TabView[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(viewFrom).filter((view): view is TabView => view !== null && view.kind !== 'home');
 }
 
 function viewFrom(raw: unknown): TabView | null {

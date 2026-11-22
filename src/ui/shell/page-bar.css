@@ -28,6 +28,19 @@
   flex: none;
 }
 
+/* Back and Forward, a pair before the breadcrumb, as in a browser. */
+.page-bar__history {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.page-bar__button:disabled {
+  background: none;
+  cursor: default;
+  opacity: 0.35;
+}
+
 .page-bar__crumbs {
   align-items: center;
   color: var(--ink-3);
@@ -136,6 +149,13 @@
 
 @container page-bar (max-width: 440px) {
   .page-bar__action-label {
+    display: none;
+  }
+}
+
+/* The narrowest split pane drops Back and Forward, which ⌘[ and ⌘] still do. */
+@container page-bar (max-width: 270px) {
+  .page-bar__history {
     display: none;
   }
 }

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from 'react';
 import { useApp } from '../services.ts';
-import { PageBar } from '../shell/page-bar.tsx';
+import { PageBar, type PageHistory } from '../shell/page-bar.tsx';
 import { useVault } from '../state/vault-store.ts';
 import './graph-page.css';
 
@@ -8,7 +8,13 @@ import './graph-page.css';
 const GraphView = lazy(() => import('../graph/index.ts'));
 
 /** The vault's links as a graph; clicking a note opens it. */
-export function GraphPage({ activePath }: { activePath: string | null }) {
+export function GraphPage({
+  activePath,
+  history,
+}: {
+  activePath: string | null;
+  history: PageHistory;
+}) {
   const { services, actions } = useApp();
   const version = useVault((vault) => vault.version);
   const graph = useMemo(
@@ -19,7 +25,7 @@ export function GraphPage({ activePath }: { activePath: string | null }) {
   );
   return (
     <div className="graph-page">
-      <PageBar icon="graph" place={null} name="Graph" />
+      <PageBar history={history} icon="graph" place={null} name="Graph" />
       <Suspense fallback={<p className="graph-page__loading">Loading the graph…</p>}>
         <GraphView
           graph={graph}

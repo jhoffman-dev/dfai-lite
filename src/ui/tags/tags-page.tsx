@@ -3,7 +3,7 @@ import { folderOf, noteTitle, tagHue } from '../../application/index.ts';
 import type { TagTreeNode } from '../../domain/tags/index.ts';
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
-import { PageBar } from '../shell/page-bar.tsx';
+import { PageBar, type PageHistory } from '../shell/page-bar.tsx';
 import { useVault } from '../state/vault-store.ts';
 import './tags.css';
 
@@ -88,7 +88,7 @@ function TaggedNotes({ tag }: { tag: string }) {
 }
 
 /** Every tag in the vault as a tree with counts; choosing one lists its notes, nested tags included. */
-export function TagsPage({ tag }: { tag: string | null }) {
+export function TagsPage({ tag, history }: { tag: string | null; history: PageHistory }) {
   const { services } = useApp();
   const version = useVault((vault) => vault.version);
   const tree = useMemo(
@@ -99,7 +99,12 @@ export function TagsPage({ tag }: { tag: string | null }) {
 
   return (
     <div className="tags-page">
-      <PageBar icon="tag" place="Tags" name={tag === null ? 'All tags' : `#${tag}`} />
+      <PageBar
+        history={history}
+        icon="tag"
+        place="Tags"
+        name={tag === null ? 'All tags' : `#${tag}`}
+      />
       <div className="tags">
         <div className="tags__columns">
           <nav aria-label="Tags" className="tags__index">

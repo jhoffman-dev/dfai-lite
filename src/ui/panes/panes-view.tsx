@@ -4,6 +4,7 @@ import { NotePane } from '../note/note-pane.tsx';
 import { useApp } from '../services.ts';
 import { Home } from '../shell/home.tsx';
 import { Icon } from '../shell/icons.tsx';
+import type { PageHistory } from '../shell/page-bar.tsx';
 import { keyFor } from '../shell/shortcuts.ts';
 import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { RowMenu, type MenuItem } from '../sidebar/row-menu.tsx';
@@ -27,6 +28,7 @@ import {
 import { useLayout } from './layout-store.ts';
 import { useNarrow } from './narrow.ts';
 import { usePaneDrop } from './use-pane-drop.ts';
+import { useTabHistory } from './use-tab-history.ts';
 import './panes.css';
 
 /** The note the graph centers its local view on: the active pane's, else the other pane's. */
@@ -40,21 +42,28 @@ function graphFocus(layout: Layout): string | null {
   return null;
 }
 
-function GraphTab() {
-  return <GraphPage activePath={useLayout(graphFocus)} />;
+function GraphTab({ history }: { history: PageHistory }) {
+  return <GraphPage activePath={useLayout(graphFocus)} history={history} />;
 }
 
 function TabContent({ tab, focused }: { tab: Tab; focused: boolean }) {
   const { view } = tab;
+  const history = useTabHistory(tab.id);
   switch (view.kind) {
     case 'note':
       return (
-        <NotePane key={`${tab.id}:${view.path}`} tab={tab} path={view.path} focused={focused} />
+        <NotePane
+          key={`${tab.id}:${view.path}`}
+          tab={tab}
+          path={view.path}
+          focused={focused}
+          history={history}
+        />
       );
     case 'tags':
-      return <TagsPage tag={view.tag} />;
+      return <TagsPage tag={view.tag} history={history} />;
     case 'graph':
-      return <GraphTab />;
+      return <GraphTab history={history} />;
     case 'home':
       return <Home />;
   }
@@ -133,7 +142,7 @@ function PaneView({ index, canSplit }: { index: number; canSplit: boolean }) {
           aria-label="New tab"
           title={`New tab (${keyFor('tab.new', host)})`}
           onClick={() => {
-            workspace.open(BLANK, 'new-tab', { replace: true });
+            workspace.open(BLANK, 'new-tab');
             ui.setState({ paletteOpen: true });
           }}
         >

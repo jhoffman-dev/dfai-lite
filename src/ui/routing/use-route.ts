@@ -16,7 +16,7 @@ function subscribe(listener: () => void): () => void {
 const currentHash = (): string => window.location.hash;
 
 /**
- * The route the hash names now, re-read on back, forward and every navigation.
+ * The route the hash names now, re-read on every move.
  * The same object until the hash changes, so effects that depend on it run once per move.
  */
 export function useRoute(): Route {
@@ -24,33 +24,15 @@ export function useRoute(): Route {
   return useMemo(() => parseRoute(hash), [hash]);
 }
 
-/** What a history entry remembers beside its hash: the tab that showed it. */
-export interface RouteEntry {
-  readonly tab: string;
-}
-
-/** The tab the current history entry was made in, if the app made it. */
-export function currentEntry(): RouteEntry | null {
-  const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null) return null;
-  const tab = (state as Record<string, unknown>)['tab'];
-  return typeof tab === 'string' ? { tab } : null;
-}
-
 /**
- * Goes to `route`, shown in tab `entry.tab`. `replace` swaps the history
- * entry instead of adding one: for redirects (`#/new` becoming the note it
- * made) and tab switches, which back should skip.
+ * Points the address at `route`, always in place: Back and Forward are each
+ * tab's own (`panes/tab-history.ts`), so the webview's history is never
+ * added to and has nothing to go back through.
  */
-export function navigate(
-  route: Route,
-  { replace = false, entry = null }: { replace?: boolean; entry?: RouteEntry | null } = {},
-): void {
+export function navigate(route: Route): void {
   const hash = formatRoute(route);
-  if (window.location.hash === hash && currentEntry()?.tab === entry?.tab) return;
+  if (window.location.hash === hash) return;
   // The query is dropped: `?new` asked once, and a reload must not ask again.
-  const url = `${window.location.pathname}${hash}`;
-  if (replace) window.history.replaceState(entry, '', url);
-  else window.history.pushState(entry, '', url);
+  window.history.replaceState(null, '', `${window.location.pathname}${hash}`);
   window.dispatchEvent(new Event(REPLACED));
 }
