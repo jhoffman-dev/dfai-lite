@@ -99,17 +99,22 @@ export function GranolaSettings({
       {hasKey && view.waiting && (
         <p className="settings__lede">The app imports from Granola once this vault has synced.</p>
       )}
-      <label className="settings__row">
+      <div className="settings__row">
         <span className="settings__row-text">
-          <span className="settings__row-label">Import automatically</span>
+          <span className="settings__row-label" id="granola-automatic">
+            Import automatically
+          </span>
           <span className="settings__status">As the app opens, then every 15 minutes.</span>
         </span>
-        <input
-          type="checkbox"
-          checked={view.automatic}
-          onChange={(event) => controls.setAutomatic(event.target.checked)}
+        <button
+          type="button"
+          role="switch"
+          className="toggle"
+          aria-checked={view.automatic}
+          aria-labelledby="granola-automatic"
+          onClick={() => controls.setAutomatic(!view.automatic)}
         />
-      </label>
+      </div>
       <div className="settings__row">
         <span className="settings__row-text">
           <span className="settings__row-label">Last import</span>

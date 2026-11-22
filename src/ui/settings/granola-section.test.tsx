@@ -100,7 +100,9 @@ describe('Settings → Granola', () => {
 
   it('turns automatic import off and on', async () => {
     const controls = setUp();
-    await userEvent.click(screen.getByRole('checkbox', { name: /Import automatically/ }));
+    const toggle = screen.getByRole('switch', { name: 'Import automatically' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(toggle);
     expect(controls.setAutomatic).toHaveBeenCalledWith(false);
   });
 
