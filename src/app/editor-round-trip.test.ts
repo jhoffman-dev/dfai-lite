@@ -63,7 +63,7 @@ const extensions = () =>
     onTagView: () => undefined,
     onOpenTag: () => undefined,
     createNote: () => undefined,
-    loadImage: async () => null,
+    images: { loadImage: async () => null, embedImage: null },
   });
 
 const editors: Editor[] = [];

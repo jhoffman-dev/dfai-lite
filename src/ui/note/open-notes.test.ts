@@ -37,6 +37,7 @@ async function setup() {
     session,
     settings: new MemorySettingsStore(),
     clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
+    imageProbe: { canShow: async () => true },
     search: new SimpleSearchEngine(),
     sync: null,
     desktop: null,

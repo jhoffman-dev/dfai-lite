@@ -54,7 +54,7 @@ function noteOf(...content: JSONContent[]): Editor {
       onTagView: () => undefined,
       onOpenTag: () => undefined,
       createNote: () => undefined,
-      loadImage: async () => null,
+      images: { loadImage: async () => null, embedImage: null },
     }),
     content: { type: 'doc', content },
   });

@@ -1,6 +1,7 @@
 import { lazy, Suspense, use, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   createNoteFromLink,
+  embedImage,
   noteTitle,
   rankNoteSuggestions,
   rankTagSuggestions,
@@ -18,6 +19,7 @@ import type { Autosave } from './autosave.ts';
 import { Backlinks } from './backlinks.tsx';
 import type { OpenNote } from './open-notes.ts';
 import { NoteFolderButton } from './note-folder-button.tsx';
+import { createNoteImages, type NoteImages } from './note-images.ts';
 import { NoteTitle } from './note-title.tsx';
 import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
@@ -31,7 +33,14 @@ import './note.css';
 export const preloadEditor = () => import('../editor/note-editor.tsx');
 const NoteEditor = lazy(() => preloadEditor().then(({ NoteEditor }) => ({ default: NoteEditor })));
 
-function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): EditorBridge {
+function editorBridge(
+  app: AppContextValue,
+  {
+    note: { saver, mirror },
+    path,
+    images,
+  }: { note: OpenNote; path: VaultPath; images: NoteImages },
+): EditorBridge {
   const { services, actions, deps } = app;
   const { autosave, opened } = saver;
   const index = services.session.index;
@@ -49,8 +58,16 @@ function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): Editor
         .catch(actions.report);
     },
     openTag: (name, openIn) => actions.openTag(name, openIn),
-    // Pictures are not read from the vault yet: each is drawn as its alt text.
-    loadImage: () => Promise.resolve(null),
+    loadImage: (src) => images.load(src),
+    embedImage: (file, origin) =>
+      embedImage(
+        { ...deps, probe: services.imageProbe, clock: services.clock },
+        {
+          notePath: path,
+          image: { name: file.name, mimeType: file.type, size: file.size, origin },
+          readBytes: async () => new Uint8Array(await file.arrayBuffer()),
+        },
+      ),
     opened,
     changed: (read) => autosave.schedule(read),
     blurred: () => void autosave.flush(),
@@ -58,6 +75,17 @@ function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): Editor
       autosave.flush().then(mirror.settled, actions.report);
     },
   };
+}
+
+/** The pictures the note shows, read as the editor draws them, and let go when the pane goes. */
+function useNoteImages(app: AppContextValue, path: VaultPath): NoteImages {
+  const { files, session } = app.services;
+  const images = useMemo(
+    () => createNoteImages({ files, session, notePath: path }),
+    [files, session, path],
+  );
+  useEffect(() => () => images.release(), [images]);
+  return images;
 }
 
 /** Saves what is waiting when the page is hidden or closed, and when the note is left. */
@@ -160,7 +188,11 @@ export function NotePane({
   // Sync writes what is typed before it commits. A flush of its own per tab: the
   // tabs share the saver, and one closing must not take another's away.
   useEffect(() => services.pendingEdits.add(() => autosave.flush()), [services, autosave]);
-  const bridge = useMemo(() => editorBridge(app, note), [app, note]);
+  const images = useNoteImages(app, path);
+  const bridge = useMemo(
+    () => editorBridge(app, { note, path, images }),
+    [app, note, path, images],
+  );
   const memory = workspace.memoryOf(tab.id, tab.view);
   const article = useKeptScroll(memory);
   const showSource = tab.source;

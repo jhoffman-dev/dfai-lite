@@ -25,6 +25,7 @@ const APP_FOLDER = '.dfai-lite';
 const KEEP_FILE = '.gitkeep';
 const DISPOSABLE = new Set([KEEP_FILE, '.DS_Store']);
 const TOO_LARGE_BYTES = 100 * 1024 * 1024;
+const MAX_BINARY_BYTES = 32 * 1024 * 1024;
 
 const skippedFolder = (name: string) =>
   name === 'node_modules' || (name.startsWith('.') && name !== APP_FOLDER);
@@ -100,6 +101,26 @@ export class NodeVaultFiles implements VaultFiles {
     if (expected !== null && current !== expected) throw new FileChangedError(`${path} changed`);
     await mkdir(dirname(absolute), { recursive: true });
     await writeFile(absolute, text, { flag: expected === null ? 'wx' : 'w' });
+  }
+
+  async readBinary(path: string): Promise<Uint8Array | null> {
+    try {
+      const bytes = await readFile(onDisk(this.root, path));
+      if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB`);
+      return new Uint8Array(bytes);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw error;
+    }
+  }
+
+  async writeBinary({ path, bytes }: { path: string; bytes: Uint8Array }): Promise<void> {
+    if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB`);
+    const absolute = onDisk(this.root, path);
+    await mkdir(dirname(absolute), { recursive: true });
+    await writeFile(absolute, bytes, { flag: 'wx' }).catch((error: NodeJS.ErrnoException) => {
+      throw error.code === 'EEXIST' ? new FileExistsError(`${path} exists`) : error;
+    });
   }
 
   async rename(from: string, to: string): Promise<void> {

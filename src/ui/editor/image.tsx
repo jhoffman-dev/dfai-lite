@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Node } from '@tiptap/core';
+import { Node, type Editor } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { NodeSelection } from '@tiptap/pm/state';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
+import { resizedImageWidth } from '../../application/index.ts';
+import { ImageLightbox, type LightboxImage } from './image-lightbox.tsx';
 import { downToLineAfterImage, enterAfterImage, upFromFirstImage } from './image-room.ts';
+import { ImageResizeHandles } from './image-resize.tsx';
+import { ImageUploads, type EmbedImage } from './image-uploads.ts';
+import './image.css';
 
 export interface ImageOptions {
   /**
@@ -9,7 +16,18 @@ export interface ImageOptions {
    * Resolves to null when the image cannot be found or read.
    */
   loadImage: (src: string) => Promise<string | null>;
+  /** Saves an image pasted, dropped or picked into the note; null where none can be added. */
+  embedImage: EmbedImage | null;
 }
+
+/** What a key does to the selected image: open it larger, or draw it wider or narrower. */
+type ImageKey = 'view' | 'wider' | 'narrower';
+
+/** How far one keypress resizes an image, in pixels. */
+const KEY_STEP = 40;
+
+/** Each image view's answer to a key, by the node it draws, so the keymap can reach it. */
+const keyed = new WeakMap<ProseMirrorNode, (key: ImageKey) => void>();
 
 function ImageView({ node, extension, selected, editor, updateAttributes, getPos }: NodeViewProps) {
   const src = String(node.attrs['src'] ?? '');
@@ -21,7 +39,13 @@ function ImageView({ node, extension, selected, editor, updateAttributes, getPos
     failed: false,
   });
   const { url, failed } = loaded;
+
   const loadImage = (extension.options as ImageOptions).loadImage;
+  const width = typeof node.attrs['width'] === 'number' ? node.attrs['width'] : null;
+  // The width a drag is at, drawn but not yet written to the note: that is done once, on release.
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const shownWidth = dragWidth ?? width;
+  const [viewing, setViewing] = useState<{ images: LightboxImage[]; start: number } | null>(null);
 
   useEffect(() => {
     let canceled = false;
@@ -37,14 +61,68 @@ function ImageView({ node, extension, selected, editor, updateAttributes, getPos
     };
   }, [loadImage, src]);
 
+  useEffect(() => {
+    keyed.set(node, (key) => {
+      if (key === 'view') {
+        if (url !== null) setViewing(imagesAround(editor, getPos()));
+        return;
+      }
+      const image = imageElementAt(editor, getPos());
+      const drawn = image?.getBoundingClientRect().width ?? 0;
+      if (drawn <= 0) return;
+      const wanted = drawn + (key === 'wider' ? KEY_STEP : -KEY_STEP);
+      const resized = resizedImageWidth({ width: wanted, column: columnOf(image) });
+      updateAttributes({ width: resized, height: null });
+    });
+    return () => void keyed.delete(node);
+  }, [node, url, editor, getPos, updateAttributes]);
+
   return (
     <NodeViewWrapper as="span" className={selected ? 'image image--selected' : 'image'}>
       {failed ? (
         <span className="image__missing" title={src}>
-          Image: {alt === '' ? src : alt}
+          Missing image: {src}
         </span>
       ) : (
-        url !== null && <img className="image__img" src={url} alt={alt} title={src} />
+        url !== null && (
+          <img
+            className="image__img"
+            src={url}
+            alt={alt}
+            title={src}
+            style={shownWidth === null ? undefined : { width: `${shownWidth}px` }}
+            onClick={(event) => {
+              // Opened wherever the image is shown; nothing around it is opened as well.
+              event.stopPropagation();
+              setViewing(imagesAround(editor, getPos()));
+            }}
+          />
+        )
+      )}
+      {editor.isEditable && url !== null && (
+        <ImageResizeHandles
+          onDrag={setDragWidth}
+          onCancel={() => setDragWidth(null)}
+          onRelease={(released) => {
+            setDragWidth(null);
+            updateAttributes({ width: released, height: null });
+          }}
+          onReset={() => updateAttributes({ width: null, height: null })}
+        />
+      )}
+      {viewing !== null && (
+        <ImageLightbox
+          images={viewing.images}
+          start={viewing.start}
+          loadImage={loadImage}
+          onClose={() => setViewing(null)}
+          onReturnFocus={() => {
+            // Read-only, there is no selection to go back to: the viewer's own restore does.
+            const at = getPos();
+            if (!editor.isEditable || at === undefined) return false;
+            return editor.chain().focus().setNodeSelection(at).run();
+          }}
+        />
       )}
       {editor.isEditable && (
         <AltTextField
@@ -59,6 +137,46 @@ function ImageView({ node, extension, selected, editor, updateAttributes, getPos
       )}
     </NodeViewWrapper>
   );
+}
+
+/** The image element the view at `at` draws, if it has drawn one. */
+function imageElementAt(editor: Editor, at: number | undefined): HTMLImageElement | null {
+  if (at === undefined) return null;
+  const dom = editor.view.nodeDOM(at);
+  return dom instanceof HTMLElement ? dom.querySelector('img.image__img') : null;
+}
+
+/** How wide the line the image is in can hold it, as the drag handles measure it. */
+function columnOf(image: HTMLElement | null): number {
+  const line = image?.closest('p, li, td, th, blockquote') ?? image?.closest('.ProseMirror');
+  return line instanceof HTMLElement && line.clientWidth > 0
+    ? line.clientWidth
+    : Number.POSITIVE_INFINITY;
+}
+
+/** The note's images, in order, and which of them is the one at `at`. */
+function imagesAround(
+  editor: Editor,
+  at: number | undefined,
+): { images: LightboxImage[]; start: number } {
+  const images: LightboxImage[] = [];
+  let start = 0;
+  editor.state.doc.descendants((node, position) => {
+    if (node.type.name !== 'image') return;
+    if (position === at) start = images.length;
+    images.push({ src: String(node.attrs['src'] ?? ''), alt: String(node.attrs['alt'] ?? '') });
+  });
+  return { images, start };
+}
+
+/** Hands a key to the selected image's view; false when no image is selected. */
+function imageKey(editor: Editor, key: ImageKey): boolean {
+  const { selection } = editor.state;
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'image') return false;
+  const answer = keyed.get(selection.node);
+  if (answer === undefined) return false;
+  answer(key);
+  return true;
 }
 
 /**
@@ -101,7 +219,14 @@ function AltTextField({
   );
 }
 
-/** A markdown image of a file in the vault, drawn from what `loadImage` makes of its source. */
+/**
+ * A markdown image, as DFAI draws it: its bytes read through the host, sized
+ * as the note says (`![alt|400](…)`), resized by its handles, and opened
+ * larger on a click. Selected, Space opens it larger and ⇧← ⇧→ resize it,
+ * for the keyboard. Pictures pasted or dropped in come with it
+ * (`ImageUploads`). It is inline, in a paragraph, as markdown has it: the
+ * paragraph is the block a block handle moves.
+ */
 export const VaultImage = Node.create<ImageOptions>({
   name: 'image',
   group: 'inline',
@@ -110,7 +235,11 @@ export const VaultImage = Node.create<ImageOptions>({
   draggable: true,
 
   addOptions() {
-    return { loadImage: async () => null };
+    return { loadImage: async () => null, embedImage: null };
+  },
+
+  addExtensions() {
+    return [ImageUploads.configure({ embed: this.options.embedImage })];
   },
 
   addAttributes() {
@@ -118,6 +247,16 @@ export const VaultImage = Node.create<ImageOptions>({
       src: { default: '' },
       alt: { default: null },
       title: { default: null },
+      // Its width on the page, written `![alt|400](…)` (#568); null is its own size.
+      width: {
+        default: null,
+        parseHTML: (element) => {
+          const width = Number(element.getAttribute('width'));
+          return Number.isInteger(width) && width > 0 ? width : null;
+        },
+      },
+      // Read from `|400x300` so it is written back as it was; a resize drops it.
+      height: { default: null, parseHTML: () => null },
     };
   },
 
@@ -126,6 +265,9 @@ export const VaultImage = Node.create<ImageOptions>({
       Enter: () => enterAfterImage(this.editor),
       ArrowDown: () => downToLineAfterImage(this.editor),
       ArrowUp: () => upFromFirstImage(this.editor),
+      Space: () => imageKey(this.editor, 'view'),
+      'Shift-ArrowRight': () => imageKey(this.editor, 'wider'),
+      'Shift-ArrowLeft': () => imageKey(this.editor, 'narrower'),
     };
   },
 
@@ -134,7 +276,15 @@ export const VaultImage = Node.create<ImageOptions>({
   },
 
   renderHTML({ node }) {
-    return ['img', { src: String(node.attrs['src'] ?? ''), alt: String(node.attrs['alt'] ?? '') }];
+    const width = node.attrs['width'];
+    return [
+      'img',
+      {
+        src: String(node.attrs['src'] ?? ''),
+        alt: String(node.attrs['alt'] ?? ''),
+        ...(typeof width === 'number' && { width: String(width) }),
+      },
+    ];
   },
 
   addNodeView() {

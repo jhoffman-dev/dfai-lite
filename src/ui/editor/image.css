@@ -1,0 +1,211 @@
+/* A note's pictures, as DFAI draws them (#568): the resize handles, an image
+   on its way in, and the viewer. The image, its missing state and its alt
+   text field are in editor.css with the rest of the note. */
+
+/* A click on an image opens it larger, wherever it is shown. */
+.image__img {
+  cursor: zoom-in;
+}
+
+/* The resize handles: a short bar inside each side edge, shown while the
+   image is hovered or selected. Neutral chrome, the editor's own ink. */
+.image__handle {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-chip);
+  box-shadow: var(--shadow-soft);
+  cursor: ew-resize;
+  height: 36px;
+  max-height: calc(100% - 8px);
+  opacity: 0;
+  position: absolute;
+  top: 50%;
+  touch-action: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+  width: 8px;
+  z-index: 2;
+}
+
+.image__handle--left {
+  left: 6px;
+}
+
+.image__handle--right {
+  right: 6px;
+}
+
+.image:hover .image__handle,
+.image--selected .image__handle {
+  opacity: 1;
+}
+
+/* An image on its way in: a quiet chip where it will land, or, when it
+   could not be saved, the reason, tinted toward danger. Decorations only:
+   neither is ever written to the note. */
+.image-upload {
+  align-items: center;
+  background: var(--hover);
+  border-radius: var(--radius-chip);
+  color: var(--ink-2);
+  display: inline-flex;
+  font-size: var(--text-meta);
+  font-weight: 500;
+  gap: var(--space-2);
+  margin: 2px 0;
+  padding: 4px 8px;
+  vertical-align: middle;
+}
+
+.image-upload__spinner {
+  animation: image-upload-spin 0.9s linear infinite;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  border-top-color: var(--accent-solid);
+  height: 12px;
+  width: 12px;
+}
+
+@keyframes image-upload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image-upload__spinner {
+    animation: none;
+  }
+}
+
+.image-upload--failed {
+  background: var(--btn-destructive-bg);
+  color: var(--danger);
+}
+
+.image-upload__dismiss {
+  background: none;
+  border: 0;
+  border-radius: var(--radius-chip);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-body);
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.image-upload__dismiss:hover {
+  background: var(--hover);
+}
+
+/* ---- The image viewer ----
+   An image as large as the window holds it, over the scrim. The chrome is
+   neutral: one small bar of controls at the bottom, the popover surface. */
+
+.lightbox__backdrop {
+  -webkit-backdrop-filter: blur(6px) saturate(1.05);
+  backdrop-filter: blur(6px) saturate(1.05);
+  background: var(--scrim);
+  inset: 0;
+  position: fixed;
+  z-index: 40;
+}
+
+.lightbox {
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  outline: none;
+  position: fixed;
+  z-index: 41;
+}
+
+.lightbox__stage {
+  align-items: center;
+  cursor: zoom-out;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+.lightbox__img {
+  border-radius: var(--radius-chip);
+  box-shadow: var(--shadow-overlay);
+  cursor: default;
+  flex: none;
+  max-width: none;
+  user-select: none;
+}
+
+.lightbox__stage--zoomed,
+.lightbox__stage--zoomed .lightbox__img {
+  cursor: grab;
+}
+
+.lightbox__stage--zoomed:active,
+.lightbox__stage--zoomed:active .lightbox__img {
+  cursor: grabbing;
+}
+
+.lightbox__status {
+  color: var(--ink-2);
+  font-size: var(--text-meta);
+}
+
+.lightbox__bar {
+  align-items: center;
+  align-self: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  color: var(--ink);
+  display: flex;
+  gap: var(--space-1);
+  margin: var(--space-4);
+  padding: var(--space-1);
+}
+
+.lightbox__button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: var(--text-body);
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 var(--space-2);
+}
+
+.lightbox__button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.lightbox__button:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.lightbox__button:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus);
+  outline: none;
+}
+
+.lightbox__zoom,
+.lightbox__count {
+  color: var(--ink-2);
+  font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+  min-width: 4ch;
+  text-align: center;
+}

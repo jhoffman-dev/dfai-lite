@@ -14,6 +14,7 @@ import {
   type VaultPath,
 } from '../../domain/vault/index.ts';
 import { writeFavorites } from './favorites.ts';
+import { filesNow, imagesFollowingMove } from './images-across-move.ts';
 import { writeFile, type VaultDeps } from './vault-deps.ts';
 
 export type RenameFolderResult =
@@ -49,11 +50,22 @@ function linkersOf(deps: VaultDeps, move: PathMove): readonly VaultPath[] {
   return index.linkSources(keys);
 }
 
+const NO_LINKS = (text: string) => ({ text, count: 0 });
+
+/** The notes that show a picture (`![`), which a folder's move may break, but for its link sources. */
+function picturesOf(deps: VaultDeps): VaultPath[] {
+  return [...deps.session.allFiles()]
+    .filter((file) => file.text.includes('!['))
+    .map((file) => file.path);
+}
+
 /**
  * Renames or moves a folder: the folder itself moves on disk, in one step,
  * with everything in it (notes, attachments, folders, dot files), so an
  * image a note shows never stays behind and a change of case is real. Then
- * every link the move broke is rewritten and favorites follow. Checked
+ * every link the move broke is rewritten, and every relative image source
+ * (in a note that moved, or reaching into the folder), as DFAI does; and
+ * favorites follow. Checked
  * first; if the disk refuses, nothing in the session or the links changes.
  */
 export async function renameFolder(deps: VaultDeps, move: PathMove): Promise<RenameFolderResult> {
@@ -68,14 +80,16 @@ export async function renameFolder(deps: VaultDeps, move: PathMove): Promise<Ren
   deps.session.applyFolderMove(move);
 
   let retargeted = 0;
-  for (const source of sources) {
-    const path = pathAfterMove(source, move) ?? source;
+  const exists = filesNow(deps);
+  const linkers = new Set(sources.map((source) => pathAfterMove(source, move) ?? source));
+  for (const path of new Set([...linkers, ...picturesOf(deps)])) {
     const file = deps.session.file(path);
     if (file === null) continue;
-    const result = retargetLinks(file.text, resolvers);
-    if (result.count === 0) continue;
-    retargeted += result.count;
-    await writeFile(deps, path, result.text);
+    const links = linkers.has(path) ? retargetLinks(file.text, resolvers) : NO_LINKS(file.text);
+    const images = imagesFollowingMove({ text: links.text, path, move, exists });
+    if (links.count + images.count === 0) continue;
+    retargeted += links.count + images.count;
+    await writeFile(deps, path, images.text);
   }
   await writeFavorites(deps, favoritesAfterMove(deps.session.favorites, move));
   return { kind: 'renamed', moved: across.moved.size, retargeted };

@@ -26,7 +26,9 @@ export type VaultChange =
   | { readonly kind: 'deleted'; readonly path: VaultPath }
   | { readonly kind: 'renamed'; readonly from: VaultPath; readonly to: VaultPath }
   /** A folder was made or removed. */
-  | { readonly kind: 'folders' };
+  | { readonly kind: 'folders' }
+  /** A file that is not text (a picture) was added, replaced or removed. */
+  | { readonly kind: 'file'; readonly path: VaultPath };
 
 export type VaultListener = (change: VaultChange) => void;
 
@@ -194,6 +196,21 @@ export class VaultSession {
       this.emit({ kind: 'renamed', from: file.path, to: follow(file.path) });
     }
     this.emit({ kind: 'folders' });
+  }
+
+  /**
+   * A file that is not text (a picture) is on disk at `path` now, new or
+   * replaced, or is gone (`present` false). The vault is not read again: the
+   * notes and their index are as they were.
+   */
+  applyOtherFile(path: VaultPath, present: boolean): void {
+    const listed = this.others.includes(path);
+    if (present && !listed) this.others = [...this.others, path].sort();
+    if (!present) this.others = this.others.filter((other) => other !== path);
+    const folders = this.folderSet.size;
+    if (present) this.addFoldersAbove(path);
+    if (this.folderSet.size !== folders) this.tree = null;
+    if (present || listed) this.emit({ kind: 'file', path });
   }
 
   /** The folder (and any above it) was made on disk, with its keep file. */

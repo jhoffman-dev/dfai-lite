@@ -19,6 +19,9 @@ import {
 
 const byPath = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
 
+/** The host's ceiling on a file read or written as bytes (`src-tauri/src/binary.rs`). */
+const MAX_BINARY_BYTES = 32 * 1024 * 1024;
+
 /**
  * A vault folder held in memory, with the same guards as the disk: the
  * tests' vault, and the app's in a browser (the sample vault). `edit` and
@@ -27,6 +30,8 @@ const byPath = (left: string, right: string) => (left < right ? -1 : left > righ
 export class MemoryVaultFiles implements VaultFiles {
   private readonly texts = new Map<VaultPath, string>();
   private readonly others = new Set<VaultPath>();
+  /** The bytes of the files that are not text; one listed without any holds none. */
+  private readonly bytes = new Map<VaultPath, Uint8Array>();
   /** Folders kept though nothing is in them; a folder holding a file needs no entry. */
   private readonly emptyFolders = new Set<VaultPath>();
   private readonly listeners = new Set<(paths: readonly VaultPath[]) => void>();
@@ -36,17 +41,37 @@ export class MemoryVaultFiles implements VaultFiles {
   trashRefuses = false;
   private ignoreText: string | null = null;
 
-  /** A folder holding these files: `{ path: text }`, paths of files that are not text, and empty folders. */
+  /**
+   * A folder holding these files: `{ path: text }`, paths of files that are
+   * not text, empty folders, and `{ path: bytes }` of files that are not text.
+   */
   static of(
     texts: Readonly<Record<VaultPath, string>>,
     otherPaths: readonly VaultPath[] = [],
     folders: readonly VaultPath[] = [],
+    binaries: Readonly<Record<VaultPath, Uint8Array>> = {},
   ): MemoryVaultFiles {
     const files = new MemoryVaultFiles();
     for (const [path, text] of Object.entries(texts)) files.texts.set(path, text);
     for (const path of otherPaths) files.others.add(path);
     for (const path of folders) files.emptyFolders.add(path);
+    for (const [path, bytes] of Object.entries(binaries)) {
+      files.others.add(path);
+      files.bytes.set(path, bytes);
+    }
     return files;
+  }
+
+  /** The bytes at `path` now, as a test reads the folder. */
+  peekBinary(path: VaultPath): Uint8Array | undefined {
+    return this.bytes.get(path);
+  }
+
+  /** Another program adds or replaces a file that is not text. */
+  editBinary(path: VaultPath, bytes: Uint8Array): void {
+    this.others.add(path);
+    this.bytes.set(path, bytes);
+    this.announce([path]);
   }
 
   /** Every folder: the ones kept empty, and every one a file is in. */
@@ -103,6 +128,22 @@ export class MemoryVaultFiles implements VaultFiles {
     this.texts.set(path, text);
   }
 
+  async readBinary(path: VaultPath): Promise<Uint8Array | null> {
+    const text = this.texts.get(path);
+    if (text !== undefined) return new TextEncoder().encode(text);
+    if (!this.others.has(path)) return null;
+    const bytes = this.bytes.get(path) ?? new Uint8Array();
+    if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB.`);
+    return bytes;
+  }
+
+  async writeBinary({ path, bytes }: { path: VaultPath; bytes: Uint8Array }): Promise<void> {
+    if (this.isTaken(path)) throw new FileExistsError(`${path} exists.`);
+    if (bytes.length > MAX_BINARY_BYTES) throw new Error(`${path} is over 32 MB.`);
+    this.others.add(path);
+    this.bytes.set(path, bytes);
+  }
+
   async rename(from: VaultPath, to: VaultPath): Promise<void> {
     const text = this.texts.get(from);
     if (text === undefined) throw new Error(`There is no file at ${from}.`);
@@ -146,6 +187,10 @@ export class MemoryVaultFiles implements VaultFiles {
       set.clear();
       for (const path of moved) set.add(path);
     }
+    for (const [path, bytes] of [...this.bytes]) {
+      this.bytes.delete(path);
+      this.bytes.set(follow(path), bytes);
+    }
     this.keepFoldersAbove(joinPath(to, KEEP_FILE));
     this.emptyFolders.add(to);
   }
@@ -158,7 +203,10 @@ export class MemoryVaultFiles implements VaultFiles {
     if (folders.length > 0 || !files.every(isDisposableFile)) {
       throw new Error(`${path} is not empty.`);
     }
-    for (const file of files) this.others.delete(file);
+    for (const file of files) {
+      this.others.delete(file);
+      this.bytes.delete(file);
+    }
     this.emptyFolders.delete(path);
   }
 
@@ -176,6 +224,7 @@ export class MemoryVaultFiles implements VaultFiles {
     }
     if (!permanently && this.trashRefuses) throw new TrashRefusedError(`No Trash for ${path}.`);
     this.keepFoldersAbove(path);
+    this.bytes.delete(path);
     const removed = this.texts.delete(path) || this.others.delete(path);
     if (removed && !permanently) this.trashed.push(path);
   }

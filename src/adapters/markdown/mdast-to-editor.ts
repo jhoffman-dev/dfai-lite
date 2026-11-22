@@ -5,6 +5,7 @@ import {
   type EditorNode,
 } from '../../domain/markdown/index.ts';
 import type { Nodes as MdastNode, Parent as MdastParent, PhrasingContent } from 'mdast';
+import { imageAltOf, readImageSizes } from './image-alt.ts';
 
 /**
  * Converts one top-level markdown block into an editor node.
@@ -15,6 +16,7 @@ import type { Nodes as MdastNode, Parent as MdastParent, PhrasingContent } from 
  * approximated and quietly rewritten.
  */
 export function mdastBlockToEditorNode(node: MdastNode, body: string): EditorNode | null {
+  readImageSizes(node, body);
   switch (node.type) {
     case 'paragraph': {
       const content = inlineContent(node.children);
@@ -275,9 +277,19 @@ function inlineToEditorNodes(
   }
 }
 
-/** An image's attributes: its address, alt text and title, as written. */
+/**
+ * An image's attributes. A size at the end of its alt text (`![chart|400](…)`,
+ * DFAI #568) is its own attribute, so the alt text field shows only the words;
+ * only a sized image carries one, so an unsized image's node is as before.
+ */
 function imageAttrs(node: Extract<PhrasingContent, { type: 'image' }>): Record<string, unknown> {
-  return { src: node.url, alt: node.alt ?? null, title: node.title ?? null };
+  const { alt, size } = imageAltOf(node);
+  return {
+    src: node.url,
+    alt,
+    title: node.title ?? null,
+    ...(size !== null && { width: size.width, height: size.height }),
+  };
 }
 
 /**

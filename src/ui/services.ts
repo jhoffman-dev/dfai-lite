@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type {
   Clock,
+  ImageProbe,
   MarkdownPort,
   SearchEngine,
   SettingsStore,
@@ -40,6 +41,8 @@ export interface AppServices {
   readonly session: VaultSession;
   readonly settings: SettingsStore;
   readonly clock: Clock;
+  /** Whether the webview can draw a picture, asked before one is saved into the vault. */
+  readonly imageProbe: ImageProbe;
   readonly search: SearchEngine;
   /** Null in a browser, on the sample vault: nothing syncs there. */
   readonly sync: SyncControls | null;

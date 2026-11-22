@@ -42,7 +42,7 @@ pub fn write_guarded(
     expected: Option<&str>,
 ) -> Result<(), String> {
     let Some(expected) = expected else {
-        return create_new(target, label, text);
+        return create_new(target, label, text.as_bytes());
     };
     if read_text(target, label)?.as_deref() != Some(expected) {
         return Err(format!("{CHANGED} {label} changed since it was read"));
@@ -68,13 +68,15 @@ fn open_new(path: &Path) -> std::io::Result<fs::File> {
         .open(path)
 }
 
-fn create_new(target: &Path, label: &str, text: &str) -> Result<(), String> {
+/// Writes `bytes` as a new file, its folders made as needed, never over a
+/// file already there (`exists:`) and never through a link.
+pub fn create_new(target: &Path, label: &str, bytes: &[u8]) -> Result<(), String> {
     make_parent(target)?;
     let mut file = open_new(target).map_err(|error| match error.kind() {
         ErrorKind::AlreadyExists => format!("{EXISTS} a file is already at {label}"),
         _ => format!("cannot create {label}: {error}"),
     })?;
-    file.write_all(text.as_bytes())
+    file.write_all(bytes)
         .map_err(|error| format!("cannot write {label}: {error}"))
 }
 

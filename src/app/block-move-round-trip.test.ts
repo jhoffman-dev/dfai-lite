@@ -40,7 +40,7 @@ function open(text: string) {
       onTagView: () => undefined,
       onOpenTag: () => undefined,
       createNote: () => undefined,
-      loadImage: async () => null,
+      images: { loadImage: async () => null, embedImage: null },
     }),
     content: editable(note.parsed.doc) as object,
   });

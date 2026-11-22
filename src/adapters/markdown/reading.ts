@@ -102,7 +102,7 @@ const EXPRESSED: Readonly<Record<string, readonly string[]>> = {
   tableCell: [],
   horizontalRule: [],
   hardBreak: [],
-  image: ['src', 'alt', 'title'],
+  image: ['src', 'alt', 'title', 'width', 'height'],
   wikiLink: ['target', 'heading', 'alias', 'embed'],
   link: ['href', 'title'],
   bold: [],

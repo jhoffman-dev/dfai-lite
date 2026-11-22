@@ -10,6 +10,8 @@ import { useBlockMenu } from './block-menu.tsx';
 import { latestOf, type EditorBridge } from './bridge.ts';
 import { editable } from './editable-doc.ts';
 import { createEditorExtensions } from './extensions.ts';
+import { ImagePicker } from './image-picker.tsx';
+import type { EmbedImage } from './image-uploads.ts';
 import { LinkSuggestionPopup } from './link-suggestion-popup.tsx';
 import { READ_FROM_FILE, showAsRead } from './show-as-read.ts';
 import type { SlashCommandView } from './slash-commands.ts';
@@ -56,6 +58,10 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
   // The editor owns its document once built: a new `text` is a new note, and a new key.
   const [start] = useState(() => startingDoc(note, text, markdown));
   const [frontmatter, setFrontmatter] = useState(start.frontmatter);
+  const [embedImage] = useState(() => {
+    const embed: EmbedImage = (file, origin) => bridgeNow.get().embedImage(file, origin);
+    return embed;
+  });
 
   const extensions = useMemo(
     () =>
@@ -67,9 +73,9 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
         onTagView: setTags,
         onOpenTag: (name, click) => bridgeNow.get().openTag(name, openInFor(click)),
         createNote: (name) => bridgeNow.get().createLinkedNote(name),
-        loadImage: (src) => bridgeNow.get().loadImage(src),
+        images: { loadImage: (src) => bridgeNow.get().loadImage(src), embedImage },
       }),
-    [bridgeNow],
+    [bridgeNow, embedImage],
   );
 
   const editor = useEditor({
@@ -160,6 +166,7 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
       )}
       <EditorContent editor={editor} className="editor-host" />
       {blockMenu}
+      <ImagePicker editor={editor} embed={embedImage} />
       {links !== null && <LinkSuggestionPopup view={links} />}
       {tags !== null && <TagSuggestionPopup view={tags} />}
       {commands !== null && (

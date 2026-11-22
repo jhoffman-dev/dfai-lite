@@ -48,6 +48,20 @@ describe('the write gate', () => {
     expect(files.peek(copy)).toBe('Parallel run, typed here.');
   });
 
+  it('holds a picture’s write while sync runs, and lets it through after', async () => {
+    const { timers } = manualTimers();
+    const gate = createWriteGate({ timers });
+    const files = MemoryVaultFiles.of({});
+    const gated = gatedVaultFiles(files, gate);
+    const release = gate.hold();
+    const writing = gated.writeBinary({ path: 'attachments/a.png', bytes: new Uint8Array([1]) });
+    await tick();
+    expect(files.peekBinary('attachments/a.png')).toBeUndefined();
+    release();
+    await writing;
+    expect(await gated.readBinary('attachments/a.png')).toEqual(new Uint8Array([1]));
+  });
+
   it('lets everything through while open, and gives up on a wait that runs too long', async () => {
     const { timers, fireAll } = manualTimers();
     const gate = createWriteGate({ timers, maxWaitMs: 1 });

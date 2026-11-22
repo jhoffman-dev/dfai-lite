@@ -62,6 +62,16 @@ export interface VaultFiles {
     readonly text: string;
     readonly expected: string | null;
   }): Promise<void>;
+  /**
+   * A file's bytes — a note's picture — or null when there is none. Rejects
+   * for a file over the host's ceiling (32 MiB) or one it cannot read.
+   */
+  readBinary(path: VaultPath): Promise<Uint8Array | null>;
+  /**
+   * Writes `bytes` as a new file, the folders above it made as needed, never
+   * over a file already there ({@link FileExistsError}).
+   */
+  writeBinary(request: { readonly path: VaultPath; readonly bytes: Uint8Array }): Promise<void>;
   /** Moves a file, never over another ({@link FileExistsError}); a change of case alone is allowed. */
   rename(from: VaultPath, to: VaultPath): Promise<void>;
   /**
