@@ -1,5 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
+import { applyExternalChanges } from '../application/index.ts';
+import type { MemoryVaultFiles } from '../application/testing/index.ts';
 import type { VaultPath } from '../domain/vault/index.ts';
 import { giveElementsASize, renderApp } from '../ui/testing/render-app.tsx';
 import { loadMarkdown } from './app-boot.ts';
@@ -148,6 +150,36 @@ describe('a picture opened larger', () => {
     fireEvent.click(within(viewer).getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(app.services.session.file(NOTE)?.text).toBe('![One](a.png)\n');
+  });
+});
+
+describe('a picture changed on disk', () => {
+  /** Another program writes the file, and the watcher says so. */
+  const rewrite = async (app: Awaited<ReturnType<typeof open>>, path: VaultPath) => {
+    const files = app.services.files as MemoryVaultFiles;
+    await act(async () => {
+      files.editBinary(path, new Uint8Array([...PNG, 1]));
+      await applyExternalChanges(app.services, [path]);
+    });
+  };
+
+  it('is drawn again from its new bytes, the old URL let go only after the new one is made', async () => {
+    const app = await open('![One](a.png)\n', { 'Projects/a.png': PNG });
+    const image = await within(app.box).findByRole('img', { name: 'One' });
+    expect(image).toHaveAttribute('src', 'blob:test/1');
+    await rewrite(app, 'Projects/a.png');
+    await waitFor(() => expect(image).toHaveAttribute('src', 'blob:test/2'));
+    expect(revoked).toEqual(['blob:test/1']);
+  });
+
+  it('shows a picture that was missing once it is there', async () => {
+    const app = await open('![One](a.png)\n');
+    await within(app.box).findByText('Missing image: a.png');
+    await rewrite(app, 'Projects/a.png');
+    expect(await within(app.box).findByRole('img', { name: 'One' })).toHaveAttribute(
+      'src',
+      'blob:test/1',
+    );
   });
 });
 

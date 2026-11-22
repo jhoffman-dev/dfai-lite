@@ -60,6 +60,7 @@ function editorBridge(
     },
     openTag: (name, openIn) => actions.openTag(name, openIn),
     loadImage: (src) => images.load(src),
+    watchImages: (listener) => images.watch(listener),
     embedImage: (file, origin) =>
       embedImage(
         { ...deps, probe: services.imageProbe, clock: services.clock },

@@ -73,7 +73,11 @@ export function NoteEditor({ text, markdown, autoFocus, bridge, note, memory }: 
         onTagView: setTags,
         onOpenTag: (name, click) => bridgeNow.get().openTag(name, openInFor(click)),
         createNote: (name) => bridgeNow.get().createLinkedNote(name),
-        images: { loadImage: (src) => bridgeNow.get().loadImage(src), embedImage },
+        images: {
+          loadImage: (src) => bridgeNow.get().loadImage(src),
+          embedImage,
+          watchImages: (listener) => bridgeNow.get().watchImages(listener),
+        },
       }),
     [bridgeNow, embedImage],
   );

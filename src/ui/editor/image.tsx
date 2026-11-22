@@ -18,6 +18,11 @@ export interface ImageOptions {
   loadImage: (src: string) => Promise<string | null>;
   /** Saves an image pasted, dropped or picked into the note; null where none can be added. */
   embedImage: EmbedImage | null;
+  /**
+   * Hears which sources to load again (the file changed on disk, or a missing
+   * one may be there now); returns the way to stop. None where nothing changes.
+   */
+  watchImages?: (listener: (src: string) => void) => () => void;
 }
 
 /** What a key does to the selected image: open it larger, or draw it wider or narrower. */
@@ -40,7 +45,9 @@ function ImageView({ node, extension, selected, editor, updateAttributes, getPos
   });
   const { url, failed } = loaded;
 
-  const loadImage = (extension.options as ImageOptions).loadImage;
+  const { loadImage, watchImages } = extension.options as ImageOptions;
+  // Moved on when the picture is to be loaded again, which loads it again.
+  const [version, setVersion] = useState(0);
   const width = typeof node.attrs['width'] === 'number' ? node.attrs['width'] : null;
   // The width a drag is at, drawn but not yet written to the note: that is done once, on release.
   const [dragWidth, setDragWidth] = useState<number | null>(null);
@@ -59,7 +66,12 @@ function ImageView({ node, extension, selected, editor, updateAttributes, getPos
     return () => {
       canceled = true;
     };
-  }, [loadImage, src]);
+  }, [loadImage, src, version]);
+
+  useEffect(
+    () => watchImages?.((changed) => changed === src && setVersion((at) => at + 1)),
+    [watchImages, src],
+  );
 
   useEffect(() => {
     keyed.set(node, (key) => {

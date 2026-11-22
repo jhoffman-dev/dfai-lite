@@ -18,6 +18,8 @@ export interface EditorBridge {
   openTag(name: string, openIn: OpenIn): void;
   /** What the webview can show for an image's source, or null when there is none. */
   loadImage(src: string): Promise<string | null>;
+  /** Hears which picture sources to load again; returns the way to stop. */
+  watchImages(listener: (src: string) => void): () => void;
   /** Saves a picture pasted, dropped or picked into the note, and says how the note shows it. */
   embedImage: EmbedImage;
   /** The view was built on `text`, the vault's: saves are based on it. */
