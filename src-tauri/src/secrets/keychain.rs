@@ -8,6 +8,9 @@
 use super::SecretStore;
 
 pub struct KeychainStore {
+    // Off the Mac there is no Keychain: the stub answers without the service
+    // name, and only the Linux check ever builds that.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     service: &'static str,
 }
 
