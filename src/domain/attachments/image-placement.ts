@@ -29,6 +29,15 @@ export function relativeImageSource({
   return [...climbs, ...to.slice(shared).map(encodeSegment)].join('/');
 }
 
+/**
+ * What a note writes to reach `imagePath` from the vault root, as Obsidian's
+ * "absolute path in vault" does: each segment percent-encoded, as
+ * {@link relativeImageSource} encodes them.
+ */
+export function vaultImageSource(imagePath: VaultPath): string {
+  return segments(imagePath).map(encodeSegment).join('/');
+}
+
 /** A markdown image destination, decoded back to the path it names. Undecodable text is kept as written. */
 export function decodeImageSource(src: string): string {
   try {

@@ -112,3 +112,90 @@ describe('retargetImageSources', () => {
     ).toEqual({ text, count: 0 });
   });
 });
+
+/*
+ * The rule: a move changes an image source only when, left as it is, it would
+ * stop resolving to the file it resolved to before; then it is written in the
+ * style it was written in.
+ */
+describe('retargetImageSources, leaving what still resolves', () => {
+  const renamed = (text: string) =>
+    afterMove({
+      text,
+      path: 'Projects/new.md',
+      from: 'Projects/old.md',
+      to: 'Projects/new.md',
+      files: ['attachments/x.png'],
+    });
+
+  it.each([
+    ['vault-absolute, Obsidian’s style', '![a](attachments/x.png)\n'],
+    ['with a leading slash', '![a](/attachments/x.png)\n'],
+    ['relative', '![a](../attachments/x.png)\n'],
+  ])('leaves a %s source alone when its note is renamed in place', (_label, text) => {
+    expect(renamed(text)).toEqual({ text, count: 0 });
+  });
+
+  it('keeps a vault-absolute source vault-absolute when the folder it names moves', () => {
+    expect(
+      afterMove({
+        text: '![a](attachments/x.png) ![b](/attachments/x.png)\n',
+        path: 'Projects/n.md',
+        from: 'attachments',
+        to: 'Media/attachments',
+        files: ['Media/attachments/x.png'],
+      }),
+    ).toEqual({
+      text: '![a](Media/attachments/x.png) ![b](/Media/attachments/x.png)\n',
+      count: 2,
+    });
+  });
+
+  it('keeps a relative source relative when the note moves deeper', () => {
+    expect(
+      afterMove({
+        text: '![a](../attachments/x.png)\n',
+        path: 'Projects/2026/n.md',
+        from: 'Projects/n.md',
+        to: 'Projects/2026/n.md',
+        files: ['attachments/x.png'],
+      }).text,
+    ).toBe('![a](../../attachments/x.png)\n');
+  });
+
+  it('never touches a source in an indented code block, a fence or a span', () => {
+    const text = 'Code:\n\n    ![a](x.png)\n\n```\n![b](x.png)\n```\n\n`![c](x.png)`\n';
+    expect(
+      afterMove({ text, path: 'b/n.md', from: 'a/n.md', to: 'b/n.md', files: ['a/x.png'] }),
+    ).toEqual({ text, count: 0 });
+  });
+
+  it('follows an image in a list item’s indented paragraph, which is not code', () => {
+    expect(
+      afterMove({
+        text: '- item\n\n    ![a](x.png)\n',
+        path: 'b/n.md',
+        from: 'a/n.md',
+        to: 'b/n.md',
+        files: ['a/x.png'],
+      }).text,
+    ).toBe('- item\n\n    ![a](../a/x.png)\n');
+  });
+
+  it('follows the reference definition an image uses, under the same rule', () => {
+    const text = '![a][chart] and [b]: q.png\n\n[chart]: <x y.png> "Q3"\n[b]: x%20y.png\n';
+    expect(
+      afterMove({ text, path: 'b/n.md', from: 'a/n.md', to: 'b/n.md', files: ['a/x y.png'] }),
+    ).toEqual({
+      text: '![a][chart] and [b]: q.png\n\n[chart]: ../a/x%20y.png "Q3"\n[b]: x%20y.png\n',
+      count: 1,
+    });
+  });
+
+  it('leaves an HTML image alone', () => {
+    const text = '<img src="x.png">\n';
+    expect(
+      afterMove({ text, path: 'b/n.md', from: 'a/n.md', to: 'b/n.md', files: ['a/x.png'] }),
+    ).toEqual({ text, count: 0 });
+  });
+});

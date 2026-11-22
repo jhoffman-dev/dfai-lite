@@ -23,7 +23,7 @@ function imageAfterMove({ from, to }: { from: string; to: string }) {
     move,
   });
   const src = /!\[[^\]]*\]\(([^)]*)\)/.exec(updated)?.[1] ?? '';
-  return resolveImageSource({ src, notePath: move.to });
+  return resolveImageSource({ src, notePath: move.to, exists: (path) => path === IMAGE });
 }
 
 describe('an embedded image, once its note is moved', () => {

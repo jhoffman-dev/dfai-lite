@@ -53,7 +53,10 @@ and the index disagree, the note is right.
 - A picture is a file in `attachments/`, shown with a standard image whose
   path is relative to the note and percent-encoded:
   `![Chart](../attachments/Q3%20chart.png)`. A width in pixels goes after
-  the alt text, as Obsidian writes it: `![Chart|400](…)`.
+  the alt text, as Obsidian writes it: `![Chart|400](…)`. When a note or
+  folder moves, the app re-points markdown images (and the `[label]: path`
+  definitions images use) that would otherwise break; an HTML `<img>` is
+  left as written.
 
 ## A meeting note
 
