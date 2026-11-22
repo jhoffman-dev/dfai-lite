@@ -4,9 +4,17 @@
    link here as hairline rows. */
 
 .note-pane {
+  /* The whole page is a place to type (page-press.ts): the I-beam everywhere
+     but on the chrome and the controls. */
+  cursor: text;
   display: flex;
   flex-direction: column;
   min-height: 100%;
+}
+
+.note-pane .page-bar,
+.note-pane .mentions {
+  cursor: default;
 }
 
 /* ---- The page ---- */
@@ -17,6 +25,7 @@
 
 .page--note {
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
   margin: 0 auto;
   max-width: 100%;
@@ -34,6 +43,11 @@
 /* The title is DFAI's `.page-head__title`: the text itself until it is
    pressed (the hover fill of its title button), then a field on the track
    with the ring (its title input). */
+/* The text reaches down to the end of the pane, so there is no dead space to press on. */
+.page--note .page__body {
+  flex: 1 0 auto;
+}
+
 .note-title {
   appearance: none;
   background: none;
@@ -60,6 +74,7 @@
 }
 
 .note-editor-placeholder {
+  outline: none;
   font-family: var(--font-ui);
   font-size: var(--text-body-lg);
   line-height: 1.6;
@@ -67,6 +82,56 @@
   min-height: 60vh;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+/* ---- The note's tags: one line of DFAI's 20px chips, each in its tag's pastel ---- */
+
+.note-tags {
+  cursor: default;
+  display: flex;
+  flex: none;
+  gap: 6px;
+  margin: -4px 0 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* A line too long for the page scrolls sideways (a trackpad, or Tab to a pill). */
+  scrollbar-width: none;
+}
+
+.note-tags::-webkit-scrollbar {
+  display: none;
+}
+
+.note-tags[data-cut] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+
+.note-tags__pill {
+  align-items: center;
+  appearance: none;
+  background: var(--pill);
+  border: 0;
+  border-radius: var(--radius-chip);
+  color: var(--pill-ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 500;
+  height: 20px;
+  line-height: 1;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.note-tags__pill:hover {
+  text-decoration: underline;
+}
+
+.note-tags__pill:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
 }
 
 /* ---- Linked from: DFAI's linked mentions ---- */
