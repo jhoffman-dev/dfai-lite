@@ -30,6 +30,8 @@ pub fn run() {
             vault::write_file,
             vault::rename_file,
             vault::delete_file,
+            vault::create_folder,
+            vault::remove_folder,
             vault::read_ignore_file,
             vault::write_ignore_file,
             vault::find_unsyncable,

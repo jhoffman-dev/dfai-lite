@@ -9,8 +9,8 @@ export interface OpenedVault {
 
 /** Reads the whole vault from disk, in one call, into the session and builds the index. No git. */
 export async function openVault(deps: VaultDeps): Promise<OpenedVault> {
-  const { notes, otherPaths } = await deps.files.readAll();
-  deps.session.load(notes, otherPaths);
+  const { notes, otherPaths, folders } = await deps.files.readAll();
+  deps.session.load(notes, otherPaths, folders);
   return {
     noteCount: deps.session.index.paths().length,
     favoritesProblem: deps.session.favoritesProblem,

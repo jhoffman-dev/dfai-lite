@@ -36,6 +36,7 @@ and the index disagree, the note is right.
 | `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.       |
 | `_index/`                | Generated. Never edit.                                          |
 | `.dfai-lite/`            | The app's own state (favorites). Leave it alone.                |
+| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.       |
 
 ## How a note is written
 

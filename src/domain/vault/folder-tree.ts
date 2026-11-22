@@ -1,5 +1,5 @@
 import { fileNameOf, joinPath, noteTitle, VAULT_ROOT, type VaultPath } from './note-path.ts';
-import { isVisibleNote } from './visibility.ts';
+import { isVisibleFolder, isVisibleNote } from './visibility.ts';
 
 /** A folder in the tree, with what is directly in it, each list in display order. */
 export interface FolderNode {
@@ -44,27 +44,36 @@ interface Building {
 }
 
 /**
- * The folder tree of a flat list of paths, as git holds a vault: folders are
- * the ones notes are in, since git has no empty folder. Hidden paths and
- * files that are not notes are left out.
+ * The folder tree of the vault: its notes, and its `folders` as the disk
+ * lists them, so a folder with no note in it yet is shown too. Hidden paths
+ * and files that are not notes are left out.
  */
-export function buildFolderTree(paths: Iterable<VaultPath>): FolderNode {
+export function buildFolderTree(
+  paths: Iterable<VaultPath>,
+  folders: Iterable<VaultPath> = [],
+): FolderNode {
   const root: Building = { path: VAULT_ROOT, folders: new Map(), notes: [] };
+  for (const folder of folders) {
+    if (isVisibleFolder(folder)) folderAt(root, folder.split('/'));
+  }
   for (const path of paths) {
-    if (!isVisibleNote(path)) continue;
-    let folder = root;
-    const parts = path.split('/');
-    for (const part of parts.slice(0, -1)) {
-      let next = folder.folders.get(part);
-      if (next === undefined) {
-        next = { path: joinPath(folder.path, part), folders: new Map(), notes: [] };
-        folder.folders.set(part, next);
-      }
-      folder = next;
-    }
-    folder.notes.push(path);
+    if (isVisibleNote(path)) folderAt(root, path.split('/').slice(0, -1)).notes.push(path);
   }
   return finish(root);
+}
+
+/** The folder at `parts` under `root`, made on the way down where missing. */
+function folderAt(root: Building, parts: readonly string[]): Building {
+  let folder = root;
+  for (const part of parts) {
+    let next = folder.folders.get(part);
+    if (next === undefined) {
+      next = { path: joinPath(folder.path, part), folders: new Map(), notes: [] };
+      folder.folders.set(part, next);
+    }
+    folder = next;
+  }
+  return folder;
 }
 
 function finish(folder: Building): FolderNode {

@@ -54,12 +54,14 @@ export function createFileSettingsStore({
 /**
  * Settings from their JSON. Whatever cannot be read (missing, not JSON, a
  * field of the wrong shape) is its default, field by field, so one bad
- * field never costs the others.
+ * field never costs the others. A field this build does not know (one a
+ * newer build wrote) is kept as it was, so the next save writes it back.
  */
 export function parseSettings(text: string | null): Settings {
   const raw = readJson(text);
   if (!isRecord(raw)) return DEFAULT_SETTINGS;
   return {
+    ...raw,
     vaultPath: isString(raw.vaultPath) && raw.vaultPath !== '' ? raw.vaultPath : null,
     captureHotkey: isString(raw.captureHotkey) ? raw.captureHotkey : DEFAULT_SETTINGS.captureHotkey,
     ui: uiFrom(raw.ui),
@@ -84,10 +86,14 @@ const isString = (value: unknown): value is string => typeof value === 'string';
 
 const THEMES: readonly UiPrefs['theme'][] = ['system', 'light', 'dark'];
 
+const isWidth = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
 function uiFrom(raw: unknown): UiPrefs {
   if (!isRecord(raw)) return DEFAULT_UI_PREFS;
-  const { theme, expandedFolders, lastOpenPath, source } = raw;
+  const { theme, expandedFolders, lastOpenPath, source, sidebarWidth, sidebarCollapsed } = raw;
   return {
+    ...raw,
     theme: THEMES.find((known) => known === theme) ?? DEFAULT_UI_PREFS.theme,
     expandedFolders:
       Array.isArray(expandedFolders) && expandedFolders.every(isString)
@@ -95,5 +101,8 @@ function uiFrom(raw: unknown): UiPrefs {
         : DEFAULT_UI_PREFS.expandedFolders,
     lastOpenPath: isString(lastOpenPath) ? lastOpenPath : DEFAULT_UI_PREFS.lastOpenPath,
     source: typeof source === 'boolean' ? source : DEFAULT_UI_PREFS.source,
+    sidebarWidth: isWidth(sidebarWidth) ? sidebarWidth : DEFAULT_UI_PREFS.sidebarWidth,
+    sidebarCollapsed:
+      typeof sidebarCollapsed === 'boolean' ? sidebarCollapsed : DEFAULT_UI_PREFS.sidebarCollapsed,
   };
 }

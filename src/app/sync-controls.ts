@@ -83,7 +83,11 @@ export function connectSync({
     else if (change.kind === 'renamed') {
       copies.delete(change.from);
       if (isConflictCopyPath(change.to)) copies.add(change.to);
-    } else if (isConflictCopyPath(change.path) && session.index.has(change.path)) {
+    } else if (
+      change.kind === 'written' &&
+      isConflictCopyPath(change.path) &&
+      session.index.has(change.path)
+    ) {
       copies.add(change.path);
     }
     if (copies.size !== before) publish();

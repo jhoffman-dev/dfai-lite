@@ -6,6 +6,7 @@ import {
   pathAfterMove,
   type VaultPath,
 } from '../../domain/vault/index.ts';
+import { removeEmptyFolders } from './empty-folders.ts';
 import { renameNote } from './rename-note.ts';
 import type { VaultDeps } from './vault-deps.ts';
 
@@ -26,6 +27,11 @@ function folderProblem(deps: VaultDeps, from: VaultPath, to: VaultPath): string 
     if (problem !== null) return problem;
   }
   if (isWithin(to, from)) return 'A folder cannot move inside itself.';
+  const wanted = foldedPath(to);
+  if (wanted !== foldedPath(from)) {
+    const clash = deps.session.folders().find((folder) => foldedPath(folder) === wanted);
+    if (clash !== undefined) return `A folder is already at ${clash}.`;
+  }
   const staying = new Set<string>();
   for (const file of deps.session.allFiles()) {
     if (!isWithin(file.path, from)) staying.add(foldedPath(file.path));
@@ -40,8 +46,10 @@ function folderProblem(deps: VaultDeps, from: VaultPath, to: VaultPath): string 
 /**
  * Renames or moves a folder: every note in it, at any depth, moves with
  * `renameNote`, so every link to each is rewritten and favorites follow.
- * Checked whole first, so a clash refuses before anything moves. Files in
- * it that are not notes stay where they are (git has no folder to rename).
+ * Checked whole first, so a clash (a note, or a folder already at the new
+ * path) refuses before anything moves. Its empty folders are made again at
+ * the new place, and the emptied old ones removed. Files in it that are not
+ * notes stay where they are, and keep the old folder with them.
  */
 export async function renameFolder(
   deps: VaultDeps,
@@ -63,5 +71,22 @@ export async function renameFolder(
     if (result.kind === 'refused') return result;
     retargeted += result.retargeted;
   }
+  // A change of case alone is the same folder on a Mac's disk: nothing to carry or remove.
+  if (foldedPath(from) !== foldedPath(to)) await carryFolders(deps, { from, to });
   return { kind: 'renamed', moved: notes.length, retargeted };
+}
+
+/** Makes the moved folder's empty folders at their new place, then removes the emptied old ones. */
+async function carryFolders(deps: VaultDeps, move: { from: VaultPath; to: VaultPath }) {
+  const moving = deps.session
+    .folders()
+    .filter((folder) => isWithin(folder, move.from))
+    .sort();
+  for (const folder of moving) {
+    const after = pathAfterMove(folder, move) ?? folder;
+    if (deps.session.folders().includes(after)) continue;
+    await deps.files.createFolder(after);
+    deps.session.applyCreateFolder(after);
+  }
+  await removeEmptyFolders(deps, move.from);
 }

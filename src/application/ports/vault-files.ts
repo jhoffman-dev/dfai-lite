@@ -15,6 +15,8 @@ export interface VaultSnapshot {
   readonly notes: readonly StoredFile[];
   /** Every other file (an image, a PDF), by path only. */
   readonly otherPaths: readonly VaultPath[];
+  /** Every folder, empty or not, by path, sorted; the walk skips what it skips for files. */
+  readonly folders: readonly VaultPath[];
 }
 
 /** The file on disk is not the text the caller last saw: someone else wrote it meanwhile. */
@@ -62,6 +64,17 @@ export interface VaultFiles {
   }): Promise<void>;
   /** Moves a file, never over another ({@link FileExistsError}); a change of case alone is allowed. */
   rename(from: VaultPath, to: VaultPath): Promise<void>;
+  /**
+   * Makes a folder (and any missing above it) holding an empty `.gitkeep`
+   * (`KEEP_FILE`), so git carries it while it is empty. Rejects with
+   * {@link FileExistsError} when a file or folder is at the path, case aside.
+   */
+  createFolder(path: VaultPath): Promise<void>;
+  /**
+   * Removes a folder that holds nothing but disposable files (its
+   * `.gitkeep`, Finder's `.DS_Store`); rejects, removing nothing, otherwise.
+   */
+  removeFolder(path: VaultPath): Promise<void>;
   /**
    * Moves the file to the Trash, or deletes it for good when `permanently`,
    * only while it holds `expected` (null: whatever it holds). Rejects with

@@ -16,6 +16,11 @@ pub const EXISTS: &str = "exists:";
 pub const TRASH: &str = "trash:";
 /// Every temporary file a write makes ends with this.
 pub const TEMP_SUFFIX: &str = ".dfai-lite-tmp";
+/// The empty file a new folder is made with, so git (which carries files, not
+/// folders) takes it to the other Mac while it is empty. TypeScript hides it.
+pub const KEEP_FILE: &str = ".gitkeep";
+/// What a folder may hold and still be removed as empty: its keep file, and Finder's.
+const DISPOSABLE_FILES: [&str; 2] = [KEEP_FILE, ".DS_Store"];
 
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
@@ -155,6 +160,39 @@ pub fn delete_guarded(
     to_trash(target).map_err(|error| format!("{TRASH} the Trash would not take {label}: {error}"))
 }
 
+/// Makes the folder (and any missing above it) with an empty keep file in
+/// it, never where a file or folder already is (case aside, on a Mac).
+pub fn create_folder(target: &Path, label: &str) -> Result<(), String> {
+    make_parent(target)?;
+    fs::create_dir(target).map_err(|error| match error.kind() {
+        ErrorKind::AlreadyExists => format!("{EXISTS} something is already at {label}"),
+        _ => format!("cannot make the folder {label}: {error}"),
+    })?;
+    open_new(&target.join(KEEP_FILE))
+        .map(drop)
+        .map_err(|error| format!("cannot make the folder {label}: {error}"))
+}
+
+/// Removes a folder that holds nothing but disposable files, and those
+/// files; refuses, removing nothing, when it holds anything else.
+pub fn remove_empty_folder(target: &Path, label: &str) -> Result<(), String> {
+    let entries = fs::read_dir(target).map_err(|error| format!("cannot read {label}: {error}"))?;
+    let mut disposable = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("cannot read {label}: {error}"))?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let is_file = entry.file_type().is_ok_and(|kind| kind.is_file());
+        if !is_file || !DISPOSABLE_FILES.contains(&name.as_str()) {
+            return Err(format!("{label} is not empty"));
+        }
+        disposable.push(entry.path());
+    }
+    for file in disposable {
+        fs::remove_file(file).map_err(|error| format!("cannot remove {label}: {error}"))?;
+    }
+    fs::remove_dir(target).map_err(|error| format!("cannot remove {label}: {error}"))
+}
+
 #[cfg(target_os = "macos")]
 fn to_trash(target: &Path) -> Result<(), String> {
     use trash::macos::{DeleteMethod, TrashContextExtMacos};
@@ -247,5 +285,38 @@ mod tests {
         assert!(note.exists());
         delete_guarded(&note, "note", Some("changed by Claude"), true).unwrap();
         assert!(!note.exists());
+    }
+
+    #[test]
+    fn a_new_folder_holds_a_keep_file_and_never_lands_on_anything() {
+        let root = temp_folder();
+        let folder = root.join("Areas").join("Garden");
+        create_folder(&folder, "Areas/Garden").unwrap();
+        assert!(folder.join(KEEP_FILE).is_file());
+        let again = create_folder(&folder, "Areas/Garden").unwrap_err();
+        assert!(again.starts_with(EXISTS), "{again}");
+        fs::write(root.join("Plan"), "x").unwrap();
+        assert!(create_folder(&root.join("Plan"), "Plan")
+            .unwrap_err()
+            .starts_with(EXISTS));
+        assert_eq!(fs::read_to_string(root.join("Plan")).unwrap(), "x");
+    }
+
+    #[test]
+    fn only_a_folder_holding_nothing_but_disposable_files_is_removed() {
+        let root = temp_folder();
+        let folder = root.join("Areas");
+        create_folder(&folder, "Areas").unwrap();
+        fs::write(folder.join(".DS_Store"), "x").unwrap();
+        fs::write(folder.join("note.md"), "keep me").unwrap();
+        assert!(remove_empty_folder(&folder, "Areas").is_err());
+        assert!(folder.join("note.md").is_file());
+        assert!(folder.join(KEEP_FILE).is_file());
+        fs::remove_file(folder.join("note.md")).unwrap();
+        fs::create_dir(folder.join("Inner")).unwrap();
+        assert!(remove_empty_folder(&folder, "Areas").is_err());
+        fs::remove_dir(folder.join("Inner")).unwrap();
+        remove_empty_folder(&folder, "Areas").unwrap();
+        assert!(!folder.exists());
     }
 }

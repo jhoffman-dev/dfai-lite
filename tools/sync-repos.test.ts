@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import {
   applyExternalChanges,
   createDeletionApprovals,
+  createFolder,
   createSyncNow,
   createWriteGate,
   deleteNote,
@@ -175,6 +176,21 @@ describe('sync with real git', { timeout: 30_000 }, () => {
     expect(result).toMatchObject({ kind: 'synced', pulled: true });
     expect(await here.read('Inbox/Idea.md')).toBe('From the laptop.\n');
     expect(here.deps.session.file('Inbox/Idea.md')?.text).toBe('From the laptop.\n');
+  });
+
+  it('carries an empty folder to the other Mac, through its keep file', async () => {
+    const here = await clone('Studio', 'here');
+    const there = await clone('Laptop', 'there');
+    expect(await createFolder(here.deps, { path: 'Areas/Garden' })).toMatchObject({
+      kind: 'created',
+    });
+    expect(await here.sync()).toMatchObject({ kind: 'synced', pushed: true });
+    expect(await remotePaths()).toContain('Areas/Garden/.gitkeep');
+    expect(await there.sync()).toMatchObject({ kind: 'synced', pulled: true });
+    expect(there.deps.session.folders()).toContain('Areas/Garden');
+    const areas = there.deps.session.folderTree().folders.find((f) => f.name === 'Areas');
+    expect(areas?.folders.map((f) => f.path)).toEqual(['Areas/Garden']);
+    expect(there.deps.session.index.paths().some((path) => path.includes('.gitkeep'))).toBe(false);
   });
 
   it('keeps both when both Macs changed a note: this Mac’s in place, the other’s beside it', async () => {
