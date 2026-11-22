@@ -137,6 +137,39 @@ describe('dragging in the tree', () => {
     expect(folder).not.toHaveClass('is-drop-target');
   });
 
+  it('drops into the folder lit at the release, though a folder held over before it would have opened above it', async () => {
+    const { services } = await renderApp({ files: VAULT });
+    const dataTransfer = transfer();
+    fireEvent.click(within(tree()).getByText('Inbox'));
+    fireEvent.click(within(tree()).getByText('Projects'));
+    const note = await within(tree()).findByText('Payroll idea');
+    const row = (name: string) =>
+      within(tree()).getByText(name).closest('[role="treeitem"]') as HTMLElement;
+    const projectsAt = row('Projects').dataset['index'];
+
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      fireEvent.dragStart(note, { dataTransfer });
+      // On the closed People for a moment, then on to the open Projects below it, and held there.
+      fireEvent.dragOver(row('People'), { dataTransfer });
+      act(() => vi.advanceTimersByTime(200));
+      fireEvent.dragOver(row('Projects'), { dataTransfer });
+      act(() => vi.advanceTimersByTime(1500));
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(row('Projects')).toHaveClass('is-drop-target');
+
+    // The pointer has not moved: the drop lands on whatever row is now where Projects was.
+    const under = tree().querySelector(`[data-index="${projectsAt}"]`) as Element;
+    fireEvent.drop(under, { dataTransfer });
+    await waitFor(() => expect(services.session.file('Inbox/Payroll idea.md')).toBeNull());
+    const landed = ['People', 'Projects'].filter(
+      (folder) => services.session.file(`${folder}/Payroll idea.md`) !== null,
+    );
+    expect(landed).toEqual(['Projects']);
+  });
+
   it('refuses a folder dropped into itself, and says so for a name already taken', async () => {
     const { services } = await renderApp({
       files: { ...VAULT, 'People/Payroll idea.md': 'Another.\n' },
