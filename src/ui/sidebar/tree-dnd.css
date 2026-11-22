@@ -1,0 +1,117 @@
+/* The tree's moving parts: drop highlights, the "…" on a row, the Notes header's
+   New folder button, and a new folder's name field. */
+
+.tree-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 4px;
+}
+
+.tree-heading-action,
+.tree-row-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--radius-row);
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.tree-heading-action:hover,
+.tree-row-more:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.tree-heading-action:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+/* On a row's right, over its count; shown while the row is pointed at or focused. */
+.tree-row-more {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  opacity: 0;
+}
+
+.tree-slot:hover .tree-row-more,
+.tree-slot:focus-within .tree-row-more {
+  opacity: 1;
+}
+
+.tree-slot:hover .tree-count,
+.tree-slot:focus-within .tree-count {
+  visibility: hidden;
+}
+
+/* A touch screen has no hover: the "…" is always there. */
+@media (hover: none) {
+  .tree-row-more {
+    opacity: 1;
+  }
+}
+
+.tree-row.is-drop-target {
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--focus);
+  color: var(--ink);
+}
+
+.sidebar-tree.is-drop-root .tree-scroller {
+  border-radius: var(--radius-row);
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+
+.tree-new-folder {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--row-height);
+  padding-right: 8px;
+  color: var(--ink-3);
+}
+
+.tree-new-folder-input {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--focus);
+  border-radius: var(--radius-row);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.tree-new-folder-input:focus {
+  outline: none;
+}
+
+.tree-new-folder-input[aria-invalid='true'] {
+  border-color: var(--hue-red-ink);
+}
+
+.tree-new-folder-problem {
+  position: absolute;
+  top: 100%;
+  left: 28px;
+  right: 8px;
+  z-index: 5;
+  padding: 3px 6px;
+  border-radius: var(--radius-row);
+  background: var(--surface);
+  box-shadow: var(--shadow-popover);
+  color: var(--hue-red-ink);
+  font-size: var(--text-label);
+}
+
+.tree-slot:has(.tree-new-folder) {
+  z-index: 2;
+}

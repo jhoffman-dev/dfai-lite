@@ -1,0 +1,28 @@
+/* The folder picker: the palette's look, with a title and a folder icon per row. */
+
+.folder-picker-title {
+  padding: 12px 16px 0;
+  color: var(--ink-3);
+  font-size: var(--text-meta);
+}
+
+.folder-choice {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  color: var(--ink-2);
+}
+
+.folder-choice .palette-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-choice[aria-disabled='true'] {
+  cursor: default;
+  color: var(--ink-3);
+}
+
+.folder-choice.is-create {
+  color: var(--btn-primary-ink);
+}

@@ -28,6 +28,10 @@ export function createCommands({ actions, ui, layout, workspace }: AppContextVal
       const path = activeNote();
       if (path !== null) ui.setState({ pendingFocus: { path, target: 'title' } });
     },
+    'note.move': () => {
+      const path = activeNote();
+      if (path !== null) ui.setState({ paletteOpen: false, moving: { kind: 'note', path } });
+    },
     'palette.open': () => ui.setState({ paletteOpen: true }),
     'tab.new': () => {
       workspace.open(BLANK, 'new-tab', { replace: true });
@@ -47,6 +51,11 @@ export function createCommands({ actions, ui, layout, workspace }: AppContextVal
     },
     'pane.focusLeft': () => workspace.arrange((current) => focusPane(current, 0)),
     'pane.focusRight': () => workspace.arrange((current) => focusPane(current, 1)),
+    'sidebar.toggle': () => {
+      // On a phone the sidebar is a drawer, opened and shut over the note.
+      if (isNarrow()) ui.setState({ drawerOpen: !ui.getState().drawerOpen });
+      else actions.setSidebar({ collapsed: !ui.getState().sidebarCollapsed });
+    },
     'help.shortcuts': () => ui.setState({ paletteOpen: false, shortcutsOpen: true }),
   };
   return (command, arg = 0) => run[command](arg);

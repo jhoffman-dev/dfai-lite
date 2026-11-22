@@ -1,19 +1,24 @@
 import {
+  createFolder,
   createNoteFromLink,
   createQuickNote,
+  deleteFolder,
   deleteNote,
+  moveFolderInto,
+  moveNoteInto,
   renameFolder,
   renameNote,
   reorderFavorite,
   tagKey,
   toggleFavoriteNote,
   TrashRefusedError,
+  type CreateFolderResult,
   type RenameResult,
   type SettingsStore,
   type UiPrefs,
   type VaultDeps,
 } from '../../application/index.ts';
-import type { VaultPath } from '../../domain/vault/index.ts';
+import type { FolderNode, VaultEntry, VaultPath } from '../../domain/vault/index.ts';
 import { currentTab, setSource, type OpenIn } from '../panes/layout.ts';
 import type { LayoutStore } from '../panes/layout-store.ts';
 import type { Workspace } from '../panes/workspace.ts';
@@ -45,6 +50,20 @@ export interface NoteActions {
   renameFolder(from: VaultPath, to: VaultPath): Promise<void>;
   /** Opens a note with its title ready to rename. */
   startRename(path: VaultPath): void;
+  /** A new empty folder at `path`; a refusal is shown as a notice and returned. */
+  createFolder(path: VaultPath): Promise<CreateFolderResult>;
+  /**
+   * Moves a note or a folder into `folder` ('' for the top), links and
+   * favorites following; whatever is typed is saved first. A refusal (a
+   * name already there) is shown as a notice; true when it moved.
+   */
+  moveInto(entry: VaultEntry, folder: VaultPath): Promise<boolean>;
+  /** Deletes a folder, sending its notes to the Trash one by one, once the person says yes. */
+  deleteFolder(path: VaultPath): Promise<void>;
+  /** A yes-or-no question: the Mac's own alert in the app, the page's in a browser. */
+  ask(question: { message: string; yes: string }): Promise<boolean>;
+  /** Puts the sidebar away or back, or sets its width, remembered on this device. */
+  setSidebar(change: { collapsed?: boolean; width?: number | null }): void;
   updatePrefs(patch: Partial<UiPrefs>): void;
   /** The active tab's rendered view or editor, remembered on this device for the next tab. */
   toggleSource(): void;
@@ -58,6 +77,7 @@ export function createNoteActions({
   settings,
   layout,
   workspace,
+  flushEdits = () => Promise.resolve(),
   confirm,
 }: {
   deps: VaultDeps;
@@ -65,6 +85,8 @@ export function createNoteActions({
   settings: SettingsStore;
   layout: LayoutStore;
   workspace: Workspace;
+  /** Saves what every open editor holds: run before a move. */
+  flushEdits?: () => Promise<void>;
   /** A yes-or-no question for the person (the Mac's alert); absent where nothing can refuse. */
   confirm?: (question: { message: string; yes: string }) => Promise<boolean>;
 }): NoteActions {
@@ -74,6 +96,28 @@ export function createNoteActions({
   const updatePrefs = (patch: Partial<UiPrefs>) => {
     const current = settings.load();
     settings.save({ ...current, ui: { ...current.ui, ...patch } });
+  };
+  const ask =
+    confirm ??
+    ((question: { message: string }) => Promise.resolve(window.confirm(question.message)));
+  const moveInto = async (entry: VaultEntry, folder: VaultPath) => {
+    await flushEdits();
+    const result =
+      entry.kind === 'note'
+        ? await moveNoteInto(deps, { path: entry.path, folder })
+        : await moveFolderInto(deps, { path: entry.path, folder });
+    if (result.kind === 'refused') notice(result.reason);
+    return result.kind !== 'refused';
+  };
+  const removeFolder = async (path: VaultPath, permanently: boolean): Promise<void> => {
+    try {
+      const result = await deleteFolder(deps, { path, permanently });
+      if (result.kind === 'refused') notice(result.reason);
+    } catch (error) {
+      if (permanently || !(error instanceof TrashRefusedError)) throw error;
+      const message = `The Trash would not take the notes in “${path}”. Delete them for good? Their history in git keeps them once synced.`;
+      if (await ask({ message, yes: 'Delete permanently' })) await removeFolder(path, true);
+    }
   };
 
   return {
@@ -110,6 +154,34 @@ export function createNoteActions({
       const result = await renameFolder(deps, { from, to });
       if (result.kind === 'refused') notice(result.reason);
     },
+    async createFolder(path) {
+      const result = await createFolder(deps, { path });
+      if (result.kind === 'refused') notice(result.reason);
+      return result;
+    },
+    moveInto,
+    async deleteFolder(path) {
+      const notes = deps.session.folderTree();
+      const count = countNotesIn(notes, path);
+      const message =
+        count === 0
+          ? `Delete the empty folder “${path}”?`
+          : `Delete “${path}” and the ${count === 1 ? 'note' : `${count} notes`} in it? They go to the Trash.`;
+      if (!(await ask({ message, yes: 'Delete' }))) return;
+      await flushEdits();
+      await removeFolder(path, false);
+    },
+    ask,
+    setSidebar({ collapsed, width }) {
+      if (collapsed !== undefined) {
+        ui.setState({ sidebarCollapsed: collapsed });
+        updatePrefs({ sidebarCollapsed: collapsed });
+      }
+      if (width !== undefined) {
+        ui.setState({ sidebarWidth: width });
+        updatePrefs({ sidebarWidth: width });
+      }
+    },
     startRename(path) {
       ui.setState({ pendingFocus: { path, target: 'title' } });
       workspace.open({ kind: 'note', path });
@@ -125,4 +197,17 @@ export function createNoteActions({
     },
     report,
   };
+}
+
+/** How many notes the tree shows in a folder, at any depth. */
+function countNotesIn(root: FolderNode, path: VaultPath): number {
+  const walk = (folder: FolderNode): number | null => {
+    if (folder.path === path) return folder.noteCount;
+    for (const child of folder.folders) {
+      const found = walk(child);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  return walk(root) ?? 0;
 }

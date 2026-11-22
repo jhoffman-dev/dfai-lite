@@ -1,6 +1,6 @@
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { VaultPath } from '../../domain/vault/index.ts';
+import type { VaultEntry, VaultPath } from '../../domain/vault/index.ts';
 import { useApp } from '../services.ts';
 
 /** Where focus goes when a note next opens: straight into the text, or its title to rename it. */
@@ -22,11 +22,27 @@ export interface UiState {
   readonly pendingFocus: PendingFocus | null;
   /** A short message for the person: a refused rename, a failed save. */
   readonly notice: string | null;
+  /** The note or folder the folder picker is choosing a new home for; null when it is shut. */
+  readonly moving: VaultEntry | null;
+  /** The folder a new folder is being named in, in the tree ('' for the top); null when none is. */
+  readonly namingFolderIn: VaultPath | null;
+  /** The sidebar put away, on a wide window. */
+  readonly sidebarCollapsed: boolean;
+  /** The sidebar's width as dragged, in CSS pixels; null for the default. */
+  readonly sidebarWidth: number | null;
 }
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore({ source }: { source: boolean }): UiStore {
+export function createUiStore({
+  source,
+  sidebarCollapsed = false,
+  sidebarWidth = null,
+}: {
+  source: boolean;
+  sidebarCollapsed?: boolean;
+  sidebarWidth?: number | null;
+}): UiStore {
   return createStore<UiState>(() => ({
     paletteOpen: false,
     settingsOpen: false,
@@ -35,6 +51,10 @@ export function createUiStore({ source }: { source: boolean }): UiStore {
     source,
     pendingFocus: null,
     notice: null,
+    moving: null,
+    namingFolderIn: null,
+    sidebarCollapsed,
+    sidebarWidth,
   }));
 }
 

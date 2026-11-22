@@ -4,6 +4,9 @@ import type { VaultPath } from '../../domain/vault/index.ts';
 import type { OpenIn } from '../panes/layout.ts';
 import { openInFor } from '../panes/open-in.ts';
 import { useApp } from '../services.ts';
+import { createCommands } from '../shell/commands.ts';
+import { keyFor, type Command } from '../shell/shortcuts.ts';
+import { useKeyHost } from '../shell/use-shortcuts.ts';
 import './search.css';
 
 const NAME_ROWS = 6;
@@ -18,7 +21,24 @@ type PaletteRow =
       readonly snippet: string;
     }
   | { readonly kind: 'create'; readonly name: string }
+  | { readonly kind: 'command'; readonly command: Command; readonly title: string }
   | { readonly kind: 'shortcuts' };
+
+/** The commands the palette offers by name, as it words them. */
+const PALETTE_COMMANDS: readonly { readonly command: Command; readonly title: string }[] = [
+  { command: 'note.move', title: 'Move note to…' },
+  { command: 'sidebar.toggle', title: 'Show or hide the sidebar' },
+  { command: 'note.rename', title: 'Rename note' },
+  { command: 'note.new', title: 'New note' },
+];
+
+/** The commands every typed word is in, case aside. */
+function commandsMatching(typed: string): PaletteRow[] {
+  const words = typed.toLowerCase().split(/\s+/);
+  return PALETTE_COMMANDS.filter(({ title }) =>
+    words.every((word) => title.toLowerCase().includes(word)),
+  ).map((entry) => ({ kind: 'command' as const, ...entry }));
+}
 
 /** Typed alone, it lists the keyboard shortcuts instead of searching. */
 const HELP_QUERY = '?';
@@ -58,6 +78,7 @@ function usePaletteRows(query: string): PaletteRow[] {
     const exact = names.some((note) => note.match === 'exact');
     return [
       ...names.map((note) => ({ kind: 'name' as const, path: note.path, title: note.title })),
+      ...commandsMatching(typed),
       ...texts.map((hit) => ({ kind: 'text' as const, ...hit })),
       ...(exact ? [] : [{ kind: 'create' as const, name: typed }]),
     ];
@@ -66,7 +87,10 @@ function usePaletteRows(query: string): PaletteRow[] {
 
 /** ⌘K: one field that switches to a note by name, searches the text, or makes the note. */
 export function SearchPalette({ onClose }: { onClose: () => void }) {
-  const { actions, ui } = useApp();
+  const app = useApp();
+  const { actions, ui } = app;
+  const host = useKeyHost();
+  const run = useMemo(() => createCommands(app), [app]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const rows = usePaletteRows(query);
@@ -77,6 +101,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
     if (row === undefined) return;
     onClose();
     if (row.kind === 'shortcuts') ui.setState({ shortcutsOpen: true });
+    else if (row.kind === 'command') run(row.command);
     else if (row.kind === 'create') actions.followLink(row.name, openIn).catch(actions.report);
     else actions.openNote(row.path, openIn);
   };
@@ -117,7 +142,13 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         <ul id="palette-results" className="palette-results" role="listbox" aria-label="Results">
           {rows.map((row, at) => (
             <li
-              key={'path' in row ? `${row.kind}:${row.path}` : row.kind}
+              key={
+                'path' in row
+                  ? `${row.kind}:${row.path}`
+                  : row.kind === 'command'
+                    ? `command:${row.command}`
+                    : row.kind
+              }
               id={`palette-row-${at}`}
               role="option"
               aria-selected={at === current}
@@ -128,6 +159,11 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
             >
               {row.kind === 'shortcuts' ? (
                 <span className="palette-title">Keyboard shortcuts</span>
+              ) : row.kind === 'command' ? (
+                <>
+                  <span className="palette-title">{row.title}</span>
+                  <kbd className="palette-folder">{keyFor(row.command, host)}</kbd>
+                </>
               ) : row.kind === 'create' ? (
                 <span className="palette-title">Create note “{row.name}”</span>
               ) : (
