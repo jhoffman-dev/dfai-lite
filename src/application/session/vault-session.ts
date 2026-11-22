@@ -1,4 +1,12 @@
 import {
+  CALLOUTS_PATH,
+  NO_CALLOUT_SETTINGS,
+  isCalloutsConflictCopy,
+  mergeCalloutSettings,
+  parseCalloutSettings,
+  type CalloutSettings,
+} from '../../domain/callouts/index.ts';
+import {
   FAVORITES_PATH,
   parseFavorites,
   type Favorites,
@@ -52,6 +60,19 @@ export type VaultIndexView = Pick<
 
 const NO_FAVORITES: ParsedFavorites = { kind: 'ok', favorites: [] };
 
+/** The vault's callout types as read: the file, with any conflict copy's types merged in. */
+interface CalloutsRead {
+  readonly settings: CalloutSettings;
+  /** Why the file could not be read, or null. */
+  readonly problem: string | null;
+  /** The other Mac's versions a sync saved beside the file, whose types are merged in. */
+  readonly copies: readonly VaultPath[];
+}
+
+const NO_CALLOUTS: CalloutsRead = { settings: NO_CALLOUT_SETTINGS, problem: null, copies: [] };
+
+const isCalloutsFile = (path: VaultPath) => path === CALLOUTS_PATH || isCalloutsConflictCopy(path);
+
 /**
  * The open vault in memory: every file's text, the derived index, and the
  * favorites, kept in step and announced to listeners. The UI's store
@@ -67,6 +88,7 @@ export class VaultSession {
   private folderSet = new Set<VaultPath>();
   private vaultIndex = new VaultIndex();
   private parsedFavorites: ParsedFavorites = NO_FAVORITES;
+  private callouts: CalloutsRead = NO_CALLOUTS;
   private tree: FolderNode | null = null;
   private readonly listeners = new Set<VaultListener>();
   private changes = 0;
@@ -87,6 +109,24 @@ export class VaultSession {
   /** Why the favorites file could not be read, or null when it could (or does not exist). */
   get favoritesProblem(): string | null {
     return this.parsedFavorites.kind === 'malformed' ? this.parsedFavorites.reason : null;
+  }
+
+  /**
+   * The vault's own callout types and hidden built-ins; the same object
+   * until a callouts file changes. Empty when the file is missing or malformed.
+   */
+  get calloutSettings(): CalloutSettings {
+    return this.callouts.settings;
+  }
+
+  /** Why the callouts file could not be read, or null when it could (or does not exist). */
+  get calloutsProblem(): string | null {
+    return this.callouts.problem;
+  }
+
+  /** Conflict copies of the callouts file, whose types are merged in until a save folds them in. */
+  get calloutCopies(): readonly VaultPath[] {
+    return this.callouts.copies;
   }
 
   file(path: VaultPath): StoredFile | null {
@@ -136,6 +176,7 @@ export class VaultSession {
     for (const file of files) this.files.set(file.path, file);
     this.vaultIndex = VaultIndex.build(this.files.values());
     this.parsedFavorites = readFavorites(this.files.get(FAVORITES_PATH));
+    this.callouts = readCallouts(this.files);
     this.tree = null;
     this.emit({ kind: 'loaded' });
   }
@@ -145,6 +186,7 @@ export class VaultSession {
     this.files.set(file.path, file);
     this.vaultIndex.upsert(file.path, file.text);
     if (file.path === FAVORITES_PATH) this.parsedFavorites = readFavorites(file);
+    if (isCalloutsFile(file.path)) this.callouts = readCallouts(this.files);
     if (isNew) {
       this.addFoldersAbove(file.path);
       this.tree = null;
@@ -156,6 +198,7 @@ export class VaultSession {
     if (!this.files.delete(path)) return;
     this.vaultIndex.remove(path);
     if (path === FAVORITES_PATH) this.parsedFavorites = NO_FAVORITES;
+    if (isCalloutsFile(path)) this.callouts = readCallouts(this.files);
     this.tree = null;
     this.emit({ kind: 'deleted', path });
   }
@@ -169,6 +212,7 @@ export class VaultSession {
     this.vaultIndex.upsert(to.path, to.text);
     // The folder moved from stays on disk, emptied; the one moved to is there now.
     this.addFoldersAbove(to.path);
+    if (isCalloutsFile(from) || isCalloutsFile(to.path)) this.callouts = readCallouts(this.files);
     this.tree = null;
     this.emit({ kind: 'renamed', from, to: to.path });
   }
@@ -242,4 +286,26 @@ export class VaultSession {
 
 function readFavorites(file: StoredFile | undefined): ParsedFavorites {
   return file === undefined ? NO_FAVORITES : parseFavorites(file.text);
+}
+
+/**
+ * The callouts file, read; a malformed one reads as nothing (and why), and
+ * its conflict copies are then left alone too, as nothing is merged into
+ * a file that cannot be written.
+ */
+function readCallouts(files: ReadonlyMap<VaultPath, StoredFile>): CalloutsRead {
+  const file = files.get(CALLOUTS_PATH);
+  const parsed = file === undefined ? null : parseCalloutSettings(file.text);
+  if (parsed?.kind === 'malformed') return { ...NO_CALLOUTS, problem: parsed.reason };
+  const copies = [...files.keys()].filter(isCalloutsConflictCopy).sort();
+  const copied = copies
+    .map((path) => parseCalloutSettings(files.get(path)?.text ?? ''))
+    .filter((read) => read.kind === 'ok')
+    .map((read) => read.settings);
+  const settings = parsed?.settings ?? NO_CALLOUT_SETTINGS;
+  return {
+    settings: copies.length === 0 ? settings : mergeCalloutSettings(settings, copied),
+    problem: null,
+    copies,
+  };
 }

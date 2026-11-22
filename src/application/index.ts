@@ -37,3 +37,14 @@ export {
 } from '../domain/markdown/index.ts';
 export { IMAGE_PICKER_ACCEPT } from '../domain/attachments/index.ts';
 export { FAVORITES_PATH } from '../domain/favorites/index.ts';
+export {
+  BUILT_IN_CALLOUTS,
+  CALLOUT_HUES,
+  CALLOUT_ICONS,
+  CALLOUTS_PATH,
+  checkCalloutDraft,
+  kindAfterChange,
+  MAX_CALLOUT_LABEL,
+  offeredCallouts,
+  resolveCallout,
+} from '../domain/callouts/index.ts';

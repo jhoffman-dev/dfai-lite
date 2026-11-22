@@ -1,4 +1,9 @@
-import { calloutLabel, formatCalloutMarker, parseCalloutMarker } from './callout.ts';
+import {
+  calloutLabel,
+  formatCalloutMarker,
+  parseCalloutMarker,
+  withCalloutKind,
+} from './callout.ts';
 
 describe('parseCalloutMarker', () => {
   it('reads a bare callout', () => {
@@ -28,8 +33,8 @@ describe('parseCalloutMarker', () => {
     });
   });
 
-  it('lowercases the kind so styling is predictable', () => {
-    expect(parseCalloutMarker('[!NOTE]')?.kind).toBe('note');
+  it('keeps the kind as written, so a note’s casing round-trips', () => {
+    expect(parseCalloutMarker('[!NOTE]')?.kind).toBe('NOTE');
   });
 
   it('accepts a hyphenated kind', () => {
@@ -67,5 +72,19 @@ describe('calloutLabel', () => {
 
   it('falls back to the capitalised kind', () => {
     expect(calloutLabel({ kind: 'warning', title: null, fold: null })).toBe('Warning');
+  });
+});
+
+describe('withCalloutKind', () => {
+  it('changes only the kind, keeping the quote, fold, title and body bytes', () => {
+    expect(withCalloutKind('> [!NOTE]- Read *this*\n>  body  \n', 'warning')).toBe(
+      '> [!warning]- Read *this*\n>  body  \n',
+    );
+    expect(withCalloutKind('  >[!tip]\r\n> x', 'bug')).toBe('  >[!bug]\r\n> x');
+  });
+
+  it('returns null for text that does not open with a callout', () => {
+    expect(withCalloutKind('> plain quote', 'note')).toBeNull();
+    expect(withCalloutKind('[!note] no quote', 'note')).toBeNull();
   });
 });

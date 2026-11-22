@@ -8,6 +8,15 @@ export { renameFolder, type RenameFolderResult } from './rename-folder.ts';
 export { deleteNote } from './delete-note.ts';
 export { reorderFavorite, toggleFavoriteNote, writeFavorites } from './favorites.ts';
 export {
+  deleteCalloutType,
+  notesUsingCalloutType,
+  replaceUnreadableCallouts,
+  saveCalloutType,
+  setBuiltInCalloutHidden,
+  UnreadableCalloutsError,
+  type SaveCalloutTypeResult,
+} from './callouts.ts';
+export {
   createFolder,
   deleteFolder,
   moveFolderInto,
