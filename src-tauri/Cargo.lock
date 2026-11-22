@@ -601,6 +601,7 @@ dependencies = [
  "notify",
  "objc2",
  "objc2-foundation",
+ "percent-encoding",
  "serde",
  "serde_json",
  "tauri",

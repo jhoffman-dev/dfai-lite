@@ -3,12 +3,14 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { TableKit } from '@tiptap/extension-table';
 import type { NoteSuggestion } from '../../domain/links/index.ts';
 import type { TagSuggestion } from '../../domain/tags/index.ts';
+import { BlockDrop } from './block-drop.ts';
+import { BlockHandle } from './block-handle.ts';
 import { BlockId } from './block-id.ts';
 import { Callout } from './callout.ts';
 import { codeLanguages } from './code-grammars.ts';
 import { CodeHighlight } from './code-highlight.ts';
 import { ControlKeys } from './control-keys.ts';
-import { VaultImage } from './image.tsx';
+import { VaultImage, type ImageOptions } from './image.tsx';
 import { RawBlock } from './raw-block.ts';
 import { SlashCommands, type SlashCommandView } from './slash-commands.ts';
 import { TableAlign } from './table-align.ts';
@@ -30,7 +32,7 @@ export function createEditorExtensions({
   onTagView,
   onOpenTag,
   createNote,
-  loadImage,
+  images,
 }: {
   suggest: (query: string) => readonly NoteSuggestion[];
   onView: (view: WikiSuggestionView | null) => void;
@@ -42,7 +44,8 @@ export function createEditorExtensions({
   onOpenTag: (name: string, click: MouseEvent) => void;
   /** Makes a note of a name typed after `[[` that no note has. */
   createNote: (name: string) => void;
-  loadImage: (src: string) => Promise<string | null>;
+  /** How the note's pictures are shown, and pasted or dropped ones saved. */
+  images: ImageOptions;
 }) {
   return [
     StarterKit.configure({
@@ -51,6 +54,7 @@ export function createEditorExtensions({
       link: { openOnClick: false },
       // Colored by `CodeHighlight`, whose grammars load on first use.
       codeBlock: { languageClassPrefix: 'language-' },
+      // Where a dragged block will land: a line drawn by the stylesheet, in the accent.
       dropcursor: { color: false, width: 2, class: 'editor-drop-line' },
       // Replaced by `TrailingLine`, which also leaves room to type after a last picture.
       trailingNode: false,
@@ -67,9 +71,11 @@ export function createEditorExtensions({
     ControlKeys,
     RawBlock,
     TagHighlight.configure({ onOpen: onOpenTag }),
-    VaultImage.configure({ loadImage }),
+    VaultImage.configure(images),
     WikiLinkSuggestion.configure({ suggest, onView, createNote }),
     TagSuggestionExtension.configure({ suggest: suggestTags, onView: onTagView }),
     SlashCommands.configure({ onView: onSlashView }),
+    BlockHandle,
+    BlockDrop,
   ];
 }

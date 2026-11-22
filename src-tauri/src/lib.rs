@@ -2,6 +2,7 @@
 //! files inside the chosen vault, watches it, and runs fixed-shape `git`
 //! commands there. It decides nothing; the rules are in TypeScript.
 
+mod binary;
 mod files;
 mod git;
 mod menu;
@@ -36,6 +37,9 @@ pub fn run() {
             vault::read_ignore_file,
             vault::write_ignore_file,
             vault::find_unsyncable,
+            binary::read_binary_file,
+            binary::write_binary_file,
+            binary::file_exists,
             git::git_run,
             git::mac_name,
             settings::read_settings,

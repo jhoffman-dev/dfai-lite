@@ -33,6 +33,7 @@ and the index disagree, the note is right.
 | `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                 |
 | `Resources/`             | Reference material and permanent notes.                         |
 | `Archive/`               | Finished or dormant. Move here; do not delete.                  |
+| `attachments/`           | Pictures pasted or dropped into notes.                          |
 | `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.       |
 | `_index/`                | Generated. Never edit.                                          |
 | `.dfai-lite/`            | The app's own state (favorites). Leave it alone.                |
@@ -49,6 +50,13 @@ and the index disagree, the note is right.
   projects and earlier meetings whenever they are mentioned: links are how
   notes are found later. A link to a note that does not exist yet is fine.
 - File names: plain words, no `/ \ : * ? " < > | #  ^ [ ]`.
+- A picture is a file in `attachments/`, shown with a standard image whose
+  path is relative to the note and percent-encoded:
+  `![Chart](../attachments/Q3%20chart.png)`. A width in pixels goes after
+  the alt text, as Obsidian writes it: `![Chart|400](…)`. When a note or
+  folder moves, the app re-points markdown images (and the `[label]: path`
+  definitions images use) that would otherwise break; an HTML `<img>` is
+  left as written.
 
 ## A meeting note
 

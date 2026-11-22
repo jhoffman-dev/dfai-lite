@@ -26,7 +26,7 @@ test('the core loop: new note, link, favorite, search, tags, graph', async ({ pa
   await expect(page.getByRole('region', { name: 'Linked from' })).toContainText('Untitled');
 
   // Back returns to the first note, its text saved.
-  await page.goBack();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(title).toHaveValue('Untitled');
   await expect(editor).toContainText('Payday checklist');
 

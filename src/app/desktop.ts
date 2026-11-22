@@ -7,6 +7,7 @@ import {
   type VaultFiles,
 } from '../application/index.ts';
 import { systemClock, systemTimers } from '../adapters/clock/index.ts';
+import { webviewImageProbe } from '../adapters/image-probe/index.ts';
 import { createFileSettingsStore } from '../adapters/settings/index.ts';
 import {
   askYesNo,
@@ -101,6 +102,7 @@ async function composeDesktop({
   const services: AppServices = {
     ...{ files: gated, session, search, settings, sync, desktop, pendingEdits },
     clock: systemClock,
+    imageProbe: webviewImageProbe,
     loadMarkdown,
   };
   const start = () => {

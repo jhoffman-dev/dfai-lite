@@ -1,6 +1,7 @@
 import type { NoteSuggestion } from '../../domain/links/index.ts';
 import type { TagSuggestion } from '../../domain/tags/index.ts';
 import type { OpenIn } from '../panes/layout.ts';
+import type { EmbedImage } from './image-uploads.ts';
 
 /**
  * What the editor asks of the app, in one object the editor reads through a
@@ -17,6 +18,10 @@ export interface EditorBridge {
   openTag(name: string, openIn: OpenIn): void;
   /** What the webview can show for an image's source, or null when there is none. */
   loadImage(src: string): Promise<string | null>;
+  /** Hears which picture sources to load again; returns the way to stop. */
+  watchImages(listener: (src: string) => void): () => void;
+  /** Saves a picture pasted, dropped or picked into the note, and says how the note shows it. */
+  embedImage: EmbedImage;
   /** The view was built on `text`, the vault's: saves are based on it. */
   opened(text: string): void;
   /** The text changed: the view hands a reader, not the text, so a keystroke reads nothing. */

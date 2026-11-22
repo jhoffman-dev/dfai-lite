@@ -1,3 +1,4 @@
+import { ATTACHMENTS_FOLDER, INBOX_FOLDER } from './new-note.ts';
 import { fileNameOf, joinPath, noteTitle, VAULT_ROOT, type VaultPath } from './note-path.ts';
 import { isVisibleFolder, isVisibleNote } from './visibility.ts';
 
@@ -35,6 +36,22 @@ const NAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 /** Orders two names for display, falling back to code order so the order is total. */
 export function compareNames(left: string, right: string): number {
   return NAMES.compare(left, right) || (left < right ? -1 : left > right ? 1 : 0);
+}
+
+/**
+ * Orders two folders for display: by name, but the Inbox, at the top level,
+ * comes first, because it is where new notes land and are filed from; and
+ * `attachments`, where pasted pictures pile up, comes last, as in DFAI, so
+ * it is there when wanted and out of the way when not.
+ */
+function compareFolders(left: FolderNode, right: FolderNode): number {
+  return rankOf(left.path) - rankOf(right.path) || compareNames(left.name, right.name);
+}
+
+function rankOf(path: VaultPath): number {
+  const lower = path.toLowerCase();
+  if (lower === INBOX_FOLDER.toLowerCase()) return -1;
+  return lower === ATTACHMENTS_FOLDER ? 1 : 0;
 }
 
 interface Building {
@@ -77,9 +94,7 @@ function folderAt(root: Building, parts: readonly string[]): Building {
 }
 
 function finish(folder: Building): FolderNode {
-  const folders = [...folder.folders.values()]
-    .map(finish)
-    .sort((left, right) => compareNames(left.name, right.name));
+  const folders = [...folder.folders.values()].map(finish).sort(compareFolders);
   const notes = [...folder.notes].sort((left, right) =>
     compareNames(noteTitle(left), noteTitle(right)),
   );

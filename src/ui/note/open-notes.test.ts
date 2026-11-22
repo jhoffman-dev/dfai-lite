@@ -16,7 +16,7 @@ const PLAN = 'Projects/Larkspur Payroll.md';
 const COPY = 'Projects/Larkspur Payroll (conflict 2026-11-21).md';
 
 const tabOnPlan = (id: string) => ({
-  tabs: [{ id, view: { kind: 'note' as const, path: PLAN }, source: false }],
+  tabs: [{ id, view: { kind: 'note' as const, path: PLAN }, source: false, back: [], forward: [] }],
   activeTab: id,
 });
 
@@ -37,6 +37,7 @@ async function setup() {
     session,
     settings: new MemorySettingsStore(),
     clock: new FixedClock(new Date(2026, 10, 21, 9, 0)),
+    imageProbe: { canShow: async () => true },
     search: new SimpleSearchEngine(),
     sync: null,
     desktop: null,

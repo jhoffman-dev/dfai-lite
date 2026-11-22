@@ -28,5 +28,11 @@ export {
   KEEP_FILE,
 } from '../domain/vault/index.ts';
 export { isConflictCopyPath } from '../domain/sync/index.ts';
-export { calloutLabel } from '../domain/markdown/index.ts';
+export {
+  calloutLabel,
+  fitsInTableCell,
+  resizedImageWidth,
+  TABLE_CELL_TYPES,
+} from '../domain/markdown/index.ts';
+export { IMAGE_PICKER_ACCEPT } from '../domain/attachments/index.ts';
 export { FAVORITES_PATH } from '../domain/favorites/index.ts';

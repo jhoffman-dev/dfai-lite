@@ -39,8 +39,10 @@ export function createCommands({
       if (path !== null) ui.setState({ paletteOpen: false, moving: { kind: 'note', path } });
     },
     'palette.open': () => ui.setState({ paletteOpen: true }),
+    'history.back': () => workspace.step('back'),
+    'history.forward': () => workspace.step('forward'),
     'tab.new': () => {
-      workspace.open(BLANK, 'new-tab', { replace: true });
+      workspace.open(BLANK, 'new-tab');
       ui.setState({ paletteOpen: true });
     },
     'tab.close': () => {

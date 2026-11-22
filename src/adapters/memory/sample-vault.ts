@@ -19,6 +19,8 @@ export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
     'Moving Larkspur onto the new payroll system by the **end of the quarter**. #project/active\n\n## Goals\n\n- Parallel run for two pay cycles.\n- Sign-off from [[Mara Quill]].\n\n## Cut-over\n\n- [x] Freeze changes in the old system\n- [ ] Run the second parallel cycle\n- [ ] Switch the bank file\n\n| Cycle | Date | Status |\n| --- | --- | --- |\n| First | 2026-11-28 | Planned |\n| Second | 2026-12-12 | Planned |\n\n```bash\npayroll export --cycle 1 --to staging\n```\n\n## Links\n\n- [[2026-11-14 Larkspur kickoff]]\n- [[2026-11-21 Weekly sync]]\n- [[Data migration plan]]\n',
   'Projects/Data migration plan.md':
     'How employee records move from the old system. #project/active #payroll\n\n1. Export from the old system.\n2. Validate with [[Tobias Fenn]].\n3. Load into staging.\n\n```\n#not-a-tag inside code\n```\n',
+  'Projects/Pay run report.md':
+    'How the parallel pay runs compare, month by month. #project/active #payroll\n\n![Pay runs by month|320](../attachments/Pay%20runs.png)\n\nThe fourth month is the parallel run with [[Larkspur Payroll]].\n',
   'Projects/Garden shed.md':
     'Building a shed at the bottom of the garden. #project/someday\n\nNeeds a [[Materials list]].\n',
   'Meetings/2026/11/2026-11-14 Larkspur kickoff.md':
@@ -34,7 +36,17 @@ export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
   [FAVORITES_PATH]: '[\n  "Projects/Larkspur Payroll.md",\n  "Welcome.md"\n]\n',
 };
 
+/** A small bar chart, 320 by 180, as a PNG: the picture `Pay run report` shows. */
+const PAY_RUNS_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAUAAAAC0CAIAAABqhmJGAAACvklEQVR42u3VIQ5AABTHYfc/gCzJJgqSIEoOIJggCA6gagJ725vvv98J3vbtFeexSUpa4QQSwJIAlgSwBLAkgCUBLAlgCWBJAEsCWAJYEsCSAJYEsASwJIAlASwJYAlgSQBLAlgCWBLAkgCWBLAEsCSAJQEsCWAJYEkASwJYAlgSwJIAlgSwBLAkgCUBLAHsChLAkgCWBLAEsCSAJQEsCWAJYEkASwJYAlgSwJIAlgSwBLD0qqlbwgJYAhhgCWCABTDAAAtggCWAARbAAAMsgAEGWAADLAEMsAAGGGABDLAEMMASwAALYIABFsAASwADLIABBlgAAywBDLAEMMACGGCABTDAEsAAC2CAARbAAAP8VDP3YQEMMMAAAwywAAYYYIABBhhggAEGGGCAAQYYYID/AHhtu7AABhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAVZKwPtYhQUwwAADDDDAAAMMMMAAAwwwwAADDDDAAAMMMMAAAyyAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggFMCroclLIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABBhhggAEGGGCAAQYYYIABzg24NLPXS/OBJX0bwBLAkgCWBLAEsCSAJQEsCWAJYEkASwJYAlgSwJIAlgSwBLAkgCUBLOneBXZ7CeTJfFmiAAAAAElFTkSuQmCC';
+
+/** The sample vault's pictures, by path. */
+export function samplePictures(): Record<VaultPath, Uint8Array> {
+  const bytes = Uint8Array.from(atob(PAY_RUNS_PNG), (char) => char.charCodeAt(0));
+  return { 'attachments/Pay runs.png': bytes };
+}
+
 /** A fresh vault folder in memory holding the sample vault. */
 export function sampleVaultFiles(): MemoryVaultFiles {
-  return MemoryVaultFiles.of(SAMPLE_VAULT);
+  return MemoryVaultFiles.of(SAMPLE_VAULT, [], [], samplePictures());
 }

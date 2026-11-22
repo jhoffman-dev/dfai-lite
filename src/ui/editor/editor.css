@@ -529,6 +529,60 @@
   min-width: 0;
 }
 
+/* ---- block handle: DFAI's editor.css (#569) and touch.css (#659) ---- */
+
+/* One ⋮⋮ for the whole note, moved beside the block under the pointer. Neutral
+   chrome: faint until it is pointed at, never in the text's own color. It is
+   placed against .editor-host, so it never moves the text. */
+.block-handle {
+  align-items: center;
+  border-radius: var(--radius-control);
+  color: var(--line-strong);
+  cursor: grab;
+  display: flex;
+  font-size: 12px;
+  height: 22px;
+  justify-content: center;
+  left: 0;
+  letter-spacing: -2px;
+  line-height: 1;
+  position: absolute;
+  top: 0;
+  user-select: none;
+  width: 18px;
+  z-index: 2;
+}
+
+.block-handle[hidden] {
+  display: none;
+}
+
+.block-handle:hover,
+.block-handle--open {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.block-handle:active {
+  cursor: grabbing;
+}
+
+/* A finger: the ⋮⋮ drawn as it is, with a 44px hit area round it that
+   reaches into the gutter, not the text; a hold opens no system callout. */
+@media (pointer: coarse) {
+  .block-handle::before {
+    content: '';
+    inset: -11px 0 -11px -26px;
+    position: absolute;
+  }
+
+  .block-handle {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 /* Where a dragged block will land. */
 .editor-drop-line {
   background: var(--focus);

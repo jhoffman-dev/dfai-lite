@@ -15,14 +15,41 @@ export function hostError(error: unknown): Error {
   if (message.startsWith('changed:')) return new FileChangedError(message.slice(8).trim());
   if (message.startsWith('exists:')) return new FileExistsError(message.slice(7).trim());
   if (message.startsWith('trash:')) return new TrashRefusedError(message.slice(6).trim());
+  if (message.startsWith(MISSING))
+    return new MissingFileError(message.slice(MISSING.length).trim());
   return new Error(message);
 }
 
-async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+async function call<T>(
+  command: string,
+  args?: Parameters<typeof invoke>[1],
+  options?: Parameters<typeof invoke>[2],
+): Promise<T> {
   try {
-    return await invoke<T>(command, args);
+    return await invoke<T>(command, args, options);
   } catch (error) {
     throw hostError(error);
+  }
+}
+
+/** The prefix the host's binary read gives a file that is not there (`src-tauri/src/binary.rs`). */
+const MISSING = 'missing:';
+
+/** A file the host found missing: a binary read answers it with null. */
+class MissingFileError extends Error {
+  override readonly name = 'MissingFileError';
+}
+
+/** The header `write_binary_file` reads the new file's path from, percent-encoded. */
+const PATH_HEADER = 'dfai-lite-path';
+
+/** The file's bytes, or null when it is not there; the host sends them raw, not as JSON. */
+async function readBinary(path: string): Promise<Uint8Array | null> {
+  try {
+    return new Uint8Array(await call<ArrayBuffer>('read_binary_file', { path }));
+  } catch (error) {
+    if (error instanceof MissingFileError) return null;
+    throw error;
   }
 }
 
@@ -39,6 +66,10 @@ export async function openTauriVaultFiles(folder: string): Promise<VaultFiles> {
     readAll: () => call<VaultSnapshot>('read_vault'),
     read: (path) => call<string | null>('read_file', { path }),
     write: ({ path, text, expected }) => call('write_file', { path, text, expected }),
+    readBinary,
+    exists: (path) => call<boolean>('file_exists', { path }),
+    writeBinary: ({ path, bytes }) =>
+      call('write_binary_file', bytes, { headers: { [PATH_HEADER]: encodeURIComponent(path) } }),
     rename: (from, to) => call('rename_file', { from, to }),
     createFolder: (path) => call('create_folder', { path }),
     removeFolder: (path) => call('remove_folder', { path }),

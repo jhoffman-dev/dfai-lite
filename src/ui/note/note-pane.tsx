@@ -1,6 +1,7 @@
-import { lazy, Suspense, use, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, use, useEffect, useMemo, useState } from 'react';
 import {
   createNoteFromLink,
+  embedImage,
   noteTitle,
   rankNoteSuggestions,
   rankTagSuggestions,
@@ -11,13 +12,15 @@ import type { Tab } from '../panes/layout.ts';
 import type { TabMemory } from '../panes/workspace.ts';
 import { useApp, type AppContextValue, type LoadMarkdown } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
-import { PageBar } from '../shell/page-bar.tsx';
+import { PageBar, type PageHistory } from '../shell/page-bar.tsx';
 import { useUi } from '../state/ui-store.ts';
 import { useVault } from '../state/vault-store.ts';
 import type { Autosave } from './autosave.ts';
 import { Backlinks } from './backlinks.tsx';
 import type { OpenNote } from './open-notes.ts';
 import { NoteFolderButton } from './note-folder-button.tsx';
+import { createNoteImages, type NoteImages } from './note-images.ts';
+import { useKeptScroll } from './kept-scroll.ts';
 import { NoteTitle } from './note-title.tsx';
 import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
@@ -31,7 +34,14 @@ import './note.css';
 export const preloadEditor = () => import('../editor/note-editor.tsx');
 const NoteEditor = lazy(() => preloadEditor().then(({ NoteEditor }) => ({ default: NoteEditor })));
 
-function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): EditorBridge {
+function editorBridge(
+  app: AppContextValue,
+  {
+    note: { saver, mirror },
+    path,
+    images,
+  }: { note: OpenNote; path: VaultPath; images: NoteImages },
+): EditorBridge {
   const { services, actions, deps } = app;
   const { autosave, opened } = saver;
   const index = services.session.index;
@@ -49,8 +59,17 @@ function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): Editor
         .catch(actions.report);
     },
     openTag: (name, openIn) => actions.openTag(name, openIn),
-    // Pictures are not read from the vault yet: each is drawn as its alt text.
-    loadImage: () => Promise.resolve(null),
+    loadImage: (src) => images.load(src),
+    watchImages: (listener) => images.watch(listener),
+    embedImage: (file, origin) =>
+      embedImage(
+        { ...deps, probe: services.imageProbe, clock: services.clock },
+        {
+          notePath: path,
+          image: { name: file.name, mimeType: file.type, size: file.size, origin },
+          readBytes: async () => new Uint8Array(await file.arrayBuffer()),
+        },
+      ),
     opened,
     changed: (read) => autosave.schedule(read),
     blurred: () => void autosave.flush(),
@@ -58,6 +77,17 @@ function editorBridge(app: AppContextValue, { saver, mirror }: OpenNote): Editor
       autosave.flush().then(mirror.settled, actions.report);
     },
   };
+}
+
+/** The pictures the note shows, read as the editor draws them, and let go when the pane goes. */
+function useNoteImages(app: AppContextValue, path: VaultPath): NoteImages {
+  const { files, session } = app.services;
+  const images = useMemo(
+    () => createNoteImages({ files, session, notePath: path }),
+    [files, session, path],
+  );
+  useEffect(() => () => images.release(), [images]);
+  return images;
 }
 
 /** Saves what is waiting when the page is hidden or closed, and when the note is left. */
@@ -123,25 +153,21 @@ function NoteView({
   );
 }
 
-/** Puts the tab's scroll back where it was left, and keeps it when the tab is hidden. */
-function useKeptScroll(memory: TabMemory) {
-  const article = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    const scroller = article.current?.closest<HTMLElement>('[role="tabpanel"]') ?? null;
-    if (scroller === null) return;
-    scroller.scrollTop = memory.scrollTop;
-    return () => {
-      memory.scrollTop = scroller.scrollTop;
-    };
-  }, [memory]);
-  return article;
-}
-
 /**
  * One note in one tab: its title, the editor or the rendered view, and what
  * links here. Keyed by tab and path. `focused`: the tab is the active pane's.
  */
-export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; focused: boolean }) {
+export function NotePane({
+  tab,
+  path,
+  focused,
+  history,
+}: {
+  tab: Tab;
+  path: VaultPath;
+  focused: boolean;
+  history: PageHistory;
+}) {
   const app = useApp();
   const { services, actions, ui, workspace } = app;
   const note = app.openNotes.get(app, path);
@@ -150,8 +176,12 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
   // Sync writes what is typed before it commits. A flush of its own per tab: the
   // tabs share the saver, and one closing must not take another's away.
   useEffect(() => services.pendingEdits.add(() => autosave.flush()), [services, autosave]);
-  const bridge = useMemo(() => editorBridge(app, note), [app, note]);
-  const memory = workspace.memoryOf(tab.id);
+  const images = useNoteImages(app, path);
+  const bridge = useMemo(
+    () => editorBridge(app, { note, path, images }),
+    [app, note, path, images],
+  );
+  const memory = workspace.memoryOf(tab.id, tab.view);
   const article = useKeptScroll(memory);
   const showSource = tab.source;
   const wantsEditor = useUi(
@@ -180,6 +210,7 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
   return (
     <article ref={article} className="note-pane" aria-label={noteTitle(path)}>
       <PageBar
+        history={history}
         icon={folderName(path) === null ? 'doc' : 'folder'}
         place={folderName(path)}
         name={noteTitle(path)}

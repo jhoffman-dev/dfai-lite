@@ -23,6 +23,8 @@ export default defineConfig({
           environment: 'jsdom',
           include: ['src/ui/**/*.test.{ts,tsx}', 'src/app/**/*.test.tsx'],
           setupFiles: ['./vitest.setup.ts'],
+          // Longer than the waits in vitest.setup.ts, so a wait that times out says why.
+          testTimeout: 20_000,
         },
       },
     ],

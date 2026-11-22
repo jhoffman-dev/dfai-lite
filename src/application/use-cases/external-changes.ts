@@ -1,3 +1,4 @@
+import { isImagePath } from '../../domain/attachments/index.ts';
 import { isTextFile, isVaultContent, type VaultPath } from '../../domain/vault/index.ts';
 import { refreshPaths, type VaultDeps } from './vault-deps.ts';
 
@@ -6,11 +7,12 @@ const READ_WHOLE_PAST = 100;
 
 /**
  * Brings the session in step with files changed on disk by someone else:
- * Claude Code, git, another editor. Each text file is read afresh; a change
- * the watcher names by folder (a folder moved) or to a file that is not
- * text, or a great many changes, reads the whole vault. Files the app just
- * wrote itself read back the same, and change nothing. Returns the paths
- * that changed in the session.
+ * Claude Code, git, another editor. Each text file is read afresh, and each
+ * picture is looked for, so a pasted image never reads the whole vault; a
+ * change the watcher names by folder (a folder moved) or to any other file,
+ * or a great many changes, reads the whole vault. Files the app just wrote
+ * itself read back the same, and change nothing. Returns the paths that
+ * changed in the session.
  */
 export async function applyExternalChanges(
   deps: VaultDeps,
@@ -18,10 +20,33 @@ export async function applyExternalChanges(
 ): Promise<VaultPath[]> {
   const relevant = paths.filter(isVaultContent);
   if (relevant.length === 0) return [];
-  if (relevant.length > READ_WHOLE_PAST || !relevant.every(isTextFile)) {
-    return reloadVault(deps);
+  const pictures = relevant.filter((path) => !isTextFile(path) && isImagePath(path));
+  const texts = relevant.filter(isTextFile);
+  const known = texts.length + pictures.length === relevant.length;
+  if (relevant.length > READ_WHOLE_PAST || !known) return reloadVault(deps);
+  const found = await refreshPictures(deps, pictures);
+  if (found === null) return reloadVault(deps);
+  return [...(await refreshPaths(deps, texts)), ...found];
+}
+
+/**
+ * Each picture looked for on disk and listed, or no longer, in the session;
+ * null when one cannot be read as a file (a folder named like a picture),
+ * so the caller reads the vault whole instead.
+ */
+async function refreshPictures(
+  { files, session }: VaultDeps,
+  paths: readonly VaultPath[],
+): Promise<VaultPath[] | null> {
+  for (const path of new Set(paths)) {
+    try {
+      session.applyOtherFile(path, await files.exists(path));
+    } catch {
+      // Not a file (a folder named like a picture, a link): a whole read settles it.
+      return null;
+    }
   }
-  return refreshPaths(deps, relevant);
+  return [...new Set(paths)];
 }
 
 /**

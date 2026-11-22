@@ -9,6 +9,12 @@ export interface SlashCommand {
   readonly run: (editor: Editor, range: Range) => void;
 }
 
+/**
+ * Raised on the editor's element by "Image", asking the note for a file. An
+ * event rather than a callback, so the note answers with what it holds now.
+ */
+export const IMAGE_REQUEST = 'lite:image-request';
+
 /** Only blocks the markdown serializer can write are offered. */
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
   {
@@ -89,6 +95,16 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
         .deleteRange(range)
         .insertTable({ rows: 3, cols: 2, withHeaderRow: true })
         .run(),
+  },
+  {
+    // As DFAI's "Image": clears the typed `/image`, so the picked image lands where it was typed.
+    id: 'image',
+    label: 'Image',
+    hint: '![]()',
+    run: (editor, range) => {
+      editor.chain().focus().deleteRange(range).run();
+      editor.view.dom.dispatchEvent(new CustomEvent(IMAGE_REQUEST, { bubbles: true }));
+    },
   },
   {
     id: 'divider',

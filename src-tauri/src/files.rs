@@ -42,7 +42,7 @@ pub fn write_guarded(
     expected: Option<&str>,
 ) -> Result<(), String> {
     let Some(expected) = expected else {
-        return create_new(target, label, text);
+        return create_new(target, label, text.as_bytes());
     };
     if read_text(target, label)?.as_deref() != Some(expected) {
         return Err(format!("{CHANGED} {label} changed since it was read"));
@@ -68,14 +68,37 @@ fn open_new(path: &Path) -> std::io::Result<fs::File> {
         .open(path)
 }
 
-fn create_new(target: &Path, label: &str, text: &str) -> Result<(), String> {
+/// Writes `bytes` as a new file, its folders made as needed, never over a
+/// file already there (`exists:`) and never through a link.
+pub fn create_new(target: &Path, label: &str, bytes: &[u8]) -> Result<(), String> {
+    place_new(target, label, |file| file.write_all(bytes))
+}
+
+/// Makes a new file by `write`: written beside under a temporary name, then
+/// moved to `target` without replacing anything, so a write that fails part
+/// way (a full disk) never leaves half a file under the real name for the
+/// watcher to list and sync to commit. The temporary goes either way.
+fn place_new(
+    target: &Path,
+    label: &str,
+    write: impl FnOnce(&mut fs::File) -> std::io::Result<()>,
+) -> Result<(), String> {
     make_parent(target)?;
-    let mut file = open_new(target).map_err(|error| match error.kind() {
-        ErrorKind::AlreadyExists => format!("{EXISTS} a file is already at {label}"),
-        _ => format!("cannot create {label}: {error}"),
-    })?;
-    file.write_all(text.as_bytes())
-        .map_err(|error| format!("cannot write {label}: {error}"))
+    let temp = temp_beside(target);
+    let written = open_new(&temp).and_then(|mut file| write(&mut file));
+    if let Err(error) = written {
+        // Gone already, or never made: either way nothing is left behind.
+        let _ = fs::remove_file(&temp);
+        return Err(format!("cannot write {label}: {error}"));
+    }
+    rename_exclusive(&temp, target).map_err(|error| {
+        // The name was taken, or the move failed: the temporary is let go.
+        let _ = fs::remove_file(&temp);
+        match error.kind() {
+            ErrorKind::AlreadyExists => format!("{EXISTS} a file is already at {label}"),
+            _ => format!("cannot create {label}: {error}"),
+        }
+    })
 }
 
 /// A temporary name beside `target` no other write uses: `.<name>.<pid>.<n>.dfai-lite-tmp`.
@@ -285,6 +308,34 @@ mod tests {
         assert!(write_guarded(&gone, "note", "x", Some("y"))
             .unwrap_err()
             .starts_with(CHANGED));
+    }
+
+    #[test]
+    fn a_new_file_that_fails_part_way_leaves_nothing_behind() {
+        let root = temp_folder();
+        let target = root.join("half.png");
+        let error = place_new(&target, "half.png", |file| {
+            file.write_all(b"half")?;
+            Err(std::io::Error::other("the disk is full"))
+        })
+        .unwrap_err();
+        assert!(error.contains("the disk is full"), "{error}");
+        assert!(!target.exists());
+        assert_eq!(
+            fs::read_dir(&root).unwrap().count(),
+            0,
+            "a temporary was left"
+        );
+    }
+
+    #[test]
+    fn a_new_file_refused_for_its_name_leaves_no_temporary() {
+        let root = temp_folder();
+        fs::write(root.join("a.png"), b"mine").unwrap();
+        let error = create_new(&root.join("a.png"), "a.png", b"new").unwrap_err();
+        assert!(error.starts_with(EXISTS), "{error}");
+        assert_eq!(fs::read(root.join("a.png")).unwrap(), b"mine");
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
     }
 
     #[test]

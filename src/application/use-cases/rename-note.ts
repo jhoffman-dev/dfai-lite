@@ -13,6 +13,7 @@ import {
   type VaultPath,
 } from '../../domain/vault/index.ts';
 import { writeFavorites } from './favorites.ts';
+import { filesNow, imagesFollowingMove } from './images-across-move.ts';
 import { writeFile, type VaultDeps } from './vault-deps.ts';
 
 export type RenameResult =
@@ -27,7 +28,8 @@ export type RenameResult =
 /**
  * Renames or moves a note to `to` (a full path, `.md` included), rewriting
  * every link the move would break, in every note, and following it in the
- * favorites. Refused when the new name breaks the file-name rules or
+ * favorites. Its pictures stay where they are; a relative image source the
+ * move would break is rewritten from the note's new folder, as DFAI does. Refused when the new name breaks the file-name rules or
  * another file already has the path, case aside.
  */
 export async function renameNote(
@@ -44,10 +46,17 @@ export async function renameNote(
   const resolvers = moveResolvers(notesAfterMove({ from, to }, index.paths()));
   const sources = index.linkSources([...linkKeysOf(from), ...linkKeysOf(to)]);
 
-  const own = retargetLinks(file.text, resolvers);
+  const links = retargetLinks(file.text, resolvers);
   await deps.files.rename(from, to);
   deps.session.applyRename(from, { path: to, text: file.text });
-  if (own.count > 0) await writeFile(deps, to, own.text);
+  const images = imagesFollowingMove({
+    text: links.text,
+    path: to,
+    move: { from, to },
+    exists: filesNow(deps),
+  });
+  const own = { text: images.text, count: links.count + images.count };
+  if (own.text !== file.text) await writeFile(deps, to, own.text);
 
   let retargeted = own.count;
   for (const source of sources) {

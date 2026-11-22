@@ -1,4 +1,5 @@
 import { systemClock } from '../adapters/clock/index.ts';
+import { webviewImageProbe } from '../adapters/image-probe/index.ts';
 import { sampleVaultFiles } from '../adapters/memory/index.ts';
 import { createLocalSettingsStore } from '../adapters/settings/index.ts';
 import { isTauri } from '../adapters/tauri/index.ts';
@@ -31,6 +32,7 @@ async function bootBrowser(): Promise<Boot> {
     search,
     settings: createLocalSettingsStore(window.localStorage),
     clock: systemClock,
+    imageProbe: webviewImageProbe,
     sync: null,
     desktop: null,
     pendingEdits: createPendingEdits(),
