@@ -111,7 +111,7 @@ export function RowMore({ row, onMenu }: { row: TreeRow; onMenu: (target: MenuTa
         onMenu(menuTargetOf(row, { x: box.left, y: box.bottom }));
       }}
     >
-      <Icon name="more" />
+      <Icon name="more" size={15} />
     </button>
   );
 }

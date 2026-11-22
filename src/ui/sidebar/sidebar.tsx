@@ -8,6 +8,7 @@ import { IS_MAC, keyFor } from '../shell/shortcuts.ts';
 import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { useVault } from '../state/vault-store.ts';
 import { SyncChip } from '../sync/sync-chip.tsx';
+import { ThemeSwitch } from '../theme/theme-switch.tsx';
 import { FavoritesSection } from './favorites-section.tsx';
 import { FolderTree } from './folder-tree.tsx';
 import { menuItemsFor, type MenuTarget } from './menu-items.ts';
@@ -68,24 +69,25 @@ export function Sidebar({ route }: { route: Route }) {
         <FolderTree activePath={activePath} onMenu={setMenu} />
       </div>
       <footer className="sidebar-footer">
+        <button
+          type="button"
+          className="sidebar-settings"
+          onClick={() => ui.setState({ settingsOpen: true })}
+        >
+          <Icon name="gear" size={15} />
+          <span>Settings</span>
+        </button>
         {services.sync === null ? null : <SyncChip sync={services.sync} />}
         <button
           type="button"
-          className="quiet-button sidebar-shortcuts"
+          className="icon-button sidebar-shortcuts"
           aria-label="Keyboard shortcuts"
           title={`Keyboard shortcuts (${keyFor('help.shortcuts', host)})`}
           onClick={() => ui.setState({ shortcutsOpen: true })}
         >
-          <Icon name="keyboard" />
+          <Icon name="keyboard" size={15} />
         </button>
-        <button
-          type="button"
-          className="quiet-button sidebar-settings"
-          onClick={() => ui.setState({ settingsOpen: true })}
-        >
-          <Icon name="gear" />
-          <span>Settings</span>
-        </button>
+        <ThemeSwitch />
       </footer>
       {menu === null ? null : (
         <RowMenu

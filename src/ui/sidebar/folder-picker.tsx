@@ -4,6 +4,7 @@ import type { FolderNode, VaultEntry, VaultPath } from '../../domain/vault/index
 import { useApp } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { useVault } from '../state/vault-store.ts';
+import '../search/search.css';
 import './folder-picker.css';
 
 type Choice =
@@ -89,30 +90,36 @@ export function FolderPicker({ entry, onClose }: { entry: VaultEntry; onClose: (
 
   return (
     <div
-      className="dialog-scrim"
+      className="palette__backdrop"
       onPointerDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div className="palette folder-picker" role="dialog" aria-modal="true" aria-label="Move to">
-        <div className="folder-picker-title">Move “{name}” to…</div>
-        <input
-          className="palette-input"
-          role="combobox"
-          aria-label="Folder"
-          aria-expanded={choices.length > 0}
-          aria-controls="folder-picker-results"
-          aria-activedescendant={choices.length > 0 ? `folder-choice-${current}` : undefined}
-          placeholder="Type to find a folder, or name a new one"
-          autoFocus
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setSelected(0);
-          }}
-          onKeyDown={onKeyDown}
-        />
+        <p className="palette__note">Move “{name}” to…</p>
+        <div className="palette__field">
+          <span className="palette__field-icon">
+            <Icon name="folder" size={17} />
+          </span>
+          <input
+            className="palette__input"
+            role="combobox"
+            aria-label="Folder"
+            aria-expanded={choices.length > 0}
+            aria-controls="folder-picker-results"
+            aria-activedescendant={choices.length > 0 ? `folder-choice-${current}` : undefined}
+            placeholder="Type to find a folder, or name a new one"
+            autoFocus
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSelected(0);
+            }}
+            onKeyDown={onKeyDown}
+          />
+          <kbd className="key">esc</kbd>
+        </div>
         <ul
           id="folder-picker-results"
-          className="palette-results"
+          className="palette__hits"
           role="listbox"
           aria-label="Folders"
         >
@@ -123,12 +130,14 @@ export function FolderPicker({ entry, onClose }: { entry: VaultEntry; onClose: (
               role="option"
               aria-selected={at === current}
               aria-disabled={choice.kind === 'folder' && choice.here}
-              className={`palette-row folder-choice is-${choice.kind}`}
+              className={`palette__hit folder-choice is-${choice.kind}${at === current ? ' palette__hit--on' : ''}`}
               onPointerMove={() => setSelected(at)}
               onClick={() => void choose(choice).catch(actions.report)}
             >
-              <Icon name={choice.kind === 'create' ? 'folder-plus' : 'folder'} />
-              <span className="palette-title">
+              <span className="palette__kind">
+                <Icon name={choice.kind === 'create' ? 'folder-plus' : 'folder'} size={15} />
+              </span>
+              <span className="palette__title">
                 {choice.kind === 'create'
                   ? choice.path === ''
                     ? 'New folder… (type its name above)'
@@ -138,7 +147,7 @@ export function FolderPicker({ entry, onClose }: { entry: VaultEntry; onClose: (
                     : choice.path}
               </span>
               {choice.kind === 'folder' && choice.here ? (
-                <span className="palette-folder">Here now</span>
+                <span className="key">Here now</span>
               ) : null}
             </li>
           ))}

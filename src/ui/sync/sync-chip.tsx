@@ -1,36 +1,37 @@
 import { useSyncExternalStore } from 'react';
 import { useApp } from '../services.ts';
+import { Icon } from '../shell/icons.tsx';
 import type { SyncControls, SyncStatus } from './sync-status.ts';
 import './sync.css';
 
 const timeOf = (moment: Date) =>
   moment.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-/** The words and the pastel a status is shown in. */
+/** The words a status is said in, and the tone of the sync light's dot (DFAI's tones). */
 export function describeSyncStatus(status: SyncStatus): { label: string; tone: string } {
   switch (status.kind) {
     case 'idle':
       return status.lastSyncedAt === null
-        ? { label: 'Not synced yet', tone: 'gray' }
-        : { label: `Synced ${timeOf(status.lastSyncedAt)}`, tone: 'green' };
+        ? { label: 'Not synced yet', tone: 'paused' }
+        : { label: `Synced ${timeOf(status.lastSyncedAt)}`, tone: 'ok' };
     case 'syncing':
-      return { label: 'Syncing…', tone: 'blue' };
+      return { label: 'Syncing…', tone: 'busy' };
     case 'offline':
-      return { label: 'Offline', tone: 'gray' };
+      return { label: 'Offline', tone: 'paused' };
     case 'needs-sign-in':
-      return { label: 'Needs sign-in', tone: 'red' };
+      return { label: 'Needs sign-in', tone: 'error' };
     case 'off':
-      return { label: 'Sync off', tone: 'gray' };
+      return { label: 'Sync off', tone: 'paused' };
     case 'blocked':
-      return { label: 'Sync paused', tone: 'red' };
+      return { label: 'Sync paused', tone: 'error' };
     case 'needs-confirmation':
-      return { label: `${status.count} missing`, tone: 'orange' };
+      return { label: `${status.count} missing`, tone: 'warning' };
     case 'error':
-      return { label: 'Sync stopped', tone: 'red' };
+      return { label: 'Sync stopped', tone: 'error' };
     case 'conflicts':
       return {
         label: status.count === 1 ? '1 conflict' : `${status.count} conflicts`,
-        tone: 'orange',
+        tone: 'warning',
       };
   }
 }
@@ -51,7 +52,8 @@ export function syncStatusDetail(status: SyncStatus): string | null {
 }
 
 /**
- * The sidebar footer's chip: where sync stands. Clicking it syncs now, or,
+ * The sidebar footer's sync light, DFAI's: a cloud with a dot in the status's
+ * tone, its words on hover. Clicking it syncs now, or,
  * when sync waits for a yes, opens Settings where the question is.
  */
 export function SyncChip({ sync }: { sync: SyncControls }) {
@@ -62,13 +64,14 @@ export function SyncChip({ sync }: { sync: SyncControls }) {
   return (
     <button
       type="button"
-      className={`sync-chip tone-${tone}`}
+      className={`sync-indicator sync-indicator--${tone}`}
       aria-label={`Sync status: ${label}. ${asks ? 'Open Settings' : 'Sync now'}`}
-      title={syncStatusDetail(status) ?? undefined}
+      title={[label, syncStatusDetail(status)].filter((line) => line !== null).join(' — ')}
       disabled={status.kind === 'syncing'}
       onClick={() => (asks ? ui.setState({ settingsOpen: true }) : sync.syncNow())}
     >
-      {label}
+      <Icon name="cloud" size={16} />
+      <span className="sync-indicator__dot" aria-hidden="true" />
     </button>
   );
 }

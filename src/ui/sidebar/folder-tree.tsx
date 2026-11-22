@@ -146,7 +146,7 @@ export function FolderTree({
           title="New folder"
           onClick={() => ui.setState({ namingFolderIn: '' })}
         >
-          <Icon name="folder-plus" />
+          <Icon name="folder-plus" size={15} />
         </button>
       </div>
       <div

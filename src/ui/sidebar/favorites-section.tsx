@@ -72,6 +72,14 @@ const FavoriteRow = memo(function FavoriteRow({
       </a>
       <button
         type="button"
+        className="sidebar-row-action is-on"
+        aria-label={`Remove ${noteTitle(path)} from favorites`}
+        onClick={() => actions.toggleFavorite(path).catch(actions.report)}
+      >
+        <Icon name="star" filled />
+      </button>
+      <button
+        type="button"
         className="sidebar-row-action is-more"
         aria-label={`More for ${noteTitle(path)}`}
         title="More"
@@ -80,15 +88,7 @@ const FavoriteRow = memo(function FavoriteRow({
           onMenu({ kind: 'note', path, x: box.left, y: box.bottom, favoriteAt: at });
         }}
       >
-        <Icon name="more" />
-      </button>
-      <button
-        type="button"
-        className="sidebar-row-action is-on"
-        aria-label={`Remove ${noteTitle(path)} from favorites`}
-        onClick={() => actions.toggleFavorite(path).catch(actions.report)}
-      >
-        <Icon name="star" filled />
+        <Icon name="more" size={15} />
       </button>
     </li>
   );

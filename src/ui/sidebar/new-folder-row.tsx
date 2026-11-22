@@ -54,7 +54,7 @@ export function NewFolderRow({
 
   return (
     <div className="tree-new-folder" style={{ paddingLeft: indent }}>
-      <Icon name="folder" />
+      <Icon name="folder" size={15} />
       <input
         className="tree-new-folder-input"
         aria-label="New folder name"

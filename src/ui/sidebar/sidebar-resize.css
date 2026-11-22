@@ -1,35 +1,36 @@
 /* The sidebar's draggable edge, and the sidebar put away. A wide window only:
-   on a phone the sidebar is a drawer (app.css) and neither applies. */
-
+   on a phone the sidebar is a drawer (app.css) and neither applies. The edge
+   lights in the focus color, as the panes' divider does; the button that
+   brings the sidebar back is DFAI's `.shell__show`, a 32px icon button. */
 .sidebar-resizer,
 .sidebar-reveal {
   display: none;
 }
 
 @media (min-width: 721px) {
-  /* A hairline on the sidebar's border, with a wider grab area either side. */
+  /* Over the sidebar's hairline, with a wider grab area either side. */
   .sidebar-resizer {
+    bottom: 0;
+    cursor: col-resize;
     display: block;
+    left: calc(var(--sidebar-width) - 3px);
+    outline: none;
     position: fixed;
     top: 0;
-    bottom: 0;
-    left: calc(var(--sidebar-width) - 3px);
+    touch-action: none;
     width: 6px;
     z-index: 25;
-    cursor: col-resize;
-    touch-action: none;
-    outline: none;
   }
 
   .sidebar-resizer::after {
+    background: transparent;
+    bottom: 0;
     content: '';
+    left: 2px;
     position: absolute;
     top: 0;
-    bottom: 0;
-    left: 2px;
+    transition: background 120ms ease;
     width: 2px;
-    background: transparent;
-    transition: background 120ms;
   }
 
   .sidebar-resizer:hover::after,
@@ -42,8 +43,8 @@
   :root.is-resizing-sidebar,
   :root.is-resizing-sidebar * {
     cursor: col-resize !important;
-    user-select: none !important;
     -webkit-user-select: none !important;
+    user-select: none !important;
   }
 
   .app[data-sidebar='collapsed'] {
@@ -51,22 +52,31 @@
   }
 
   .app[data-sidebar='collapsed'] .app-sidebar {
-    visibility: hidden;
-    overflow: hidden;
     border-right: 0;
+    overflow: hidden;
+    padding: 0;
+    visibility: hidden;
   }
 
   .app[data-sidebar='collapsed'] .sidebar-resizer {
     display: none;
   }
 
+  /* Floats over the pane's bottom left, on the surface with a hairline. */
   .app[data-sidebar='collapsed'] .sidebar-reveal {
-    display: inline-flex;
-    position: fixed;
-    left: var(--space-2);
-    bottom: var(--space-2);
-    z-index: 25;
     background: var(--surface);
-    box-shadow: var(--shadow-popover);
+    border-radius: var(--radius-button);
+    bottom: 12px;
+    box-shadow: var(--shadow-soft);
+    display: inline-flex;
+    height: 32px;
+    left: 12px;
+    position: fixed;
+    width: 32px;
+    z-index: 25;
+  }
+
+  .app[data-sidebar='collapsed'] .sidebar-reveal:hover {
+    background: var(--hover);
   }
 }

@@ -183,10 +183,14 @@
   cursor: pointer;
   flex: none;
   line-height: 1;
-  margin-right: var(--sidebar-row-end);
   opacity: 0;
   padding: 3px 8px 3px 4px;
   transition: opacity 120ms ease;
+}
+
+/* The row's last control stops short of its end, as DFAI's do. */
+.sidebar-row-action:last-child {
+  margin-right: var(--sidebar-row-end);
 }
 
 .sidebar-row-action .icon {
@@ -297,8 +301,8 @@
 }
 
 /* ---- The foot ----
-   Settings first and widest, then the sync light and the shortcuts, in one
-   28px line above a hairline. */
+   DFAI's sidebar foot: Settings, the sync light, the shortcuts and the
+   theme button in one 28px line above a hairline. */
 .sidebar-footer {
   align-items: center;
   border-top: 1px solid var(--line);
@@ -309,30 +313,41 @@
   padding-top: 8px;
 }
 
-.sidebar-footer > .sidebar-settings {
+.sidebar-settings {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
   border-radius: var(--radius-row);
   color: var(--ink-2);
+  cursor: pointer;
+  display: flex;
   flex: 1;
+  font: inherit;
   font-size: var(--text-body);
   font-weight: 400;
   gap: 8px;
   height: var(--sidebar-row);
-  justify-content: flex-start;
-  order: -1;
   padding: 0 8px;
+  text-align: left;
+  transition: background 120ms ease;
 }
 
-.sidebar-footer > .sidebar-settings .icon,
-.sidebar-footer > .sidebar-shortcuts .icon {
+.sidebar-settings:hover {
+  background: var(--hover);
+}
+
+.sidebar-settings:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.sidebar-settings .icon {
   color: var(--ink-3);
-  height: 15px;
-  width: 15px;
 }
 
-.sidebar-footer > .sidebar-shortcuts {
+.sidebar-shortcuts,
+.sidebar-footer__theme {
   border-radius: var(--radius-row);
   color: var(--ink-3);
-  height: 28px;
-  padding: 0;
-  width: 28px;
 }

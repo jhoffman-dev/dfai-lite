@@ -86,7 +86,7 @@ export function SidebarReveal() {
   return (
     <button
       type="button"
-      className="quiet-button sidebar-reveal"
+      className="icon-button sidebar-reveal"
       aria-label="Show the sidebar"
       title={`Show the sidebar (${keyFor('sidebar.toggle', host)})`}
       onClick={() => actions.setSidebar({ collapsed: false })}
