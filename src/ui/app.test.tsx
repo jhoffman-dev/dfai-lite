@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { plainMarkdown } from '../application/testing/index.ts';
 import { giveElementsASize, renderApp } from './testing/render-app.tsx';
 
 const go = (hash: string) =>
@@ -42,6 +43,30 @@ describe('the sidebar', () => {
     expect(within(tree).queryByText('Mara Quill')).toBeNull();
     await user.click(within(tree).getByText('People'));
     expect(await within(tree).findByText('Mara Quill')).toBeInTheDocument();
+  });
+});
+
+describe('a note whose editor cannot load', () => {
+  it('shows its text and a way to try again, and the rest of the window keeps working', async () => {
+    const failed = Promise.reject(new Error('chunk failed to load'));
+    failed.catch(() => undefined);
+    let current: Promise<typeof plainMarkdown> = failed;
+    await renderApp({
+      loadMarkdown: ({ afresh = false } = {}) => {
+        if (afresh) current = Promise.resolve(plainMarkdown);
+        return current;
+      },
+    });
+    await go('#/note/Welcome.md');
+    expect(await screen.findByRole('alert')).toHaveTextContent('chunk failed to load');
+    expect(screen.getByRole('tree', { name: 'Notes' })).toBeInTheDocument();
+    // Clicked inside an awaited act, so React hears the fresh load land.
+    await act(async () => {
+      screen.getByRole('button', { name: 'Try again' }).click();
+    });
+    expect(await screen.findByRole('textbox', { name: 'Note markdown' })).toHaveValue(
+      'Hello. #help\n',
+    );
   });
 });
 

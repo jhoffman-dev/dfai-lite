@@ -9,7 +9,7 @@ import type { VaultPath } from '../../domain/vault/index.ts';
 import type { EditorBridge } from '../editor/bridge.ts';
 import type { Tab } from '../panes/layout.ts';
 import type { TabMemory } from '../panes/workspace.ts';
-import { useApp, type AppContextValue } from '../services.ts';
+import { useApp, type AppContextValue, type LoadMarkdown } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { useUi } from '../state/ui-store.ts';
 import { useVault } from '../state/vault-store.ts';
@@ -17,6 +17,7 @@ import type { Autosave } from './autosave.ts';
 import { Backlinks } from './backlinks.tsx';
 import type { OpenNote } from './open-notes.ts';
 import { NoteTitle } from './note-title.tsx';
+import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
 import './note.css';
 
@@ -100,7 +101,7 @@ function NoteView({
 }: {
   source: boolean;
   text: string;
-  loadMarkdown: AppContextValue['services']['loadMarkdown'];
+  loadMarkdown: LoadMarkdown;
   autoFocus: boolean;
   bridge: EditorBridge;
   note: OpenNote;
@@ -187,17 +188,22 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
         </div>
       </header>
       <div className="note-body">
-        <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
-          <NoteView
-            source={showSource}
-            text={file.text}
-            loadMarkdown={services.loadMarkdown}
-            autoFocus={focusEditor}
-            bridge={bridge}
-            note={note}
-            memory={memory}
-          />
-        </Suspense>
+        <LoadFailedBoundary
+          text={file.text}
+          onRetry={() => void services.loadMarkdown({ afresh: true }).catch(() => undefined)}
+        >
+          <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
+            <NoteView
+              source={showSource}
+              text={file.text}
+              loadMarkdown={services.loadMarkdown}
+              autoFocus={focusEditor}
+              bridge={bridge}
+              note={note}
+              memory={memory}
+            />
+          </Suspense>
+        </LoadFailedBoundary>
       </div>
       <Backlinks path={path} />
     </article>

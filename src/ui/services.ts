@@ -21,6 +21,12 @@ import type { VaultStore } from './state/vault-store.ts';
  * Typing not saved yet, by every open editor: sync writes it before it
  * commits. An editor adds its flush while open and takes it away on close.
  */
+/**
+ * The markdown port, loaded after the first paint: the same promise each
+ * call, a failed one included, until asked for `afresh`.
+ */
+export type LoadMarkdown = (options?: { afresh?: boolean }) => Promise<MarkdownPort>;
+
 export interface PendingEdits {
   add(flush: () => Promise<void>): () => void;
 }
@@ -38,7 +44,7 @@ export interface AppServices {
   readonly desktop: DesktopControls | null;
   readonly pendingEdits: PendingEdits;
   /** The markdown reader and writer the editor saves through, loaded with it after the first paint. */
-  readonly loadMarkdown: () => Promise<MarkdownPort>;
+  readonly loadMarkdown: LoadMarkdown;
 }
 
 /** The services plus the stores the components read slices of. */
