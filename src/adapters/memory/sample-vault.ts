@@ -28,7 +28,7 @@ export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
   'Areas/Health.md':
     'Keeping fit and sleeping well. #area/health\n\n- Walk every morning.\n- See [[Weekly review]].\n',
   'Resources/Weekly review.md':
-    'A checklist for the Friday review. #process\n\n- Empty the Inbox.\n- Check [[Larkspur Payroll]] next steps.\n- Plan next week.\n',
+    'A checklist for the Friday review. #process\n\n- Empty the Inbox.\n- Go through the [[Inbox/Reading list|reading list]].\n- Check [[Larkspur Payroll]] next steps.\n- Plan next week.\n',
   'Welcome.md':
     'Welcome to DFAI Lite, fast notes in a folder of markdown files on your Mac. #help\n\nLinks look like [[Larkspur Payroll]], tags like #idea. Following a link to a note that does not exist, such as [[Materials list]], creates it.\n',
   [FAVORITES_PATH]: '[\n  "Projects/Larkspur Payroll.md",\n  "Welcome.md"\n]\n',

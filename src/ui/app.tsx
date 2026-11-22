@@ -11,6 +11,9 @@ import { Icon } from './shell/icons.tsx';
 import { ShortcutsDialog } from './shell/shortcuts-dialog.tsx';
 import { useShortcuts } from './shell/use-shortcuts.ts';
 import { useStartRoute } from './shell/use-start-route.ts';
+import { FolderPicker } from './sidebar/folder-picker.tsx';
+import { SidebarResizer, SidebarReveal } from './sidebar/sidebar-resizer.tsx';
+import { sidebarWidthStyle } from './sidebar/sidebar-width.ts';
 import { Sidebar } from './sidebar/sidebar.tsx';
 import { useUi } from './state/ui-store.ts';
 import './theme.css';
@@ -40,6 +43,9 @@ function Shell() {
   const settingsOpen = useUi((state) => state.settingsOpen);
   const shortcutsOpen = useUi((state) => state.shortcutsOpen);
   const drawerOpen = useUi((state) => state.drawerOpen);
+  const moving = useUi((state) => state.moving);
+  const collapsed = useUi((state) => state.sidebarCollapsed);
+  const sidebarWidth = useUi((state) => state.sidebarWidth);
   useShortcuts();
   useWorkspaceSync();
   // The editor's code loads straight after the first paint, so ⌘N never waits for it.
@@ -51,10 +57,18 @@ function Shell() {
   useEffect(() => ui.setState({ drawerOpen: false }), [route, ui]);
 
   return (
-    <div className="app" data-drawer={drawerOpen ? 'open' : 'closed'}>
+    <div
+      className="app"
+      data-drawer={drawerOpen ? 'open' : 'closed'}
+      data-sidebar={collapsed ? 'collapsed' : 'shown'}
+      // The width kept on this device, there from the first paint.
+      style={collapsed ? undefined : sidebarWidthStyle(sidebarWidth)}
+    >
       <nav className="app-sidebar" aria-label="Sidebar">
         <Sidebar route={route} />
       </nav>
+      <SidebarResizer />
+      {collapsed ? <SidebarReveal /> : null}
       <div className="app-scrim" onClick={() => ui.setState({ drawerOpen: false })} />
       <main className="app-main">
         <div className="app-topbar">
@@ -96,6 +110,9 @@ function Shell() {
           <SettingsDialog onClose={() => ui.setState({ settingsOpen: false })} />
         </Suspense>
       ) : null}
+      {moving === null ? null : (
+        <FolderPicker entry={moving} onClose={() => ui.setState({ moving: null })} />
+      )}
       {shortcutsOpen ? (
         <ShortcutsDialog onClose={() => ui.setState({ shortcutsOpen: false })} />
       ) : null}

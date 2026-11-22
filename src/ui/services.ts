@@ -29,6 +29,8 @@ export type LoadMarkdown = (options?: { afresh?: boolean }) => Promise<MarkdownP
 
 export interface PendingEdits {
   add(flush: () => Promise<void>): () => void;
+  /** Saves what every open editor holds; a move waits on it, so nothing typed is left behind. */
+  flushAll(): Promise<void>;
 }
 
 /** What the composition root hands the UI: the open session and the ports it reads and writes. */

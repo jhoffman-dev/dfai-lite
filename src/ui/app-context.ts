@@ -13,7 +13,11 @@ export function createAppContext(services: AppServices, storage: LayoutStorage):
   const { session, settings } = services;
   const deps = { files: services.files, session };
   const prefs = settings.load().ui;
-  const ui = createUiStore({ source: prefs.source });
+  const ui = createUiStore({
+    source: prefs.source,
+    sidebarCollapsed: prefs.sidebarCollapsed,
+    sidebarWidth: prefs.sidebarWidth,
+  });
   const exists = (path: string) => session.file(path) !== null;
   // A first launch with tabs reopens the note last open before them.
   const last = prefs.lastOpenPath;
@@ -31,6 +35,7 @@ export function createAppContext(services: AppServices, storage: LayoutStorage):
     settings,
     layout,
     workspace,
+    flushEdits: services.pendingEdits.flushAll,
     ...(confirm === undefined ? {} : { confirm }),
   });
   const vault = createVaultStore(session);

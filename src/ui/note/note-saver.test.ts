@@ -25,7 +25,7 @@ async function setup() {
     search: new SimpleSearchEngine(),
     sync: null,
     desktop: null,
-    pendingEdits: { add: () => () => undefined },
+    pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },
     loadMarkdown: () => Promise.resolve(plainMarkdown),
   };
   const app = createAppContext(services, memoryLayoutStorage());

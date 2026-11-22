@@ -15,6 +15,7 @@ export type Command =
   | 'note.new'
   | 'note.toggleSource'
   | 'note.rename'
+  | 'note.move'
   | 'palette.open'
   | 'tab.new'
   | 'tab.close'
@@ -26,6 +27,7 @@ export type Command =
   | 'pane.toggleSplit'
   | 'pane.focusLeft'
   | 'pane.focusRight'
+  | 'sidebar.toggle'
   | 'help.shortcuts';
 
 /** What each command does, in words: the keyboard shortcuts list reads these. */
@@ -34,6 +36,7 @@ export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
   'palette.open': 'Find or create a note',
   'note.toggleSource': 'Show the note as plain markdown, or back in the editor',
   'note.rename': 'Rename the note',
+  'note.move': 'Move the note to another folder',
   'tab.new': 'New tab',
   'tab.close': 'Close the tab',
   'tab.next': 'Next tab',
@@ -44,6 +47,7 @@ export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
   'pane.toggleSplit': 'Split right, or unsplit an empty pane',
   'pane.focusLeft': 'Go to the left pane',
   'pane.focusRight': 'Go to the right pane',
+  'sidebar.toggle': 'Show or hide the sidebar',
   'help.shortcuts': 'Keyboard shortcuts',
 };
 
@@ -79,6 +83,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, key: 'k' }, command: 'palette.open' },
   { chord: { mod: true, key: 'e' }, command: 'note.toggleSource' },
   { chord: { key: 'F2' }, command: 'note.rename' },
+  { chord: { mod: true, shift: true, code: 'KeyM' }, command: 'note.move' },
   { chord: { mod: true, code: 'KeyT' }, command: 'tab.new' },
   { chord: { alt: true, code: 'KeyT' }, browserOnly: true, command: 'tab.new' },
   { chord: { mod: true, code: 'KeyW' }, command: 'tab.close' },
@@ -96,6 +101,8 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, code: 'Backslash' }, command: 'pane.toggleSplit' },
   { chord: { mod: true, alt: true, code: 'ArrowLeft' }, command: 'pane.focusLeft' },
   { chord: { mod: true, alt: true, code: 'ArrowRight' }, command: 'pane.focusRight' },
+  // ⌘B is the editor's bold, so the sidebar takes ⌘⌥S.
+  { chord: { mod: true, alt: true, code: 'KeyS' }, command: 'sidebar.toggle' },
   { chord: { mod: true, code: 'Slash' }, command: 'help.shortcuts' },
 ];
 

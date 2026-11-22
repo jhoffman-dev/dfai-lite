@@ -15,6 +15,9 @@ const PATHS = {
   split: 'M2.5 3h11v10h-11ZM8 3v10',
   keyboard: 'M1.5 4h13v8h-13ZM4 6.5h1M7.5 6.5h1M11 6.5h1M4.5 9.5h7',
   code: 'M5.5 4.5 2 8l3.5 3.5m5-7L14 8l-3.5 3.5',
+  folder: 'M1.5 3.5h4.5l1.5 1.5h7v7.5h-13Z',
+  'folder-plus': 'M1.5 3.5h4.5l1.5 1.5h7v7.5h-13ZM8 7v4M6 9h4',
+  sidebar: 'M2 3h12v10H2ZM6 3v10',
 } as const;
 
 export type IconName = keyof typeof PATHS;

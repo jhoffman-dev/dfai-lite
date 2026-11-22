@@ -31,15 +31,16 @@ export async function applyExternalChanges(
  */
 export async function reloadVault(deps: VaultDeps): Promise<VaultPath[]> {
   const { files, session } = deps;
-  const { notes, otherPaths } = await files.readAll();
+  const { notes, otherPaths, folders } = await files.readAll();
   const onDisk = new Map(notes.map((file) => [file.path, file.text]));
   const changed = notes
     .filter((file) => session.file(file.path)?.text !== file.text)
     .map((file) => file.path);
   for (const file of session.allFiles()) if (!onDisk.has(file.path)) changed.push(file.path);
   const othersMoved = otherPaths.join('\0') !== session.otherPaths().join('\0');
-  if (changed.length > READ_WHOLE_PAST || othersMoved) {
-    session.load(notes, otherPaths);
+  const foldersMoved = folders.join('\0') !== [...session.folders()].sort().join('\0');
+  if (changed.length > READ_WHOLE_PAST || othersMoved || foldersMoved) {
+    session.load(notes, otherPaths, folders);
     return changed;
   }
   for (const path of changed) {

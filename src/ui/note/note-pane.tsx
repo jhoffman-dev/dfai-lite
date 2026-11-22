@@ -16,6 +16,7 @@ import { useVault } from '../state/vault-store.ts';
 import type { Autosave } from './autosave.ts';
 import { Backlinks } from './backlinks.tsx';
 import type { OpenNote } from './open-notes.ts';
+import { NoteFolderButton } from './note-folder-button.tsx';
 import { NoteTitle } from './note-title.tsx';
 import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
@@ -174,6 +175,7 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
       <header className="note-header">
         <NoteTitle path={path} focused={focused} beforeRename={autosave.flush} />
         <div className="note-tools">
+          <NoteFolderButton path={path} />
           <FavoriteToggle path={path} />
           <button
             type="button"

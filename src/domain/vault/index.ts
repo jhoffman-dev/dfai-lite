@@ -3,6 +3,7 @@ export {
   fileNameOf,
   folderOf,
   foldedPath,
+  foldersAbove,
   isNotePath,
   isWithin,
   joinPath,
@@ -19,12 +20,16 @@ export {
   forbiddenCharacter,
   noteNameProblem,
 } from './file-name.ts';
+export { folderNameProblem, folderPathProblem } from './folder-name.ts';
 export {
   APP_FOLDER,
   INDEX_FOLDER,
+  KEEP_FILE,
+  isDisposableFile,
   isHiddenPath,
   isTextFile,
   isVaultContent,
+  isVisibleFolder,
   isVisibleNote,
 } from './visibility.ts';
 export { DEFAULT_NOTE_NAME, INBOX_FOLDER, uniqueNotePath } from './new-note.ts';
@@ -35,3 +40,4 @@ export {
   type FolderNode,
   type TreeRow,
 } from './folder-tree.ts';
+export { pathMovedInto, type VaultEntry } from './moves.ts';

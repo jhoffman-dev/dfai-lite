@@ -74,7 +74,7 @@ export async function renderApp({
     clock: new FixedClock(),
     sync: null,
     desktop: null,
-    pendingEdits: { add: () => () => undefined },
+    pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },
     loadMarkdown,
   };
   return { services, layout, ...render(<App services={services} layoutStorage={layout} />) };

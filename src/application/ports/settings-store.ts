@@ -8,6 +8,10 @@ export interface UiPrefs {
   readonly lastOpenPath: VaultPath | null;
   /** The note's markdown as plain text (true), or the editor (false), when a note opens. */
   readonly source: boolean;
+  /** The sidebar's width in CSS pixels, as dragged; null for the default. */
+  readonly sidebarWidth: number | null;
+  /** Whether the sidebar is put away (a wide window only; a phone has its drawer). */
+  readonly sidebarCollapsed: boolean;
 }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
@@ -15,6 +19,8 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
   expandedFolders: [],
   lastOpenPath: null,
   source: false,
+  sidebarWidth: null,
+  sidebarCollapsed: false,
 };
 
 /** The key that makes a new note from anywhere on the Mac, as Tauri names keys. */

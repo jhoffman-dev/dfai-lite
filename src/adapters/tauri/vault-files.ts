@@ -40,6 +40,9 @@ export async function openTauriVaultFiles(folder: string): Promise<VaultFiles> {
     read: (path) => call<string | null>('read_file', { path }),
     write: ({ path, text, expected }) => call('write_file', { path, text, expected }),
     rename: (from, to) => call('rename_file', { from, to }),
+    createFolder: (path) => call('create_folder', { path }),
+    removeFolder: (path) => call('remove_folder', { path }),
+    renameFolder: (from, to) => call('rename_folder', { from, to }),
     remove: ({ path, expected, permanently }) =>
       call('delete_file', { path, expected, permanently }),
     readIgnoreFile: () => call<string | null>('read_ignore_file'),
