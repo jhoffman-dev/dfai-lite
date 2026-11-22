@@ -35,6 +35,7 @@ async function bootBrowser(): Promise<Boot> {
     imageProbe: webviewImageProbe,
     sync: null,
     desktop: null,
+    granola: null,
     pendingEdits: createPendingEdits(),
     loadMarkdown,
   };

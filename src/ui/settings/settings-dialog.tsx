@@ -6,6 +6,7 @@ import { describeSyncStatus, syncStatusDetail } from '../sync/sync-chip.tsx';
 import type { SyncControls } from '../sync/sync-status.ts';
 import { AppearanceSection } from './appearance-section.tsx';
 import type { DesktopControls, RemoteInfo } from './desktop-controls.ts';
+import { GranolaSection } from './granola-section.tsx';
 import { acceleratorOf, shortcutLabel } from './hotkey.ts';
 import './settings.css';
 
@@ -201,6 +202,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
               <HotkeySection desktop={desktop} />
             </>
           )}
+          <GranolaSection />
         </div>
       </div>
     </div>
