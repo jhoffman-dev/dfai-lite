@@ -1,6 +1,11 @@
 import {
   buildFolderTree,
   cleanNoteName,
+  folderNameProblem,
+  foldersAbove,
+  isDisposableFile,
+  isVisibleFolder,
+  pathMovedInto,
   flattenFolderTree,
   folderOf,
   isHiddenPath,
@@ -118,5 +123,53 @@ describe('the folder tree', () => {
       '1:Note 10',
       '0:Root',
     ]);
+  });
+});
+
+describe('folders', () => {
+  it('shows an empty folder the disk lists, but never a hidden one', () => {
+    const tree = buildFolderTree(
+      ['Inbox/Idea.md'],
+      ['Inbox', 'Areas', 'Areas/Garden', '_index', '.dfai-lite', 'Areas/.obsidian'],
+    );
+    expect(tree.folders.map((folder) => folder.path)).toEqual(['Areas', 'Inbox']);
+    expect(tree.folders[0]?.folders.map((folder) => folder.path)).toEqual(['Areas/Garden']);
+    expect(tree.folders[0]?.noteCount).toBe(0);
+    expect(isVisibleFolder('')).toBe(false);
+  });
+
+  it('names the folders above a path, nearest first', () => {
+    expect(foldersAbove('A/B/x.md')).toEqual(['A/B', 'A']);
+    expect(foldersAbove('x.md')).toEqual([]);
+  });
+
+  it('counts a keep file and .DS_Store as nothing in a folder', () => {
+    expect(isDisposableFile('Areas/.gitkeep')).toBe(true);
+    expect(isDisposableFile('Areas/.DS_Store')).toBe(true);
+    expect(isDisposableFile('Areas/plan.png')).toBe(false);
+  });
+
+  it('says why a typed folder name cannot be used, in a folder’s words', () => {
+    expect(folderNameProblem('Areas')).toBeNull();
+    expect(folderNameProblem('')).toMatch(/folder/);
+    expect(folderNameProblem('a/b')).toMatch(/folder’s name cannot hold \//);
+    expect(folderNameProblem('.git')).toMatch(/dot/);
+  });
+});
+
+describe('moving into a folder', () => {
+  it('keeps the name and lands under the folder, the root included', () => {
+    expect(pathMovedInto({ kind: 'note', path: 'Inbox/Idea.md' }, 'Projects')).toBe(
+      'Projects/Idea.md',
+    );
+    expect(pathMovedInto({ kind: 'note', path: 'Inbox/Idea.md' }, '')).toBe('Idea.md');
+    expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'Areas')).toBe('Areas/People');
+  });
+
+  it('is nothing when already there, and refused into itself or under itself', () => {
+    expect(pathMovedInto({ kind: 'note', path: 'Inbox/Idea.md' }, 'Inbox')).toBeNull();
+    expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'People')).toBeNull();
+    expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'People/Team')).toBeNull();
+    expect(pathMovedInto({ kind: 'folder', path: 'People' }, 'Peoples')).toBe('Peoples/People');
   });
 });

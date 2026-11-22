@@ -40,6 +40,15 @@ export function joinPath(folder: VaultPath, name: string): VaultPath {
   return folder === VAULT_ROOT ? name : `${folder}/${name}`;
 }
 
+/** The folders above a path, nearest first, the root left out: `A/B` and `A` for `A/B/x.md`. */
+export function foldersAbove(path: VaultPath): VaultPath[] {
+  const folders: VaultPath[] = [];
+  for (let folder = folderOf(path); folder !== VAULT_ROOT; folder = folderOf(folder)) {
+    folders.push(folder);
+  }
+  return folders;
+}
+
 /** How many folders deep a path is: 0 for a root file. */
 export function pathDepth(path: VaultPath): number {
   let depth = 0;

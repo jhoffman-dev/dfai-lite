@@ -7,6 +7,21 @@ export const INDEX_FOLDER = '_index';
 export const APP_FOLDER = '.dfai-lite';
 
 /**
+ * The empty file a new folder is made with, because git carries files, not
+ * folders: without it an empty folder never reaches the other Mac. Hidden,
+ * like every dot file, and left in place once the folder holds notes.
+ */
+export const KEEP_FILE = '.gitkeep';
+
+/** Files a folder may hold and still count as empty: its keep file, and Finder's `.DS_Store`. */
+const DISPOSABLE_FILES: ReadonlySet<string> = new Set([KEEP_FILE, '.DS_Store']);
+
+/** Whether a file is one an empty folder may hold, so removing the folder loses nothing. */
+export function isDisposableFile(path: VaultPath): boolean {
+  return DISPOSABLE_FILES.has(path.slice(path.lastIndexOf('/') + 1));
+}
+
+/**
  * Whether a path is kept out of the tree, the index and search: anything
  * under `_index/` or `.dfai-lite/`, and any file or folder whose name starts
  * with a dot (`.github/`, `.gitignore`).
@@ -31,6 +46,11 @@ export function isVaultContent(path: VaultPath): boolean {
 export function isTextFile(path: VaultPath): boolean {
   if (!isVaultContent(path)) return false;
   return isNotePath(path) || (path.startsWith(`${APP_FOLDER}/`) && /\.json$/i.test(path));
+}
+
+/** Whether a folder is one the tree shows: not `_index/`, not a dot folder, not packages. */
+export function isVisibleFolder(path: VaultPath): boolean {
+  return path !== '' && isVaultContent(path) && !isHiddenPath(path);
 }
 
 /** Whether a file is a note the app shows: markdown, and not hidden. */

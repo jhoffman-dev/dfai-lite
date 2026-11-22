@@ -20,8 +20,12 @@ export {
   flattenFolderTree,
   noteTitle,
   folderOf,
+  foldersAbove,
   joinPath,
   pathAfterMove,
+  pathMovedInto,
+  isWithin,
+  KEEP_FILE,
 } from '../domain/vault/index.ts';
 export { isConflictCopyPath } from '../domain/sync/index.ts';
 export { calloutLabel } from '../domain/markdown/index.ts';

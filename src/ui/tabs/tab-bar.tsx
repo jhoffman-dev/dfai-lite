@@ -1,7 +1,7 @@
 import { useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { noteTitle } from '../../application/index.ts';
 import type { Pane, Tab, TabView } from '../panes/layout.ts';
-import { Icon } from '../shell/icons.tsx';
+import { Icon, type IconName } from '../shell/icons.tsx';
 import { draggedTabId, isTabDrag, startTabDrag } from './tab-drag.ts';
 import './tabs.css';
 
@@ -15,6 +15,20 @@ export function tabTitle(view: TabView): string {
       return 'Graph';
     case 'home':
       return 'New tab';
+  }
+}
+
+/** The glyph before a tab's title, as DFAI draws a page's. */
+function tabGlyph(view: TabView): IconName {
+  switch (view.kind) {
+    case 'note':
+      return 'doc';
+    case 'tags':
+      return 'tag';
+    case 'graph':
+      return 'graph';
+    case 'home':
+      return 'plus';
   }
 }
 
@@ -93,7 +107,7 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
   return (
     <div
       ref={list}
-      className="tab-bar"
+      className="tab-strip__tabs"
       role="tablist"
       aria-label={paneIndex === 0 ? 'Tabs' : 'Tabs, right pane'}
       onDragOver={(event) => onDragOver(event, null)}
@@ -109,7 +123,7 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
           <div
             key={tab.id}
             id={tabElementId(tab.id)}
-            className={`tab${selected ? ' is-selected' : ''}${marker}`}
+            className={`tab-strip__item${selected ? ' tab-strip__item--active' : ''}${marker}`}
             role="tab"
             aria-selected={selected}
             aria-controls={panelElementId(paneIndex)}
@@ -130,10 +144,11 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
               onDragOver(event, tab.id);
             }}
           >
-            <span className="tab-title">{title}</span>
+            <Icon name={tabGlyph(tab.view)} size={15} />
+            <span className="tab-strip__title">{title}</span>
             <button
               type="button"
-              className="tab-close"
+              className="tab-strip__close"
               tabIndex={-1}
               aria-label={`Close ${title}`}
               onClick={(event) => {
@@ -141,7 +156,7 @@ export function TabBar({ pane, paneIndex, onActivate, onClose, onMenu, onMove }:
                 onClose(tab.id);
               }}
             >
-              <Icon name="close" />
+              <Icon name="close" size={14} />
             </button>
           </div>
         );

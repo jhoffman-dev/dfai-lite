@@ -11,11 +11,13 @@ import type { Tab } from '../panes/layout.ts';
 import type { TabMemory } from '../panes/workspace.ts';
 import { useApp, type AppContextValue, type LoadMarkdown } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
+import { PageBar } from '../shell/page-bar.tsx';
 import { useUi } from '../state/ui-store.ts';
 import { useVault } from '../state/vault-store.ts';
 import type { Autosave } from './autosave.ts';
 import { Backlinks } from './backlinks.tsx';
 import type { OpenNote } from './open-notes.ts';
+import { NoteFolderButton } from './note-folder-button.tsx';
 import { NoteTitle } from './note-title.tsx';
 import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
@@ -73,19 +75,25 @@ function useFlushOnLeave(autosave: Autosave): void {
   }, [autosave]);
 }
 
+/** The folder a note sits in, by its own name, as DFAI's breadcrumb reads it; null at the top. */
+function folderName(path: VaultPath): string | null {
+  const parts = path.split('/');
+  return parts.length > 1 ? (parts[parts.length - 2] ?? null) : null;
+}
+
 function FavoriteToggle({ path }: { path: VaultPath }) {
   const { actions } = useApp();
   const isFavorite = useVault((vault) => vault.favorites.includes(path));
   return (
     <button
       type="button"
-      className={`quiet-button note-star${isFavorite ? ' is-on' : ''}`}
+      className={`page-bar__button star${isFavorite ? ' star--on' : ''}`}
       aria-pressed={isFavorite}
       aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       onClick={() => actions.toggleFavorite(path).catch(actions.report)}
     >
-      <Icon name="star" filled={isFavorite} />
+      <Icon name="star" size={15} filled={isFavorite} />
     </button>
   );
 }
@@ -171,41 +179,50 @@ export function NotePane({ tab, path, focused }: { tab: Tab; path: VaultPath; fo
 
   return (
     <article ref={article} className="note-pane" aria-label={noteTitle(path)}>
-      <header className="note-header">
-        <NoteTitle path={path} focused={focused} beforeRename={autosave.flush} />
-        <div className="note-tools">
-          <FavoriteToggle path={path} />
+      <PageBar
+        icon={folderName(path) === null ? 'doc' : 'folder'}
+        place={folderName(path)}
+        name={noteTitle(path)}
+      >
+        <div className="page-bar__actions">
+          <NoteFolderButton path={path} />
           <button
             type="button"
-            className="quiet-button"
+            className="btn btn--ghost page-bar__action"
             aria-pressed={showSource}
             title="Show the markdown (⌘E)"
             onClick={actions.toggleSource}
           >
-            <Icon name="code" />
-            <span>Markdown</span>
+            <Icon name="code" size={15} />
+            <span className="page-bar__action-label">Markdown</span>
           </button>
         </div>
-      </header>
-      <div className="note-body">
-        <LoadFailedBoundary
-          text={file.text}
-          onRetry={() => void services.loadMarkdown({ afresh: true }).catch(() => undefined)}
-        >
-          <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
-            <NoteView
-              source={showSource}
-              text={file.text}
-              loadMarkdown={services.loadMarkdown}
-              autoFocus={focusEditor}
-              bridge={bridge}
-              note={note}
-              memory={memory}
-            />
-          </Suspense>
-        </LoadFailedBoundary>
+        <FavoriteToggle path={path} />
+      </PageBar>
+      <div className="page page--note">
+        <header className="page-head">
+          <NoteTitle path={path} focused={focused} beforeRename={autosave.flush} />
+        </header>
+        <div className="page__body">
+          <LoadFailedBoundary
+            text={file.text}
+            onRetry={() => void services.loadMarkdown({ afresh: true }).catch(() => undefined)}
+          >
+            <Suspense fallback={<pre className="note-editor-placeholder">{file.text}</pre>}>
+              <NoteView
+                source={showSource}
+                text={file.text}
+                loadMarkdown={services.loadMarkdown}
+                autoFocus={focusEditor}
+                bridge={bridge}
+                note={note}
+                memory={memory}
+              />
+            </Suspense>
+          </LoadFailedBoundary>
+        </div>
+        <Backlinks path={path} />
       </div>
-      <Backlinks path={path} />
     </article>
   );
 }

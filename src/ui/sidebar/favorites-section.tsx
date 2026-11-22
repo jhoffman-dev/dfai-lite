@@ -78,6 +78,18 @@ const FavoriteRow = memo(function FavoriteRow({
       >
         <Icon name="star" filled />
       </button>
+      <button
+        type="button"
+        className="sidebar-row-action is-more"
+        aria-label={`More for ${noteTitle(path)}`}
+        title="More"
+        onClick={(event) => {
+          const box = event.currentTarget.getBoundingClientRect();
+          onMenu({ kind: 'note', path, x: box.left, y: box.bottom, favoriteAt: at });
+        }}
+      >
+        <Icon name="more" size={15} />
+      </button>
     </li>
   );
 });

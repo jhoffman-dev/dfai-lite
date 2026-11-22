@@ -1,24 +1,30 @@
-/* The frame: the sidebar beside the main pane; a drawer on a phone. */
-
+/* The frame, as DFAI's shell.css draws it: the sidebar on the ground color
+   behind a hairline, the work edge to edge on the surface. A drawer on a phone. */
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   height: 100%;
+  /* The toast is placed against the window, as DFAI's against its main column. */
+  position: relative;
 }
 
 .app-sidebar {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
   background: var(--bg);
   border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--sidebar-pad) var(--sidebar-pad) 10px;
 }
 
 .app-main {
+  background: var(--surface);
   display: flex;
   flex-direction: column;
-  min-width: 0;
   min-height: 0;
+  min-width: 0;
   /* Each pane scrolls its own content (panes.css). */
   overflow: hidden;
 }
@@ -27,53 +33,13 @@
   display: none;
 }
 
-.app-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 6px var(--space-4);
-  border-bottom: 1px solid var(--line);
-  background: var(--well);
-  color: var(--ink-2);
-  font-size: var(--text-meta);
-}
-
-.app-banner button {
-  padding: 2px 6px;
-  font-size: inherit;
-}
-
-.app-notice {
-  position: fixed;
-  left: 50%;
-  bottom: var(--space-6);
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  max-width: min(480px, calc(100vw - 32px));
-  padding: 8px 8px 8px 14px;
-  border-radius: var(--radius-popover);
-  background: var(--surface);
-  box-shadow: var(--shadow-popover);
-  z-index: 40;
-}
-
 .app-empty {
+  color: var(--ink-3);
+  font-size: var(--text-body);
   margin: auto;
   max-width: 360px;
   padding: var(--space-6);
   text-align: center;
-  color: var(--ink-3);
-}
-
-.app-empty kbd,
-.sidebar kbd {
-  font-family: var(--font-ui);
-  font-size: var(--text-label);
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  padding: 0 4px;
 }
 
 .app-scrim {
@@ -86,36 +52,37 @@
   }
 
   .app-sidebar {
-    position: fixed;
     inset: 0 auto 0 0;
-    width: min(86vw, 320px);
-    z-index: 30;
+    position: fixed;
     transform: translateX(-100%);
     transition: transform 160ms ease;
+    width: min(86vw, 320px);
+    z-index: 30;
   }
 
   .app[data-drawer='open'] .app-sidebar {
-    transform: none;
     box-shadow: var(--shadow-popover);
+    transform: none;
   }
 
   .app[data-drawer='open'] .app-scrim {
+    background: var(--scrim);
     display: block;
-    position: fixed;
     inset: 0;
-    background: rgb(0 0 0 / 0.25);
+    position: fixed;
     z-index: 20;
   }
 
   .app-topbar {
-    display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: 6px var(--space-2);
+    background: var(--surface);
     border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 10px;
     position: sticky;
     top: 0;
-    background: var(--surface);
     z-index: 10;
   }
 

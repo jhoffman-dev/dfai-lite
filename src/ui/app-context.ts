@@ -7,13 +7,19 @@ import type { AppContextValue, AppServices } from './services.ts';
 import { createNoteActions } from './state/note-actions.ts';
 import { createUiStore } from './state/ui-store.ts';
 import { createVaultStore } from './state/vault-store.ts';
+import { browserThemeParts } from './theme/browser-theme.ts';
+import { createThemeController } from './theme/theme.ts';
 
 /** The stores and actions the components share, built once per app on its services. */
 export function createAppContext(services: AppServices, storage: LayoutStorage): AppContextValue {
   const { session, settings } = services;
   const deps = { files: services.files, session };
   const prefs = settings.load().ui;
-  const ui = createUiStore({ source: prefs.source });
+  const ui = createUiStore({
+    source: prefs.source,
+    sidebarCollapsed: prefs.sidebarCollapsed,
+    sidebarWidth: prefs.sidebarWidth,
+  });
   const exists = (path: string) => session.file(path) !== null;
   // A first launch with tabs reopens the note last open before them.
   const last = prefs.lastOpenPath;
@@ -31,6 +37,7 @@ export function createAppContext(services: AppServices, storage: LayoutStorage):
     settings,
     layout,
     workspace,
+    flushEdits: services.pendingEdits.flushAll,
     ...(confirm === undefined ? {} : { confirm }),
   });
   const vault = createVaultStore(session);
@@ -43,5 +50,11 @@ export function createAppContext(services: AppServices, storage: LayoutStorage):
     workspace,
     openNotes: createOpenNotes(session),
     actions,
+    // Made while the app first renders, so the stored theme is on the root before it paints.
+    theme: createThemeController({
+      settings,
+      ...browserThemeParts(window),
+      ...(services.desktop === null ? {} : { follow: services.desktop.followTheme }),
+    }),
   };
 }

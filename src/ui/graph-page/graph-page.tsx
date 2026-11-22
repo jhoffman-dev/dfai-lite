@@ -1,7 +1,8 @@
 import { lazy, Suspense, useMemo } from 'react';
 import { useApp } from '../services.ts';
+import { PageBar } from '../shell/page-bar.tsx';
 import { useVault } from '../state/vault-store.ts';
-import '../tags/tags.css';
+import './graph-page.css';
 
 // d3 loads with the graph, not with the first paint.
 const GraphView = lazy(() => import('../graph/index.ts'));
@@ -18,8 +19,8 @@ export function GraphPage({ activePath }: { activePath: string | null }) {
   );
   return (
     <div className="graph-page">
-      <h1 className="page-title">Graph</h1>
-      <Suspense fallback={<p className="tags-empty">Loading the graph…</p>}>
+      <PageBar icon="graph" place={null} name="Graph" />
+      <Suspense fallback={<p className="graph-page__loading">Loading the graph…</p>}>
         <GraphView
           graph={graph}
           activePath={activePath}

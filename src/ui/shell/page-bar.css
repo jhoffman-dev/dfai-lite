@@ -1,0 +1,141 @@
+/* A page's nav bar, DFAI's page.css (Page anatomy): 40px, a hairline under
+   it, the breadcrumb and a count beside the name, the page's own buttons and
+   the star, 28px controls. */
+
+/* Held at the top while the page scrolls under it: DFAI's bar is outside
+   its scroller, Lite's pane scrolls the whole tab. */
+.page-bar {
+  background: var(--page);
+  container: page-bar / inline-size;
+  flex: none;
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.page-bar__row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 4px;
+  height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.page-bar__row > .star {
+  flex: none;
+}
+
+.page-bar__crumbs {
+  align-items: center;
+  color: var(--ink-3);
+  display: flex;
+  font-size: var(--text-body);
+  gap: 6px;
+  margin-left: 6px;
+  min-width: calc(6.5em + 38px);
+  overflow: hidden;
+}
+
+.page-bar__crumbs > .icon {
+  flex: none;
+}
+
+.page-bar__parent {
+  flex-shrink: 4;
+  font-weight: 400;
+  min-width: 2.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-bar__name {
+  color: var(--ink);
+  font-weight: 500;
+  max-width: 420px;
+  min-width: 4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-bar__spacer {
+  flex: 1;
+}
+
+.page-bar__actions {
+  align-items: center;
+  display: flex;
+  flex: 0 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+.page-bar__actions > * {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.page-bar__action {
+  flex: 0 1 auto;
+  justify-content: flex-start;
+  min-width: 31px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* A button that shows something in place of the page reads as on while it does. */
+.page-bar__action[aria-pressed='true'] {
+  --btn-bg: var(--selected);
+}
+
+.page-bar__action > svg {
+  flex: none;
+}
+
+.page-bar__action-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DFAI's star in the nav bar: a 28px button, the star's own color when on. */
+.star {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 28px;
+}
+
+.star:hover {
+  background: var(--hover);
+}
+
+.star:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.star--on {
+  color: var(--star);
+}
+
+@container page-bar (max-width: 440px) {
+  .page-bar__action-label {
+    display: none;
+  }
+}

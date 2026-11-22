@@ -8,10 +8,10 @@ import { IS_MAC, keyFor } from '../shell/shortcuts.ts';
 import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { useVault } from '../state/vault-store.ts';
 import { SyncChip } from '../sync/sync-chip.tsx';
+import { ThemeSwitch } from '../theme/theme-switch.tsx';
 import { FavoritesSection } from './favorites-section.tsx';
 import { FolderTree } from './folder-tree.tsx';
 import { menuItemsFor, type MenuTarget } from './menu-items.ts';
-import { MoveDialog } from './move-dialog.tsx';
 import { RenameFolderDialog } from './rename-folder-dialog.tsx';
 import { RowMenu } from './row-menu.tsx';
 import './sidebar.css';
@@ -22,7 +22,6 @@ export function Sidebar({ route }: { route: Route }) {
   const host = useKeyHost();
   const favorites = useVault((vault) => vault.favorites);
   const [menu, setMenu] = useState<MenuTarget | null>(null);
-  const [moving, setMoving] = useState<VaultPath | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<VaultPath | null>(null);
   const activePath = route.kind === 'note' ? route.path : null;
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -70,24 +69,25 @@ export function Sidebar({ route }: { route: Route }) {
         <FolderTree activePath={activePath} onMenu={setMenu} />
       </div>
       <footer className="sidebar-footer">
+        <button
+          type="button"
+          className="sidebar-settings"
+          onClick={() => ui.setState({ settingsOpen: true })}
+        >
+          <Icon name="gear" size={15} />
+          <span>Settings</span>
+        </button>
         {services.sync === null ? null : <SyncChip sync={services.sync} />}
         <button
           type="button"
-          className="quiet-button sidebar-shortcuts"
+          className="icon-button sidebar-shortcuts"
           aria-label="Keyboard shortcuts"
           title={`Keyboard shortcuts (${keyFor('help.shortcuts', host)})`}
           onClick={() => ui.setState({ shortcutsOpen: true })}
         >
-          <Icon name="keyboard" />
+          <Icon name="keyboard" size={15} />
         </button>
-        <button
-          type="button"
-          className="quiet-button sidebar-settings"
-          onClick={() => ui.setState({ settingsOpen: true })}
-        >
-          <Icon name="gear" />
-          <span>Settings</span>
-        </button>
+        <ThemeSwitch />
       </footer>
       {menu === null ? null : (
         <RowMenu
@@ -98,13 +98,12 @@ export function Sidebar({ route }: { route: Route }) {
             actions,
             favorites,
             title: noteTitle,
-            askMove: setMoving,
+            askMove: (entry) => ui.setState({ moving: entry }),
             askRenameFolder: setRenamingFolder,
-            confirm: (message) => window.confirm(message),
+            startNewFolder: (parent) => ui.setState({ namingFolderIn: parent }),
           })}
         />
       )}
-      {moving === null ? null : <MoveDialog path={moving} onClose={() => setMoving(null)} />}
       {renamingFolder === null ? null : (
         <RenameFolderDialog path={renamingFolder} onClose={() => setRenamingFolder(null)} />
       )}

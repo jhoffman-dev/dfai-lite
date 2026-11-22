@@ -166,8 +166,24 @@ mod tests {
 
     /// The keys the page owns: the menu must leave every one of them alone.
     const PAGE_KEYS: &[&str] = &[
-        "Cmd+W", "Cmd+N", "Cmd+T", "Cmd+K", "Cmd+E", "Cmd+\\", "Cmd+/", "Cmd+1", "Cmd+2", "Cmd+3",
-        "Cmd+4", "Cmd+5", "Cmd+6", "Cmd+7", "Cmd+8", "Cmd+9",
+        "Cmd+W",
+        "Cmd+N",
+        "Cmd+T",
+        "Cmd+K",
+        "Cmd+E",
+        "Cmd+\\",
+        "Cmd+/",
+        "Cmd+1",
+        "Cmd+2",
+        "Cmd+3",
+        "Cmd+4",
+        "Cmd+5",
+        "Cmd+6",
+        "Cmd+7",
+        "Cmd+8",
+        "Cmd+9",
+        "Shift+Cmd+M",
+        "Alt+Cmd+S",
     ];
 
     fn entries() -> impl Iterator<Item = Entry> {

@@ -1,119 +1,166 @@
+/* The sidebar, as DFAI draws it (its sidebar.css and Sidebar.dc.html): quick
+   rows first, then sentence-case section labels over 28px icon rows, and the
+   foot under a hairline. DFAI's rules, on Lite's class names:
+     .sidebar-new, .sidebar-link   = .sidebar__item + .sidebar__row
+     .sidebar-heading              = .sidebar__disclosure (a label here)
+     .sidebar-row                  = .sidebar__item, .sidebar-row-main its row
+     .tree-row                     = .tree__row, .sidebar-row-label its name
+     .tree-count                   = .sidebar__count
+     .sidebar-settings             = .sidebar-footer__settings
+   The tree's rows carry DFAI's folder and page glyphs, drawn here as masks
+   because the rows' markup is the tree's own. */
+
+.app-sidebar {
+  --glyph-doc: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 3.5h6.8l4.7 4.7v11.3a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5v-14.5A1.5 1.5 0 0 1 7 3.5zM13.5 3.5v5h5' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --glyph-folder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.5 7.5A2 2 0 0 1 5.5 5.5h3.8l2 2.2h7.2a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* ---- The quick rows ---- */
+
 .sidebar-top {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 1px;
-  padding: var(--space-2);
 }
 
 .sidebar-new,
 .sidebar-link {
-  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  height: var(--row-height);
-  padding: 0 8px;
+  appearance: none;
+  background: none;
   border: 0;
   border-radius: var(--radius-row);
-  background: transparent;
   color: var(--ink-2);
-  text-decoration: none;
   cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 400;
+  gap: 8px;
+  height: var(--sidebar-row);
+  padding: 0 var(--sidebar-row-end) 0 8px;
   text-align: left;
-}
-
-.sidebar-new {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.sidebar-new kbd,
-.sidebar-link kbd {
-  margin-left: auto;
-  color: var(--ink-3);
+  text-decoration: none;
+  transition: background 120ms ease;
 }
 
 .sidebar-new:hover,
 .sidebar-link:hover {
   background: var(--hover);
-  color: var(--ink);
 }
 
 .sidebar-link[aria-current='page'] {
   background: var(--selected);
   color: var(--ink);
+  font-weight: 500;
 }
 
-.sidebar-scroll {
+.sidebar-new .icon,
+.sidebar-link .icon {
+  color: var(--ink-3);
+  height: 15px;
+  width: 15px;
+}
+
+.sidebar-link[aria-current='page'] .icon {
+  color: var(--ink);
+}
+
+.sidebar-new > span,
+.sidebar-link > span {
   flex: 1;
-  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- The sections ---- */
+
+.sidebar-scroll {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  gap: 6px;
+  min-height: 0;
 }
 
 .sidebar-section {
-  padding: 0 var(--space-2) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .sidebar-tree {
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
+/* The label sits at the foot of its 26px line. */
 .sidebar-heading {
-  margin: var(--space-2) 0 2px;
-  padding: 0 8px;
-  font-size: var(--text-label);
-  font-weight: 500;
+  align-items: flex-end;
   color: var(--ink-3);
+  display: flex;
+  font-size: var(--text-header);
+  font-weight: 500;
+  height: 26px;
+  margin: 0;
+  padding: 0 8px 4px;
 }
 
 .sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.sidebar-row,
-.tree-row {
-  display: flex;
+.sidebar-row {
   align-items: center;
-  gap: 4px;
-  height: var(--row-height);
   border-radius: var(--radius-row);
   color: var(--ink-2);
-  text-decoration: none;
-  cursor: pointer;
-  user-select: none;
+  display: flex;
+  font-size: var(--text-body);
+  font-weight: 400;
+  height: var(--sidebar-row);
+  transition: background 120ms ease;
 }
 
-.sidebar-row:hover,
-.tree-row:hover {
+.sidebar-row:hover {
   background: var(--hover);
-  color: var(--ink);
 }
 
 .sidebar-row.is-active,
-.tree-row.is-active {
+.sidebar-row.is-active:hover {
   background: var(--selected);
   color: var(--ink);
   font-weight: 500;
 }
 
+/* Where a dragged favorite will land. */
 .sidebar-row.is-drop-target {
   box-shadow: inset 0 2px 0 var(--focus);
 }
 
 .sidebar-row-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
   align-items: center;
-  height: 100%;
-  padding: 0 8px;
+  align-self: stretch;
+  border-radius: var(--radius-row);
   color: inherit;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 var(--sidebar-row-end) 0 8px;
   text-decoration: none;
+}
+
+.sidebar-row-main:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
 }
 
 .sidebar-row-label {
@@ -124,95 +171,183 @@
   white-space: nowrap;
 }
 
+/* DFAI's star: shown while the row is pointed at or focused, in the star's
+   own color since the row is a favorite. Opacity rather than display, so the
+   button keeps its place in the tab order and its name. */
 .sidebar-row-action {
-  display: none;
+  appearance: none;
+  background: none;
   border: 0;
-  background: transparent;
-  color: var(--hue-yellow-ink);
-  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  color: var(--star);
   cursor: pointer;
+  flex: none;
+  line-height: 1;
+  opacity: 0;
+  padding: 3px 8px 3px 4px;
+  transition: opacity 120ms ease;
+}
+
+/* The row's last control stops short of its end, as DFAI's do. */
+.sidebar-row-action:last-child {
+  margin-right: var(--sidebar-row-end);
+}
+
+.sidebar-row-action .icon {
+  height: 15px;
+  width: 15px;
 }
 
 .sidebar-row:hover .sidebar-row-action,
-.sidebar-row:focus-within .sidebar-row-action {
-  display: inline-flex;
+.sidebar-row-action:focus-visible {
+  opacity: 1;
 }
 
+.sidebar-row-action:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* ---- The tree ---- */
+
 .tree-scroller {
+  contain: strict;
   flex: 1;
   min-height: 0;
   overflow: auto;
-  contain: strict;
 }
 
 .tree-slot {
+  left: 0;
   position: absolute;
   top: 0;
-  left: 0;
   width: 100%;
 }
 
 .tree-row {
-  padding-right: 8px;
-}
-
-.tree-chevron {
-  display: inline-flex;
-  color: var(--ink-3);
-  transition: transform 100ms ease;
-}
-
-.tree-chevron.is-open {
-  transform: rotate(90deg);
-}
-
-.tree-count {
-  color: var(--ink-3);
-  font-size: var(--text-label);
-  font-variant-numeric: tabular-nums;
-}
-
-.sidebar-footer {
-  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-top: 1px solid var(--line);
-}
-
-.sidebar-shortcuts {
-  margin-left: auto;
-  padding: 4px;
-  color: var(--ink-3);
-}
-
-.row-menu {
-  position: fixed;
-  z-index: 50;
-  min-width: 180px;
-  padding: 4px;
-  border-radius: var(--radius-popover);
-  background: var(--surface);
-  box-shadow: var(--shadow-popover);
-  display: flex;
-  flex-direction: column;
-}
-
-.row-menu-item {
-  border: 0;
   border-radius: var(--radius-row);
-  background: transparent;
-  padding: 6px 10px;
-  text-align: left;
+  color: var(--ink-2);
   cursor: pointer;
+  display: flex;
+  font-size: var(--text-body);
+  font-weight: 400;
+  gap: 8px;
+  height: 100%;
+  padding-right: var(--sidebar-row-end);
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
 }
 
-.row-menu-item:hover,
-.row-menu-item:focus {
+.tree-row:hover {
   background: var(--hover);
+}
+
+.tree-row.is-active,
+.tree-row.is-active:hover {
+  background: var(--selected);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Inset: the scroller clips a ring drawn outside the row. */
+.tree-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus);
   outline: none;
 }
 
-.row-menu-item.is-danger {
-  color: var(--hue-red-ink);
+/* A folder's place for its disclosure holds DFAI's folder glyph instead; a
+   note's indent (the same 20px) holds the page glyph, so names line up. */
+.tree-chevron,
+.tree-row.is-note::before {
+  background: var(--ink-3);
+  flex: none;
+  height: 15px;
+  mask: var(--glyph-folder) center / contain no-repeat;
+  width: 15px;
+}
+
+.tree-chevron .icon {
+  display: none;
+}
+
+.tree-row.is-note::before {
+  content: '';
+  margin-left: -20px;
+  mask-image: var(--glyph-doc);
+}
+
+.sidebar-row-main::before {
+  background: var(--ink-3);
+  content: '';
+  flex: none;
+  height: 15px;
+  mask: var(--glyph-doc) center / contain no-repeat;
+  width: 15px;
+}
+
+.tree-row.is-active::before,
+.sidebar-row.is-active .sidebar-row-main::before {
+  background: var(--ink);
+}
+
+/* A count, as DFAI's: plain metadata at the row's end. */
+.tree-count {
+  color: var(--ink-3);
+  font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+/* ---- The foot ----
+   DFAI's sidebar foot: Settings, the sync light, the shortcuts and the
+   theme button in one 28px line above a hairline. */
+.sidebar-footer {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.sidebar-settings {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-row);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 400;
+  gap: 8px;
+  height: var(--sidebar-row);
+  padding: 0 8px;
+  text-align: left;
+  transition: background 120ms ease;
+}
+
+.sidebar-settings:hover {
+  background: var(--hover);
+}
+
+.sidebar-settings:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.sidebar-settings .icon {
+  color: var(--ink-3);
+}
+
+.sidebar-shortcuts,
+.sidebar-footer__theme {
+  border-radius: var(--radius-row);
+  color: var(--ink-3);
 }

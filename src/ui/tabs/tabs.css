@@ -1,110 +1,156 @@
-/* A pane's tab bar: quiet, in the neutral chrome. The selected tab joins the
-   page below it; the others sit back in the bar. Many tabs scroll sideways. */
+/* The tab strip over each pane, DFAI's tabs.css (its TabStrip, slice 7a):
+   36px on the sidebar's `bg`, over a hairline the shown tab breaks through;
+   the tab list, then the + beside it. Lite's tab is one element with its
+   title and × inside, so DFAI's `.tab-strip__tab` rules sit on the item. */
 
-.tab-bar {
-  flex: 1;
+.tab-strip {
+  align-items: flex-start;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
   display: flex;
+  flex: none;
+  height: 36px;
+}
+
+/* The tabs shrink to their narrowest, then it is the list that scrolls, so
+   the + after it stays within reach. As tall as the strip with its hairline,
+   so the shown tab can cover the line. */
+.tab-strip__tabs {
+  align-items: stretch;
+  display: flex;
+  flex: 0 1 auto;
+  height: 36px;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: thin;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
-.tab {
-  position: relative;
-  flex: 0 1 auto;
-  display: flex;
+.tab-strip__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* A tab and its ×. 176px with room, shrinking to 120px, then the list scrolls. */
+.tab-strip__item {
   align-items: center;
-  gap: 2px;
-  min-width: 72px;
-  max-width: 200px;
-  height: 34px;
-  padding: 0 4px 0 12px;
   border-right: 1px solid var(--line);
-  color: var(--ink-3);
-  font-size: var(--text-meta);
-  cursor: default;
-  user-select: none;
-}
-
-.tab:hover {
-  background: var(--hover);
+  border-top: 2px solid transparent;
   color: var(--ink-2);
+  cursor: pointer;
+  display: flex;
+  flex: 0 1 176px;
+  font-size: var(--text-body);
+  gap: 7px;
+  height: 35px;
+  min-width: 120px;
+  /* The right padding is the ×'s seat, kept on every tab so titles line up. */
+  padding: 0 28px 0 12px;
+  position: relative;
+  user-select: none;
+  width: 176px;
 }
 
-.tab.is-selected {
-  /* Above the bar's bottom hairline (panes.css), so the tab and its page read as one. */
-  z-index: 1;
+.tab-strip__item:not(.tab-strip__item--active):hover {
+  background: var(--hover);
+}
+
+/* The shown tab is lifted onto the surface. Its top border is gray while the
+   pane is the other one, and ink while it is the focused one. */
+.tab-strip__item--active {
   background: var(--surface);
+  border-top-color: var(--line-strong);
   color: var(--ink);
+  font-weight: 500;
+  /* Over the strip's hairline, so the shown tab joins the page under it. */
+  height: 36px;
 }
 
-/* The active pane's tab carries a thin top edge; the other pane's does not. */
-.pane.is-focused .tab.is-selected::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 2px;
-  background: var(--line-strong);
+.tab-strip--focused .tab-strip__item--active {
+  border-top-color: var(--ink);
 }
 
-.panes.is-split .pane.is-focused .tab.is-selected::before {
-  background: var(--focus);
+.tab-strip__item:focus-visible {
+  box-shadow: inset var(--ring);
+  outline: none;
 }
 
-.tab:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: -2px;
+.tab-strip__item > .icon {
+  color: var(--ink-3);
 }
 
-.tab-title {
+.tab-strip__title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.tab-close {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
+.tab-strip__close {
+  align-items: center;
+  appearance: none;
+  background: transparent;
   border: 0;
   border-radius: var(--radius-chip);
-  background: transparent;
   color: var(--ink-3);
-  opacity: 0;
+  cursor: pointer;
+  display: flex;
+  height: 20px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
 }
 
-.tab:hover .tab-close,
-.tab.is-selected .tab-close,
-.tab:focus-visible .tab-close {
-  opacity: 1;
-}
-
-.tab-close:hover {
-  background: var(--selected);
+.tab-strip__close:hover {
+  background: var(--hover);
   color: var(--ink);
 }
 
-.tab-close .icon {
-  width: 12px;
-  height: 12px;
+.tab-strip__close:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
 }
 
 /* Where a dragged tab will land. */
-.tab.is-drop-before {
+.tab-strip__item.is-drop-before {
   box-shadow: inset 2px 0 0 var(--focus);
 }
 
-.tab.is-drop-after {
+.tab-strip__item.is-drop-after {
   box-shadow: inset -2px 0 0 var(--focus);
 }
 
-@media (hover: none) {
-  .tab-close {
-    opacity: 1;
-  }
+/* + and Split: squares after the tabs, as quiet as the icon buttons. */
+.tab-strip__add {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  cursor: pointer;
+  display: flex;
+  flex: none;
+  height: 35px;
+  justify-content: center;
+  padding: 0;
+  width: 34px;
+}
+
+.tab-strip__add:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.tab-strip__add:focus-visible {
+  box-shadow: inset var(--ring);
+  outline: none;
+}
+
+/* Split sits at the strip's far end, where DFAI keeps its pane controls. */
+.tab-strip__add + .tab-strip__add {
+  margin-left: auto;
 }

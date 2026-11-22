@@ -1,4 +1,4 @@
-import type { VaultPath } from '../../domain/vault/index.ts';
+import type { VaultEntry, VaultPath } from '../../domain/vault/index.ts';
 import type { NoteActions } from '../state/note-actions.ts';
 import type { MenuItem } from './row-menu.tsx';
 
@@ -18,9 +18,11 @@ export interface MenuContext {
   readonly actions: NoteActions;
   readonly favorites: readonly VaultPath[];
   readonly title: (path: VaultPath) => string;
-  readonly askMove: (path: VaultPath) => void;
+  /** Opens the folder picker for a new home. */
+  readonly askMove: (entry: VaultEntry) => void;
   readonly askRenameFolder: (path: VaultPath) => void;
-  readonly confirm: (message: string) => boolean;
+  /** Starts naming a new folder in place, in `parent`. */
+  readonly startNewFolder: (parent: VaultPath) => void;
 }
 
 function favoriteMoves(path: VaultPath, at: number, context: MenuContext): MenuItem[] {
@@ -39,9 +41,13 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
   const { actions } = context;
   const later = (promise: Promise<unknown>) => void promise.catch(actions.report);
   if (target.kind === 'folder') {
+    const { path } = target;
     return [
-      { label: 'New note here', run: () => later(actions.newNote({ folder: target.path })) },
-      { label: 'Rename folder…', run: () => context.askRenameFolder(target.path) },
+      { label: 'New note here', run: () => later(actions.newNote({ folder: path })) },
+      { label: 'New folder here', run: () => context.startNewFolder(path) },
+      { label: 'Rename folder…', run: () => context.askRenameFolder(path) },
+      { label: 'Move to…', run: () => context.askMove({ kind: 'folder', path }) },
+      { label: 'Delete folder…', danger: true, run: () => later(actions.deleteFolder(path)) },
     ];
   }
   const { path } = target;
@@ -50,7 +56,7 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
     { label: 'Open in new tab', run: () => actions.openNote(path, 'new-tab') },
     { label: 'Open to the side', run: () => actions.openNote(path, 'side') },
     { label: 'Rename', run: () => actions.startRename(path) },
-    { label: 'Move to folder…', run: () => context.askMove(path) },
+    { label: 'Move to…', run: () => context.askMove({ kind: 'note', path }) },
     {
       label: isFavorite ? 'Remove from favorites' : 'Add to favorites',
       run: () => later(actions.toggleFavorite(path)),
@@ -60,10 +66,12 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
       label: 'Delete…',
       danger: true,
       run: () => {
-        if (!context.confirm(`Delete “${context.title(path)}”? This cannot be undone here.`)) {
-          return;
-        }
-        later(actions.remove(path));
+        const message = `Delete “${context.title(path)}”? It goes to the Trash.`;
+        later(
+          actions
+            .ask({ message, yes: 'Delete' })
+            .then((yes) => (yes ? actions.remove(path) : undefined)),
+        );
       },
     },
   ];

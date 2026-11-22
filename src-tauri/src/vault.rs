@@ -42,6 +42,8 @@ pub struct NoteText {
 pub struct VaultSnapshot {
     notes: Vec<NoteText>,
     other_paths: Vec<String>,
+    /// Every folder the walk enters, empty or not.
+    folders: Vec<String>,
 }
 
 /// What `git add --all` must not be given: files over GitHub's limit, and
@@ -64,12 +66,14 @@ fn is_text_path(path: &str) -> bool {
     lower.ends_with(".md") || (path.starts_with(".dfai-lite/") && lower.ends_with(".json"))
 }
 
-/// Every file under `root`: notes with their text, the rest by path, each sorted.
+/// Every file under `root`: notes with their text, the rest by path, and
+/// every folder, each sorted.
 pub fn snapshot(root: &Path) -> Result<VaultSnapshot, String> {
     let mut found = VaultSnapshot::default();
     walk(root, "", &mut found)?;
     found.notes.sort_by(|a, b| a.path.cmp(&b.path));
     found.other_paths.sort();
+    found.folders.sort();
     Ok(found)
 }
 
@@ -83,6 +87,7 @@ fn walk(folder: &Path, prefix: &str, found: &mut VaultSnapshot) -> Result<(), St
         let path = format!("{prefix}{name}");
         if kind.is_dir() && !skipped_folder(&name) {
             walk(&entry.path(), &format!("{path}/"), found)?;
+            found.folders.push(path);
         } else if kind.is_file() && !name.ends_with(TEMP_SUFFIX) {
             // A note that is not UTF-8 is listed, not read: it cannot be shown as text.
             match is_text_path(&path).then(|| fs::read_to_string(entry.path())) {
@@ -202,6 +207,25 @@ pub fn rename_file(root: State<'_, VaultRoot>, from: String, to: String) -> Resu
     files::rename_no_replace(&inside(&root, &from)?, &inside(&root, &to)?, &to)
 }
 
+/// Makes an empty folder with its keep file; dot names and paths out of the vault are refused.
+#[tauri::command]
+pub fn create_folder(root: State<'_, VaultRoot>, path: String) -> Result<(), String> {
+    files::create_folder(&inside(&root.get()?, &path)?, &path)
+}
+
+/// Moves a folder whole; both paths confined to the vault, no dot names.
+#[tauri::command]
+pub fn rename_folder(root: State<'_, VaultRoot>, from: String, to: String) -> Result<(), String> {
+    let root = root.get()?;
+    files::rename_folder(&inside(&root, &from)?, &inside(&root, &to)?, &to)
+}
+
+/// Removes a folder holding nothing but its keep file (or Finder's `.DS_Store`).
+#[tauri::command]
+pub fn remove_folder(root: State<'_, VaultRoot>, path: String) -> Result<(), String> {
+    files::remove_empty_folder(&inside(&root.get()?, &path)?, &path)
+}
+
 #[tauri::command]
 pub fn delete_file(
     root: State<'_, VaultRoot>,
@@ -269,6 +293,50 @@ mod tests {
         );
         assert_eq!(found.notes[1].text, "Engineer");
         assert_eq!(found.other_paths, ["Images/plan.png"]);
+        assert_eq!(found.folders, [".dfai-lite", "Images", "Inbox", "People"]);
+    }
+
+    #[test]
+    fn an_empty_folder_is_listed_with_the_same_skips_as_files() {
+        let root = temp_folder();
+        for folder in [
+            "Areas/Garden",
+            ".obsidian/plugins",
+            "node_modules/x",
+            "Inbox",
+        ] {
+            fs::create_dir_all(root.join(folder)).unwrap();
+        }
+        let found = snapshot(&root).unwrap();
+        assert_eq!(found.folders, ["Areas", "Areas/Garden", "Inbox"]);
+        assert!(found.notes.is_empty());
+    }
+
+    #[test]
+    fn a_folder_is_made_only_inside_the_vault_and_never_with_a_dot_name() {
+        let root = temp_folder();
+        for path in [
+            "../outside",
+            "/tmp/x",
+            ".hidden",
+            "Areas/.git",
+            ".git/x",
+            "Areas//x",
+            "",
+        ] {
+            let refused =
+                inside(&root, path).and_then(|target| files::create_folder(&target, path));
+            assert!(refused.is_err(), "{path:?} was made");
+        }
+        let outside = temp_folder();
+        std::os::unix::fs::symlink(&outside, root.join("Linked")).unwrap();
+        assert!(inside(&root, "Linked/New").is_err());
+        let target = inside(&root, "Areas/Garden").unwrap();
+        files::create_folder(&target, "Areas/Garden").unwrap();
+        assert_eq!(
+            snapshot(&root).unwrap().other_paths,
+            ["Areas/Garden/.gitkeep"]
+        );
     }
 
     #[test]

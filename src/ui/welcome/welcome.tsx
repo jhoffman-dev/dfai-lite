@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import '../theme.css';
+import '../styles/index.css';
 import './welcome.css';
 
 /**

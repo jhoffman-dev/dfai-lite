@@ -1,0 +1,28 @@
+/* The folder picker: DFAI's palette (search.css) with the note it moves
+   named over the field, a folder glyph per row, and the folder it is in now
+   shown but not chosen. */
+
+/* DFAI's `.palette__note` (overlays.css): a line of metadata over a hairline. */
+.palette__note {
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  font-size: var(--text-column);
+  margin: 0;
+  padding: 6px var(--space-3);
+}
+
+.folder-choice .palette__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-choice[aria-disabled='true'] {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+/* Making a folder is the one thing to act on: the primary button's ink. */
+.folder-choice.is-create .palette__title,
+.folder-choice.is-create .palette__kind {
+  color: var(--btn-primary-ink);
+}

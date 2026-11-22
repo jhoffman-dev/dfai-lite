@@ -20,4 +20,6 @@ export interface DesktopControls {
   confirm(question: { message: string; yes: string }): Promise<boolean>;
   /** Makes `accelerator` the capture key and keeps it; rejects when the Mac refuses it. */
   setCaptureHotkey(accelerator: string): Promise<void>;
+  /** Draws the window's own chrome in the theme chosen, or the system's for System. */
+  followTheme(choice: 'system' | 'light' | 'dark'): void;
 }

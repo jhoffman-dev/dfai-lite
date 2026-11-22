@@ -77,10 +77,10 @@ describe('the tags view', () => {
     const list = await screen.findByRole('list', { name: 'Notes tagged project' });
     const titles = within(list)
       .getAllByRole('link')
-      .map((link) => link.querySelector('.tagged-title')?.textContent);
+      .map((link) => link.querySelector('.tags__note-title')?.textContent);
     expect(titles).toEqual(['Garden shed', 'Larkspur Payroll']);
     expect(
-      within(screen.getByRole('navigation', { name: 'Tags' })).getByText('#person'),
+      within(screen.getByRole('navigation', { name: 'Tags' })).getByText('person'),
     ).toBeInTheDocument();
   });
 });
@@ -107,5 +107,19 @@ describe('the search palette', () => {
     const hit = screen.getAllByRole('option')[0];
     expect(hit).toHaveTextContent('Mara Quill');
     expect(hit?.querySelector('mark')).toHaveTextContent('operations');
+  });
+
+  it('switches the theme when asked for it by name', async () => {
+    const user = userEvent.setup();
+    await renderApp();
+    expect(document.documentElement.dataset['theme']).toBe('light');
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(screen.getByRole('combobox'), 'dark');
+    expect(screen.getAllByRole('option')[0]).toHaveTextContent('Switch to dark theme');
+    await user.keyboard('{Enter}');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
+    // ⌘⇧L switches back, from anywhere.
+    await user.keyboard('{Control>}{Shift>}L{/Shift}{/Control}');
+    expect(document.documentElement.dataset['theme']).toBe('light');
   });
 });

@@ -1,0 +1,158 @@
+/* The tree's moving parts, as DFAI's pages-tree.css draws them: the Notes
+   heading's New folder button, each row's "…", the drop highlight, and a
+   new folder named in place. */
+
+/* The heading's button sits at the label's foot, at the rows' end. */
+.tree-heading {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  padding-right: calc(var(--sidebar-row-end) - 4px);
+}
+
+.tree-heading .sidebar-heading {
+  flex: 1;
+}
+
+/* DFAI's `.tree__more`, and the heading's button drawn the same: 22px, quiet
+   until pointed at. */
+.tree-heading-action,
+.tree-row-more,
+.sidebar-row-action.is-more {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ink-3);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
+}
+
+.tree-heading-action {
+  margin-bottom: 2px;
+}
+
+.tree-heading-action .icon,
+.tree-row-more .icon {
+  height: 15px;
+  width: 15px;
+}
+
+.tree-heading-action:hover,
+.tree-row-more:hover,
+.sidebar-row-action.is-more:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.tree-heading-action:focus-visible,
+.tree-row-more:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* On a row's right, over its count; shown while the row is pointed at or
+   focused, as DFAI's "…" is. */
+.tree-row-more {
+  opacity: 0;
+  position: absolute;
+  right: var(--sidebar-row-end);
+  top: 3px;
+  transition: opacity 120ms ease;
+}
+
+.tree-slot:hover .tree-row-more,
+.tree-slot:focus-within .tree-row-more {
+  opacity: 1;
+}
+
+.tree-slot:hover .tree-count,
+.tree-slot:focus-within .tree-count {
+  visibility: hidden;
+}
+
+/* A touch screen has no hover: the "…" is always there. */
+@media (hover: none) {
+  .tree-row-more,
+  .sidebar-row-action.is-more {
+    opacity: 1;
+  }
+}
+
+/* A folder that would take what is being dragged over it. */
+.tree-row.is-drop-target,
+.tree-row.is-drop-target:hover {
+  background: var(--you);
+  box-shadow: inset 0 0 0 2px var(--focus);
+  color: var(--accent-text);
+}
+
+.tree-row.is-drop-target .tree-chevron {
+  background: var(--accent-text);
+}
+
+/* The top of the vault, when a note is dragged over the tree's free space. */
+.sidebar-tree.is-drop-root .tree-scroller {
+  border-radius: var(--radius-row);
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* Naming a new folder in place, DFAI's `.tree__rename`: the field takes the
+   name's room, in the row's type. */
+.tree-new-folder {
+  align-items: center;
+  color: var(--ink-3);
+  display: flex;
+  gap: 8px;
+  height: var(--sidebar-row);
+  padding-right: var(--sidebar-row-end);
+  position: relative;
+}
+
+.tree-new-folder-input {
+  background: var(--raised);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px var(--focus);
+  color: var(--ink);
+  flex: 1;
+  font: inherit;
+  font-size: var(--text-body);
+  min-width: 0;
+  outline: none;
+  padding: 3px 6px;
+}
+
+.tree-new-folder-input::placeholder {
+  color: var(--ink-3);
+}
+
+.tree-new-folder-input[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+
+/* Why the name will not do, in a popover under the field. */
+.tree-new-folder-problem {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  color: var(--danger);
+  font-size: var(--text-meta);
+  left: 28px;
+  padding: 4px 8px;
+  position: absolute;
+  right: var(--sidebar-row-end);
+  top: 100%;
+  z-index: 5;
+}
+
+.tree-slot:has(.tree-new-folder) {
+  z-index: 2;
+}

@@ -1,6 +1,16 @@
 // A vault folder on disk through Node, for the real-git sync tests: the
 // same port and guards as the Rust host (src-tauri/src/vault.rs), test-only.
-import { link, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  link,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  rmdir,
+  writeFile,
+} from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   FileChangedError,
@@ -12,6 +22,8 @@ import {
 } from '../../src/application/index.ts';
 
 const APP_FOLDER = '.dfai-lite';
+const KEEP_FILE = '.gitkeep';
+const DISPOSABLE = new Set([KEEP_FILE, '.DS_Store']);
 const TOO_LARGE_BYTES = 100 * 1024 * 1024;
 
 const skippedFolder = (name: string) =>
@@ -46,10 +58,12 @@ export class NodeVaultFiles implements VaultFiles {
   async readAll(): Promise<VaultSnapshot> {
     const notes: StoredFile[] = [];
     const otherPaths: string[] = [];
+    const folders: string[] = [];
     const walk = async (folder: string, prefix: string): Promise<void> => {
       for (const entry of await readdir(folder, { withFileTypes: true })) {
         const path = `${prefix}${entry.name}`;
         if (entry.isDirectory() && !skippedFolder(entry.name)) {
+          folders.push(path);
           await walk(join(folder, entry.name), `${path}/`);
         } else if (entry.isFile()) {
           if (isText(path))
@@ -63,6 +77,7 @@ export class NodeVaultFiles implements VaultFiles {
     return {
       notes: notes.sort((a, b) => byPath(a.path, b.path)),
       otherPaths: otherPaths.sort(byPath),
+      folders: folders.sort(byPath),
     };
   }
 
@@ -100,6 +115,37 @@ export class NodeVaultFiles implements VaultFiles {
       throw error.code === 'EEXIST' ? new FileExistsError(`${to} exists`) : error;
     });
     await rm(source);
+  }
+
+  async createFolder(path: string): Promise<void> {
+    const absolute = onDisk(this.root, path);
+    await mkdir(dirname(absolute), { recursive: true });
+    await mkdir(absolute).catch((error: NodeJS.ErrnoException) => {
+      throw error.code === 'EEXIST' ? new FileExistsError(`${path} exists`) : error;
+    });
+    await writeFile(join(absolute, KEEP_FILE), '', { flag: 'wx' });
+  }
+
+  async renameFolder(from: string, to: string): Promise<void> {
+    const source = onDisk(this.root, from);
+    const target = onDisk(this.root, to);
+    const held = await lstat(source);
+    if (!held.isDirectory()) throw new Error(`${from} is not a folder`);
+    // As the host: never onto another folder; the same folder in another case is allowed.
+    const there = await lstat(target).catch(() => null);
+    if (there !== null && there.ino !== held.ino) throw new FileExistsError(`${to} exists`);
+    await mkdir(dirname(target), { recursive: true });
+    await rename(source, target);
+  }
+
+  async removeFolder(path: string): Promise<void> {
+    const absolute = onDisk(this.root, path);
+    const entries = await readdir(absolute, { withFileTypes: true });
+    if (entries.some((entry) => !entry.isFile() || !DISPOSABLE.has(entry.name))) {
+      throw new Error(`${path} is not empty`);
+    }
+    for (const entry of entries) await rm(join(absolute, entry.name));
+    await rmdir(absolute);
   }
 
   async remove({

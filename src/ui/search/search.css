@@ -1,77 +1,201 @@
+/* The ⌘K palette, DFAI's overlays.css (UI v2 slice 13e), lifted rule for
+   rule: a popover on the scrim, the field over a hairline, 36px rows (the
+   chosen one on the selected fill), the words that matched in the accent's
+   text color, and the keys it answers to along its foot. */
+
+.palette__backdrop {
+  -webkit-backdrop-filter: blur(6px) saturate(1.05);
+  align-items: flex-start;
+  backdrop-filter: blur(6px) saturate(1.05);
+  background: var(--scrim);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 12vh var(--space-4) var(--space-4);
+  position: fixed;
+  z-index: 40;
+}
+
 .palette {
-  width: min(600px, 100%);
-  max-height: 70vh;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  color: var(--ink);
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-popover);
-  background: var(--surface);
-  box-shadow: var(--shadow-popover);
+  max-height: 70vh;
   overflow: hidden;
+  width: min(640px, 100%);
 }
 
-.palette-input {
+/* The field: an icon, the input, and the key that closes it, over a hairline. */
+.palette__field {
+  align-items: center;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+}
+
+.palette__field-icon {
+  color: var(--ink-3);
+}
+
+.palette__input {
+  appearance: none;
+  background: none;
   border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  padding: 14px 16px;
-  font-size: 16px;
-}
-
-.palette-input:focus {
+  color: var(--ink);
+  flex: 1;
+  font: inherit;
+  font-size: var(--text-body-lg);
+  font-weight: 400;
+  min-width: 0;
   outline: none;
+  padding: 0;
 }
 
-.palette-results {
+.palette__input::placeholder {
+  color: var(--ink-3);
+}
+
+/* WebKit draws its own clear button on a search field; the palette is cleared
+   by Escape and by selecting the text, like every other field here. */
+.palette__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.palette__hits {
   list-style: none;
   margin: 0;
+  overflow-y: auto;
   padding: 4px;
-  overflow: auto;
 }
 
-.palette-results:empty {
+.palette__hits:empty {
   display: none;
 }
 
-.palette-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px var(--space-3);
-  padding: 7px 12px;
+.palette__hit {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
   border-radius: var(--radius-row);
+  color: var(--ink);
   cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 4px var(--space-2);
+  text-align: left;
+  width: 100%;
 }
 
-.palette-row[aria-selected='true'] {
+.palette__hit:hover {
+  background: var(--hover);
+}
+
+.palette__hit--on,
+.palette__hit--on:hover {
   background: var(--selected);
 }
 
-.palette-title {
+/* What kind of note it is: the icon alone, in the metadata ink, as a menu's. */
+.palette__kind {
+  align-items: center;
+  color: var(--ink-3);
+  display: flex;
+  flex: none;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
+
+.palette__hit:hover .palette__kind,
+.palette__hit--on .palette__kind {
+  color: var(--ink-2);
+}
+
+.palette__text {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+
+.palette__title {
+  font-size: var(--text-emphasis);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.palette-folder {
+.palette__detail {
   color: var(--ink-3);
+  display: flex;
   font-size: var(--text-meta);
-}
-
-.palette-snippet {
-  grid-column: 1 / -1;
-  color: var(--ink-3);
-  font-size: var(--text-meta);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  gap: var(--space-2);
+  min-width: 0;
   white-space: nowrap;
 }
 
-.palette-snippet mark {
-  background: var(--mark-bg);
-  color: var(--hue-yellow-ink);
-  border-radius: 2px;
+/* On the selected fill ink-3 falls under AA in light (4.3:1), so the chosen
+   row's metadata and its ↵ step up to ink-2 (styles.palettes.test.ts). */
+.palette__hit--on .palette__detail,
+.palette__hit--on .key {
+  color: var(--ink-2);
 }
 
-.palette-row.is-create .palette-title {
-  color: var(--btn-primary-ink);
+.palette__place {
+  color: var(--ink-2);
+  flex: none;
+  font-weight: 500;
+}
+
+.palette__snippet {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette__place + .palette__snippet::before {
+  content: '·';
+  margin-right: var(--space-2);
+}
+
+/* The words that matched: the accent's text color, not a highlighter pen. */
+.palette__mark {
+  background: none;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.palette__enter {
+  flex: none;
+}
+
+/* The keys an overlay answers to, along its foot: one 34px line of
+   metadata text above a hairline. */
+.key-hints {
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  font-size: var(--text-header);
+  gap: var(--space-2) var(--space-4);
+  min-height: 34px;
+  padding: 0 var(--space-4);
+}
+
+.key-hints__hint {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
 }

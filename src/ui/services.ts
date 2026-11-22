@@ -10,6 +10,7 @@ import type {
 } from '../application/index.ts';
 import type { OpenNotes } from './note/open-notes.ts';
 import type { LayoutStore } from './panes/layout-store.ts';
+import type { ThemeController } from './theme/theme.ts';
 import type { Workspace } from './panes/workspace.ts';
 import type { DesktopControls } from './settings/desktop-controls.ts';
 import type { NoteActions } from './state/note-actions.ts';
@@ -29,6 +30,8 @@ export type LoadMarkdown = (options?: { afresh?: boolean }) => Promise<MarkdownP
 
 export interface PendingEdits {
   add(flush: () => Promise<void>): () => void;
+  /** Saves what every open editor holds; a move waits on it, so nothing typed is left behind. */
+  flushAll(): Promise<void>;
 }
 
 /** What the composition root hands the UI: the open session and the ports it reads and writes. */
@@ -58,6 +61,8 @@ export interface AppContextValue {
   readonly workspace: Workspace;
   readonly openNotes: OpenNotes;
   readonly actions: NoteActions;
+  /** Light, dark or the system's: this device's choice, applied to the window. */
+  readonly theme: ThemeController;
 }
 
 export const AppContext = createContext<AppContextValue | null>(null);

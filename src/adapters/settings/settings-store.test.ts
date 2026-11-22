@@ -32,6 +32,8 @@ const SAVED: Settings = {
     expandedFolders: ['Projects'],
     lastOpenPath: 'Projects/Plan.md',
     source: true,
+    sidebarWidth: 312,
+    sidebarCollapsed: true,
   },
 };
 
@@ -59,13 +61,44 @@ describe('the local settings store', () => {
       JSON.stringify({
         vaultPath: 7,
         captureHotkey: 'Control+Alt+N',
-        ui: { theme: 'neon', expandedFolders: ['A', 3], lastOpenPath: 'A.md', source: 'yes' },
+        ui: {
+          theme: 'neon',
+          expandedFolders: ['A', 3],
+          lastOpenPath: 'A.md',
+          source: 'yes',
+          sidebarWidth: 'wide',
+          sidebarCollapsed: 1,
+        },
       }),
     );
     expect(createLocalSettingsStore(storage).load()).toEqual({
       vaultPath: null,
       captureHotkey: 'Control+Alt+N',
       ui: { ...DEFAULT_UI_PREFS, lastOpenPath: 'A.md' },
+    });
+  });
+});
+
+describe('settings this build does not know', () => {
+  it('are kept through a load and a save, so a newer build’s fields round-trip', async () => {
+    const text = JSON.stringify({
+      ...SAVED,
+      syncPaused: true,
+      ui: { ...SAVED.ui, paneWidths: [1, 2] },
+    });
+    const written: string[] = [];
+    const store = createFileSettingsStore({
+      text,
+      write: async (json) => void written.push(json),
+      onError: () => undefined,
+    });
+    const loaded = store.load();
+    store.save({ ...loaded, ui: { ...loaded.ui, sidebarWidth: 280 } });
+    await store.written();
+    const saved = JSON.parse(written[0] ?? '{}') as Record<string, unknown>;
+    expect(saved).toMatchObject({
+      syncPaused: true,
+      ui: { paneWidths: [1, 2], sidebarWidth: 280, theme: 'dark' },
     });
   });
 });
