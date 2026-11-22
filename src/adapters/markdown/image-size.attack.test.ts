@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import type { EditorDocument, EditorNode } from '../../domain/markdown/index.ts';
 import { parseMarkdownBody, serializeMarkdownBody } from './markdown-blocks.ts';
 

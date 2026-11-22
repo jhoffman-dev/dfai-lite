@@ -51,14 +51,17 @@ export async function renderApp({
   source = true,
   layout = memoryLayoutStorage(),
   loadMarkdown = PLAIN_MARKDOWN,
+  binaries = {},
 }: {
   files?: Readonly<Record<VaultPath, string>>;
+  /** Files that are not text, by path: a note's pictures. */
+  binaries?: Readonly<Record<VaultPath, Uint8Array>>;
   source?: boolean;
   layout?: LayoutStorage;
   /** The markdown port: the UI's tests cannot reach the real one, so the note is read as one raw block. */
   loadMarkdown?: AppServices['loadMarkdown'];
 } = {}) {
-  const vaultFiles = MemoryVaultFiles.of(files);
+  const vaultFiles = MemoryVaultFiles.of(files, [], [], binaries);
   const session = new VaultSession();
   const search = new SimpleSearchEngine();
   await openVault({ files: vaultFiles, session });
@@ -72,6 +75,7 @@ export async function renderApp({
     search,
     settings: new MemorySettingsStore(initial),
     clock: new FixedClock(),
+    imageProbe: { canShow: async () => true },
     sync: null,
     desktop: null,
     pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },

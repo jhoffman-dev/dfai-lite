@@ -1,8 +1,4 @@
-import {
-  readImageMarkdown,
-  type ImagePlace,
-  type ImageSize,
-} from '../../domain/markdown/index.ts';
+import { readImageMarkdown, type ImagePlace, type ImageSize } from '../../domain/markdown/index.ts';
 import type { Image, Nodes } from 'mdast';
 
 /*

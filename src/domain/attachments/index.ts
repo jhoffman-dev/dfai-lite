@@ -12,8 +12,4 @@ export {
   undrawableImageMessage,
 } from './image-file.ts';
 export type { ImageCheck, IncomingImage } from './image-file.ts';
-export {
-  ATTACHMENTS_FOLDER,
-  decodeImageSource,
-  relativeImageSource,
-} from './image-placement.ts';
+export { ATTACHMENTS_FOLDER, decodeImageSource, relativeImageSource } from './image-placement.ts';

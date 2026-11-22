@@ -1,8 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { resolveImageSource } from './image-source.ts';
 
-const from = (src: string, note = 'Notes/today.md') =>
-  resolveImageSource({ src, notePath: note });
+const from = (src: string, note = 'Notes/today.md') => resolveImageSource({ src, notePath: note });
 
 describe('resolveImageSource', () => {
   it('resolves a path next to the note', () => {

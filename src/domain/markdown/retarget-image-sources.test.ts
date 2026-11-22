@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { retargetImageSources } from './retarget-image-sources.ts';
 
 /*

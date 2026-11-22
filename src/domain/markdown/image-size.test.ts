@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import {
   MIN_IMAGE_WIDTH,
   readImageAlt,

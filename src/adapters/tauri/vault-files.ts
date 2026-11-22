@@ -15,7 +15,8 @@ export function hostError(error: unknown): Error {
   if (message.startsWith('changed:')) return new FileChangedError(message.slice(8).trim());
   if (message.startsWith('exists:')) return new FileExistsError(message.slice(7).trim());
   if (message.startsWith('trash:')) return new TrashRefusedError(message.slice(6).trim());
-  if (message.startsWith(MISSING)) return new MissingFileError(message.slice(MISSING.length).trim());
+  if (message.startsWith(MISSING))
+    return new MissingFileError(message.slice(MISSING.length).trim());
   return new Error(message);
 }
 

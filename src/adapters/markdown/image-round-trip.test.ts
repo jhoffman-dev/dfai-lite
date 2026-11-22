@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { relativeImageSource } from '../../domain/attachments/index.ts';
 import {
   resolveImageSource,
@@ -78,8 +77,8 @@ function withImageAdded(original: string, image: { src: string; alt: string }): 
 }
 
 describe('an embedded image, as it is written into the note', () => {
-  const notePath = ('Work/Plans/q3.md');
-  const imagePath = ('attachments/Pasted image 20260925143012.png');
+  const notePath = 'Work/Plans/q3.md';
+  const imagePath = 'attachments/Pasted image 20260925143012.png';
   const src = relativeImageSource({ notePath, imagePath });
 
   it('is a standard markdown image with a relative, percent-encoded path', () => {

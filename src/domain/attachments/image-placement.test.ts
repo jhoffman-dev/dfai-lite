@@ -1,9 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { resolveImageSource } from '../markdown/image-source.ts';
-import {
-  decodeImageSource,
-  relativeImageSource,
-} from './image-placement.ts';
+import { decodeImageSource, relativeImageSource } from './image-placement.ts';
 
 const path = (value: string) => value;
 

@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { resolveImageSource } from '../markdown/image-source.ts';
 import { retargetImageSources } from '../markdown/retarget-image-sources.ts';
 import { relativeImageSource } from './image-placement.ts';

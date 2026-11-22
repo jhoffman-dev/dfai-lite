@@ -68,7 +68,12 @@ describe('an image pasted or dropped into a note', () => {
 
   it('never overwrites: a taken name, in any case, is numbered past', async () => {
     const deps = await opened({ binaries: { 'attachments/q3 CHART.png': PNG } });
-    const image = { name: 'Q3 chart.png', mimeType: 'image/png', size: 11, origin: 'file' } as const;
+    const image = {
+      name: 'Q3 chart.png',
+      mimeType: 'image/png',
+      size: 11,
+      origin: 'file',
+    } as const;
     const first = await embedImage(deps, { notePath: NOTE, image, readBytes: readPng });
     const second = await embedImage(deps, { notePath: NOTE, image, readBytes: readPng });
     expect([first.path, second.path]).toEqual([
@@ -116,7 +121,9 @@ describe('an image pasted or dropped into a note', () => {
       },
     });
     await expect(saving).rejects.toThrow(ImageRefusedError);
-    await expect(saving).rejects.toThrow('“big.png” is 25.0 MB. An image in a note can be at most 20 MB.');
+    await expect(saving).rejects.toThrow(
+      '“big.png” is 25.0 MB. An image in a note can be at most 20 MB.',
+    );
     expect(read).toBe(false);
     expect(deps.session.otherPaths()).toEqual([]);
   });
@@ -124,9 +131,9 @@ describe('an image pasted or dropped into a note', () => {
   it('refuses a file that is not an image, and one the webview cannot draw', async () => {
     const deps = await opened();
     const text = { name: 'notes.txt', mimeType: 'text/plain', size: 4, origin: 'file' } as const;
-    await expect(embedImage(deps, { notePath: NOTE, image: text, readBytes: readPng })).rejects.toThrow(
-      'is not an image a note can hold',
-    );
+    await expect(
+      embedImage(deps, { notePath: NOTE, image: text, readBytes: readPng }),
+    ).rejects.toThrow('is not an image a note can hold');
     const undrawable = await opened({ probe: drawsNone });
     const heic = { name: 'IMG_1.heic', mimeType: 'image/heic', size: 4, origin: 'file' } as const;
     await expect(
@@ -195,7 +202,9 @@ describe('an image a note shows', () => {
 describe('a note that shows an image, moved', () => {
   it('has its relative image path rewritten from its new folder; the image stays', async () => {
     const deps = await opened({
-      texts: { [NOTE]: 'See ![chart|300](../attachments/c.png "Q3") and ![](https://example.com/x.png).\n' },
+      texts: {
+        [NOTE]: 'See ![chart|300](../attachments/c.png "Q3") and ![](https://example.com/x.png).\n',
+      },
       binaries: { 'attachments/c.png': PNG },
     });
     await renameNote(deps, { from: NOTE, to: 'Archive/2026/Larkspur Payroll.md' });

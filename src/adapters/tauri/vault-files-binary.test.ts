@@ -26,7 +26,8 @@ beforeEach(() => {
 
 describe('pictures through the Rust host', () => {
   it('come back as the bytes the host sent raw', async () => {
-    answer = (command) => (command === 'read_binary_file' ? new Uint8Array([1, 2, 3]).buffer : null);
+    answer = (command) =>
+      command === 'read_binary_file' ? new Uint8Array([1, 2, 3]).buffer : null;
     const files = await openTauriVaultFiles('/vault');
     expect(await files.readBinary('attachments/a.png')).toEqual(new Uint8Array([1, 2, 3]));
     expect(calls.at(-1)).toMatchObject({
