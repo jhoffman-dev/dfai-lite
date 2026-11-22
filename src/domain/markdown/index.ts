@@ -8,9 +8,11 @@ export {
 export type { ParsedBody, SourceBlock } from './source-block.ts';
 export { joinFrontmatter, splitFrontmatter, type MarkdownDocument } from './markdown-document.ts';
 export {
+  calloutKindOf,
   calloutLabel,
   formatCalloutMarker,
   parseCalloutMarker,
+  withCalloutKind,
   type CalloutMarker,
 } from './callout.ts';
 export { fitsInTableCell, TABLE_CELL_TYPES } from './table-cell.ts';

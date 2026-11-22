@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import type { ResolvedAppearance } from '../../domain/appearance/index.ts';
+import { LookGlyph } from '../appearance/look-glyph.tsx';
 import { Icon, type IconName } from './icons.tsx';
 import { keyFor } from './shortcuts.ts';
 import { useKeyHost } from './use-shortcuts.ts';
@@ -24,6 +26,7 @@ export interface PageHistory {
 export function PageBar({
   history,
   icon,
+  look = null,
   place,
   name,
   count,
@@ -31,6 +34,8 @@ export function PageBar({
 }: {
   history?: PageHistory;
   icon: IconName;
+  /** The note's own icon and tint, drawn in place of `icon`. */
+  look?: ResolvedAppearance | null;
   place: string | null;
   name: string;
   count?: string;
@@ -41,7 +46,7 @@ export function PageBar({
       <div className="page-bar__row">
         {history === undefined ? null : <HistoryButtons history={history} />}
         <span className="page-bar__crumbs">
-          <Icon name={icon} size={15} />
+          <LookGlyph look={look} fallback={icon} />
           {place === null ? null : (
             <>
               <span className="page-bar__parent">{place}</span>

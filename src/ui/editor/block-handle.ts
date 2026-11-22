@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import type { Node as ProseMirrorNode, Slice } from '@tiptap/pm/model';
-import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
+import { NodeSelection, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import {
   BLOCK_ACTIONS,
@@ -92,7 +92,14 @@ export function runBlockAction(
   { target, action }: { target: BlockTarget; action: BlockAction },
 ): boolean {
   if (!stillThere(view.state.doc, target)) return false;
-  const change = blockChange(view.state, { target, action });
+  return dispatchBlockChange(view, blockChange(view.state, { target, action }));
+}
+
+/**
+ * Dispatches an edit a block's menu made (`null`: nothing to do) as a step
+ * of its own to undo, as `runBlockAction` does, the caret back in the note.
+ */
+export function dispatchBlockChange(view: EditorView, change: Transaction | null): boolean {
   if (change === null) return false;
   view.dispatch(change);
   view.dispatch(closeHistory(view.state.tr));

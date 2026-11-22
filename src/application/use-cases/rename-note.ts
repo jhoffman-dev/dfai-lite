@@ -12,7 +12,9 @@ import {
   withoutExtension,
   type VaultPath,
 } from '../../domain/vault/index.ts';
+import { appearancesFollowMove } from './appearance.ts';
 import { writeFavorites } from './favorites.ts';
+import { followMoveInLedger } from './import-ledger.ts';
 import { filesNow, imagesFollowingMove } from './images-across-move.ts';
 import { writeFile, type VaultDeps } from './vault-deps.ts';
 
@@ -28,7 +30,7 @@ export type RenameResult =
 /**
  * Renames or moves a note to `to` (a full path, `.md` included), rewriting
  * every link the move would break, in every note, and following it in the
- * favorites. Its pictures stay where they are; a relative image source the
+ * favorites and the icons and colors. Its pictures stay where they are; a relative image source the
  * move would break is rewritten from the note's new folder, as DFAI does. Refused when the new name breaks the file-name rules or
  * another file already has the path, case aside.
  */
@@ -68,6 +70,8 @@ export async function renameNote(
     await writeFile(deps, source, result.text);
   }
   await writeFavorites(deps, favoritesAfterMove(deps.session.favorites, { from, to }));
+  await appearancesFollowMove(deps, { from, to });
+  await followMoveInLedger(deps, { from, to });
   return { kind: 'renamed', path: to, retargeted };
 }
 

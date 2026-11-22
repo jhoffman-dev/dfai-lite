@@ -1,5 +1,6 @@
 export {
   VaultSession,
+  type ResolvedAppearances,
   type VaultChange,
   type VaultIndexView,
   type VaultListener,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import type { Editor } from '@tiptap/core';
 import type { BlockAction } from './block-actions.ts';
@@ -9,6 +9,7 @@ import {
   runBlockAction,
   type BlockMenuRequest,
 } from './block-handle.ts';
+import { CalloutMenuSection } from './callout-menu.tsx';
 import { MenuItems, type MenuCommand } from './menu-items.tsx';
 
 /** Each action's words and the keys that do it, as the menu shows them, in the menu's order. */
@@ -47,27 +48,38 @@ export function useBlockMenu(editor: Editor | null): ReactNode {
 
   // Drawn only while open: a note is drawn on every key, and a closed menu would be drawn with it.
   if (editor === null || menu === null) return null;
-  return <BlockMenu anchor={menu.anchor} items={commandsFor(editor, menu)} onClose={close} />;
+  return (
+    <BlockMenu editor={editor} request={menu} items={commandsFor(editor, menu)} onClose={close} />
+  );
 }
 
-/** The menu itself, hung from the block's handle. */
+/** The menu itself, hung from the block's handle: the callout rows first, where there are any. */
 function BlockMenu({
-  anchor,
+  editor,
+  request: { anchor, target },
   items,
   onClose,
 }: {
-  anchor: Element;
+  editor: Editor;
+  request: BlockMenuRequest;
   items: readonly MenuCommand[];
   onClose: () => void;
 }) {
   const chosen = useRef<MenuCommand | null>(null);
+  const triggerId = useId();
   return (
     <Menu.Root
       open
+      triggerId={triggerId}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
+      {/* Never shown: the menu hangs from the handle (`anchor`), but Base UI gives a
+          menu its place in the tree of menus, which a submenu needs, by its trigger. */}
+      <Menu.Trigger id={triggerId} nativeButton={false} render={<span hidden />}>
+        Block
+      </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner
           className="menu-positioner"
@@ -77,6 +89,7 @@ function BlockMenu({
           sideOffset={4}
         >
           <Menu.Popup className="menu" aria-label="Block" render={<ul />} finalFocus={false}>
+            <CalloutMenuSection editor={editor} target={target} />
             <MenuItems items={items} chosen={chosen} />
           </Menu.Popup>
         </Menu.Positioner>

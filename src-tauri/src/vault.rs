@@ -29,6 +29,12 @@ impl VaultRoot {
             .clone()
             .ok_or_else(|| "no vault folder is open".to_string())
     }
+
+    /// A root already open at `folder`, for tests of commands that need one.
+    #[cfg(test)]
+    pub fn open_at(folder: PathBuf) -> Self {
+        Self(Mutex::new(Some(folder)))
+    }
 }
 
 #[derive(Serialize, Debug, PartialEq)]

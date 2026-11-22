@@ -1,12 +1,15 @@
 //! The DFAI Lite host. As little as possible (CLAUDE.md): it reads and writes
 //! files inside the chosen vault, watches it, and runs fixed-shape `git`
-//! commands there. It decides nothing; the rules are in TypeScript.
+//! commands there, and asks Granola's API with a key it keeps in the Keychain.
+//! It decides nothing; the rules are in TypeScript.
 
 mod binary;
 mod files;
 mod git;
+mod granola;
 mod menu;
 mod paths;
+mod secrets;
 mod settings;
 mod text_input;
 mod vault;
@@ -24,6 +27,8 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(vault::VaultRoot::default())
         .manage(watcher::VaultWatcher::default())
+        .manage(secrets::SecretState::default())
+        .manage(granola::GranolaState::default())
         .invoke_handler(tauri::generate_handler![
             vault::open_vault,
             vault::read_vault,
@@ -42,6 +47,10 @@ pub fn run() {
             binary::file_exists,
             git::git_run,
             git::mac_name,
+            granola::granola_status,
+            granola::granola_set_key,
+            granola::granola_forget_key,
+            granola::granola_request,
             settings::read_settings,
             settings::write_settings,
         ])

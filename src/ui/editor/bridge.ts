@@ -1,3 +1,4 @@
+import type { CalloutSettings } from '../../domain/callouts/index.ts';
 import type { NoteSuggestion } from '../../domain/links/index.ts';
 import type { TagSuggestion } from '../../domain/tags/index.ts';
 import type { OpenIn } from '../panes/layout.ts';
@@ -20,6 +21,10 @@ export interface EditorBridge {
   loadImage(src: string): Promise<string | null>;
   /** Hears which picture sources to load again; returns the way to stop. */
   watchImages(listener: (src: string) => void): () => void;
+  /** The vault's callout types now. */
+  calloutSettings(): CalloutSettings;
+  /** Hears the vault's callout types change; returns the way to stop. */
+  watchCallouts(listener: () => void): () => void;
   /** Saves a picture pasted, dropped or picked into the note, and says how the note shows it. */
   embedImage: EmbedImage;
   /** The view was built on `text`, the vault's: saves are based on it. */

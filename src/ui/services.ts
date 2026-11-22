@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type {
   Clock,
+  GranolaControls,
   ImageProbe,
   MarkdownPort,
   SearchEngine,
@@ -48,6 +49,8 @@ export interface AppServices {
   readonly sync: SyncControls | null;
   /** The Mac app's own controls (vault folder, hotkey); null in a browser. */
   readonly desktop: DesktopControls | null;
+  /** Importing meetings from Granola; null in a browser, where there is no host to keep a key. */
+  readonly granola: GranolaControls | null;
   readonly pendingEdits: PendingEdits;
   /** The markdown reader and writer the editor saves through, loaded with it after the first paint. */
   readonly loadMarkdown: LoadMarkdown;

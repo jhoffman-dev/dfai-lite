@@ -274,72 +274,7 @@
   color: var(--ink-2);
 }
 
-/* ---- callouts ---- */
-
-/* A callout is a hairline card with a badge before its title: a faint wash
-   of its kind's color, never a heavy rule down its edge or a filled block. */
-.callout {
-  --callout-tint: var(--accent-text);
-  --callout-mark: 'i';
-  background: color-mix(in srgb, var(--callout-tint) 6%, var(--surface));
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  margin: 1em 0;
-  padding: 10px 14px;
-}
-
-.callout[data-callout='warning'],
-.callout[data-callout='caution'],
-.callout[data-callout='attention'] {
-  --callout-tint: var(--warning);
-  --callout-mark: '!';
-}
-
-.callout[data-callout='danger'],
-.callout[data-callout='error'],
-.callout[data-callout='bug'],
-.callout[data-callout='failure'] {
-  --callout-tint: var(--danger);
-  --callout-mark: '!';
-}
-
-.callout[data-callout='tip'],
-.callout[data-callout='success'],
-.callout[data-callout='done'] {
-  --callout-tint: var(--success);
-  --callout-mark: '✓';
-}
-
-.callout__title {
-  align-items: center;
-  color: var(--callout-tint);
-  display: flex;
-  font-size: var(--text-body);
-  font-weight: 600;
-  gap: 8px;
-  margin-bottom: 4px;
-  user-select: none;
-}
-
-/* The badge is a dot: the one thing besides an avatar that is fully round. */
-.callout__title::before {
-  align-items: center;
-  background: var(--callout-tint);
-  border-radius: var(--radius-pill);
-  color: var(--surface);
-  content: var(--callout-mark);
-  display: inline-flex;
-  flex: none;
-  font-size: 10px;
-  font-weight: 600;
-  height: 16px;
-  justify-content: center;
-  width: 16px;
-}
-
-.callout__body > *:first-child {
-  margin-top: 0;
-}
+/* ---- callouts: drawn by ../shell/callout.css, as Settings draws their previews ---- */
 
 /* ---- tables ---- */
 
@@ -548,7 +483,8 @@
 .block-handle {
   align-items: center;
   border-radius: var(--radius-control);
-  color: var(--line-strong);
+  /* The quiet ink, not a hairline's: 5.3:1 on the page in light, 5.5:1 in dark. */
+  color: var(--ink-3);
   cursor: grab;
   display: flex;
   font-size: 12px;
@@ -568,9 +504,15 @@
   display: none;
 }
 
-.block-handle:hover,
-.block-handle--open {
+.block-handle:hover {
   background: var(--hover);
+  color: var(--ink);
+}
+
+/* Its menu open: pressed, as a toggle that is on. */
+.block-handle--open,
+.block-handle--open:hover {
+  background: var(--selected);
   color: var(--ink);
 }
 

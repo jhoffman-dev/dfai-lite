@@ -3,6 +3,7 @@ export * from './ports/index.ts';
 export * from './session/index.ts';
 export * from './use-cases/index.ts';
 export * from './sync/index.ts';
+export * from './granola/index.ts';
 
 // Pure readings of the vault's rules that a view needs to draw (the editor's
 // links and tags, the link picker, the tree rows). The UI may import domain
@@ -37,3 +38,20 @@ export {
 } from '../domain/markdown/index.ts';
 export { IMAGE_PICKER_ACCEPT } from '../domain/attachments/index.ts';
 export { FAVORITES_PATH } from '../domain/favorites/index.ts';
+export {
+  APPEARANCE_HUES,
+  APPEARANCE_ICONS,
+  APPEARANCE_PATH,
+  isSingleEmoji,
+} from '../domain/appearance/index.ts';
+export {
+  BUILT_IN_CALLOUTS,
+  CALLOUT_HUES,
+  CALLOUT_ICONS,
+  CALLOUTS_PATH,
+  checkCalloutDraft,
+  kindAfterChange,
+  MAX_CALLOUT_LABEL,
+  offeredCallouts,
+  resolveCallout,
+} from '../domain/callouts/index.ts';

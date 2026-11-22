@@ -9,6 +9,7 @@ import {
   renameFolder,
   renameNote,
   reorderFavorite,
+  setPathAppearance,
   tagKey,
   toggleFavoriteNote,
   TrashRefusedError,
@@ -18,6 +19,7 @@ import {
   type UiPrefs,
   type VaultDeps,
 } from '../../application/index.ts';
+import type { AppearancePatch } from '../../domain/appearance/index.ts';
 import type { FolderNode, VaultEntry, VaultPath } from '../../domain/vault/index.ts';
 import { currentTab, setSource, type OpenIn } from '../panes/layout.ts';
 import type { LayoutStore } from '../panes/layout-store.ts';
@@ -42,6 +44,8 @@ export interface NoteActions {
   openTag(name: string, openIn?: OpenIn): void;
   toggleFavorite(path: VaultPath): Promise<void>;
   moveFavorite(path: VaultPath, index: number): Promise<void>;
+  /** Sets or clears a folder's or a note's color and icon (null clears, absent keeps). */
+  setAppearance(path: VaultPath, patch: AppearancePatch): Promise<void>;
   /** Renames or moves a note; the tabs showing it follow by themselves. */
   rename(from: VaultPath, to: VaultPath): Promise<RenameResult>;
   /** Deletes a note; the tabs showing it close by themselves. */
@@ -142,6 +146,7 @@ export function createNoteActions({
     openTag: (name, openIn) => workspace.open({ kind: 'tags', tag: tagKey(name) }, openIn),
     toggleFavorite: (path) => toggleFavoriteNote(deps, { path }),
     moveFavorite: (path, index) => reorderFavorite(deps, { path, index }),
+    setAppearance: (path, patch) => setPathAppearance(deps, { path, ...patch }),
     async rename(from, to) {
       const result = await renameNote(deps, { from, to });
       if (result.kind === 'refused') notice(result.reason);

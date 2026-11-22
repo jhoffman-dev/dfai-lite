@@ -16,6 +16,7 @@ import { FolderPicker } from './sidebar/folder-picker.tsx';
 import { SidebarResizer, SidebarReveal } from './sidebar/sidebar-resizer.tsx';
 import { sidebarWidthStyle } from './sidebar/sidebar-width.ts';
 import { Sidebar } from './sidebar/sidebar.tsx';
+import { useGranolaNotices } from './settings/use-granola-notices.ts';
 import { useUi } from './state/ui-store.ts';
 import './app.css';
 import './shell/dialog.css';
@@ -48,6 +49,7 @@ function Shell() {
   const sidebarWidth = useUi((state) => state.sidebarWidth);
   useShortcuts();
   useWorkspaceSync();
+  useGranolaNotices();
   // The editor's code loads straight after the first paint, so ⌘N never waits for it.
   useEffect(() => {
     preloadEditor().catch(actions.report);

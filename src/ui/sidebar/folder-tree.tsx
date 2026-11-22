@@ -90,6 +90,7 @@ export function FolderTree({
 }) {
   const { ui } = useApp();
   const tree = useVault((vault) => vault.tree);
+  const looks = useVault((vault) => vault.appearances);
   const namingIn = useUi((state) => state.namingFolderIn);
   const { expanded, toggle, expand } = useExpandedFolders(activePath);
   const scroller = useRef<HTMLDivElement>(null);
@@ -202,6 +203,7 @@ export function FolderTree({
                   <>
                     <TreeRowView
                       row={row}
+                      look={looks.get(row.path) ?? null}
                       index={item.index}
                       active={row.path === activePath}
                       focusable={item.index === current}
@@ -212,7 +214,7 @@ export function FolderTree({
                       onMenu={openMenu}
                       onFocusRow={setFocusIndex}
                     />
-                    <RowMore row={row} onMenu={onMenu} />
+                    <RowMore row={row} hue={looks.get(row.path)?.hue ?? null} onMenu={onMenu} />
                   </>
                 )}
               </div>
@@ -220,7 +222,9 @@ export function FolderTree({
           })}
         </div>
       </div>
-      {drag.held !== null && <DragTile entry={drag.held} tileRef={drag.tile} />}
+      {drag.held !== null && (
+        <DragTile entry={drag.held} look={looks.get(drag.held.path) ?? null} tileRef={drag.tile} />
+      )}
     </section>
   );
 }

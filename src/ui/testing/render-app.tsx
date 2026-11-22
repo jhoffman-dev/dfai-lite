@@ -78,6 +78,7 @@ export async function renderApp({
     imageProbe: { canShow: async () => true },
     sync: null,
     desktop: null,
+    granola: null,
     pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },
     loadMarkdown,
   };

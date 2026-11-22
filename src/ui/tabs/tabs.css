@@ -74,7 +74,8 @@
   outline: none;
 }
 
-.tab-strip__item > .icon {
+.tab-strip__item > .icon,
+.tab-strip__item > .look-glyph:not([data-hue]) {
   color: var(--ink-3);
 }
 

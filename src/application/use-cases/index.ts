@@ -7,6 +7,23 @@ export { renameNote, type RenameResult } from './rename-note.ts';
 export { renameFolder, type RenameFolderResult } from './rename-folder.ts';
 export { deleteNote } from './delete-note.ts';
 export { reorderFavorite, toggleFavoriteNote, writeFavorites } from './favorites.ts';
+export { AppearanceUnreadableError, setPathAppearance } from './appearance.ts';
+export {
+  deleteCalloutType,
+  notesUsingCalloutType,
+  replaceUnreadableCallouts,
+  saveCalloutType,
+  setBuiltInCalloutHidden,
+  UnreadableCalloutsError,
+  type SaveCalloutTypeResult,
+} from './callouts.ts';
+export {
+  ImportLedgerUnreadableError,
+  importLedgerProblem,
+  readImportLedger,
+  replaceImportLedger,
+  updateImportLedger,
+} from './import-ledger.ts';
 export {
   createFolder,
   deleteFolder,

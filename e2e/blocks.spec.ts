@@ -164,6 +164,7 @@ test('the block menu, from the handle: add a heading below a paragraph, then del
   const menu = page.getByRole('menu', { name: 'Block' });
   await expect(menu).toBeVisible();
   await expect(menu.getByRole('menuitem')).toHaveText([
+    /Turn into callout/,
     /Add block above/,
     /Add block below/,
     /Duplicate/,

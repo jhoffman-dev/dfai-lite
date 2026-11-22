@@ -1,5 +1,7 @@
 import { Extension, type Editor, type Range } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
+import { offeredCallouts, resolveCallout } from '../../application/index.ts';
+import type { CalloutSettings, CalloutType } from '../../domain/callouts/index.ts';
 import { pickerSuggestion, type PickerView } from './picker-suggestion.ts';
 
 export interface SlashCommand {
@@ -15,8 +17,29 @@ export interface SlashCommand {
  */
 export const IMAGE_REQUEST = 'lite:image-request';
 
+/** Where the callout types go in the list: one command for each type the vault offers. */
+const CALLOUTS = 'callouts';
+
+/** A callout of `type`, empty, with the caret in it. */
+const calloutCommand = (type: CalloutType, label: string): SlashCommand => ({
+  id: `callout-${type.name.toLowerCase()}`,
+  label: `Callout: ${label}`,
+  hint: `> [!${type.name}]`,
+  run: (editor, range) =>
+    editor
+      .chain()
+      .focus()
+      .deleteRange(range)
+      .insertContent({
+        type: 'callout',
+        attrs: { kind: type.name, title: null, fold: null },
+        content: [{ type: 'paragraph' }],
+      })
+      .run(),
+});
+
 /** Only blocks the markdown serializer can write are offered. */
-export const SLASH_COMMANDS: readonly SlashCommand[] = [
+const BLOCK_COMMANDS: readonly (SlashCommand | typeof CALLOUTS)[] = [
   {
     id: 'h1',
     label: 'Heading 1',
@@ -68,22 +91,7 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     hint: '```',
     run: (editor, range) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
-  {
-    id: 'callout',
-    label: 'Callout',
-    hint: '> [!note]',
-    run: (editor, range) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'callout',
-          attrs: { kind: 'note', title: null, fold: null },
-          content: [{ type: 'paragraph' }],
-        })
-        .run(),
-  },
+  CALLOUTS,
   {
     id: 'table',
     label: 'Table',
@@ -118,12 +126,26 @@ export type SlashCommandView = PickerView<SlashCommand>;
 
 export interface SlashCommandsOptions {
   onView: (view: SlashCommandView | null) => void;
+  /** The vault's callout types, each offered as a callout of its own. */
+  callouts: () => CalloutSettings;
 }
 
-const matching = (query: string): SlashCommand[] => {
+/** Every command, a callout of each type the vault offers where "callouts" stands. */
+export function slashCommands(settings: CalloutSettings): SlashCommand[] {
+  return BLOCK_COMMANDS.flatMap((command) =>
+    command === CALLOUTS
+      ? offeredCallouts(settings).map((type) =>
+          calloutCommand(type, resolveCallout(type.name, settings).label),
+        )
+      : [command],
+  );
+}
+
+const matching = (query: string, settings: CalloutSettings): SlashCommand[] => {
   const wanted = query.trim().toLowerCase();
-  if (wanted === '') return [...SLASH_COMMANDS];
-  return SLASH_COMMANDS.filter((command) => command.label.toLowerCase().includes(wanted));
+  const commands = slashCommands(settings);
+  if (wanted === '') return commands;
+  return commands.filter((command) => command.label.toLowerCase().includes(wanted));
 };
 
 /** Blocks offered by typing `/` at the start of an empty line. */
@@ -131,7 +153,7 @@ export const SlashCommands = Extension.create<SlashCommandsOptions>({
   name: 'slashCommands',
 
   addOptions() {
-    return { onView: () => {} };
+    return { onView: () => {}, callouts: () => ({ types: [], hidden: [] }) };
   },
 
   addProseMirrorPlugins() {
@@ -142,7 +164,7 @@ export const SlashCommands = Extension.create<SlashCommandsOptions>({
         pluginKey: new PluginKey('slashCommands'),
         char: '/',
         startOfLine: true,
-        find: (query) => matching(query),
+        find: (query) => matching(query, options.callouts()),
         onView: (view) => options.onView(view),
         command: ({ editor, range, props: command }) => command.run(editor, range),
       }),

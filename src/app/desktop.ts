@@ -32,6 +32,7 @@ import {
   openSession,
   type Boot,
 } from './app-boot.ts';
+import { wireGranola } from './desktop-granola.ts';
 import { remoteInfo, wireSync } from './desktop-sync.ts';
 
 type FileSettings = SettingsStore & { written(): Promise<void> };
@@ -99,14 +100,17 @@ async function composeDesktop({
     },
     followTheme,
   };
+  const granola = wireGranola({ deps, sync, settings, vaultPath });
   const services: AppServices = {
-    ...{ files: gated, session, search, settings, sync, desktop, pendingEdits },
+    ...{ files: gated, session, search, settings, sync, desktop, granola, pendingEdits },
     clock: systemClock,
     imageProbe: webviewImageProbe,
     loadMarkdown,
   };
   const start = () => {
     followDisk(deps);
+    // Before sync starts, so the import hears the first sync end.
+    granola.start();
     sync.start();
     setGlobalShortcut(settings.load().captureHotkey, quickCapture).catch(
       reportQuietly('register the capture key'),
