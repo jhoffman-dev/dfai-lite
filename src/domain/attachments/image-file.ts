@@ -44,6 +44,11 @@ export const MAX_IMAGE_BYTES = 20_971_520;
 /** What a file picker offers when it is picking an image for a note. */
 export const IMAGE_PICKER_ACCEPT = EMBEDDABLE_IMAGE_EXTENSIONS.map((ext) => `.${ext}`).join(',');
 
+/** Whether `path` names a picture a note can show, by its extension. */
+export function isImagePath(path: string): boolean {
+  return Object.hasOwn(IMAGE_MIME_TYPES, extensionOf(path));
+}
+
 /** The MIME type to show `path` as; a generic one when its extension is not an image. */
 export function imageMimeType(path: string): string {
   return IMAGE_MIME_TYPES[extensionOf(path)] ?? 'application/octet-stream';
@@ -126,6 +131,13 @@ export function imageFileName({
 }): string {
   const base = isGenericName(image) ? pastedBase(now) : cleanNoteName(stemOf(image.name));
   return `${base === '' ? pastedBase(now) : base}.${extension}`;
+}
+
+/** `date` as local time, `YYYY-MM-DDTHH:mm:ss`: what names a pasted image. */
+export function localStamp(date: Date): string {
+  const two = (value: number) => String(value).padStart(2, '0');
+  const day = `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
+  return `${day}T${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
 }
 
 /**

@@ -327,6 +327,7 @@ describe('an image resized from bytes that cannot take its size (#568)', () => {
         },
       ],
       references: new Map(),
+      breaks: 'backslash' as const,
     };
     const markdown = renderBlock({ type: 'paragraph', content: [sizedImage] }, { written });
 

@@ -26,6 +26,9 @@ notify = "8.2.2"
 # O_NOFOLLOW, renamex_np(RENAME_EXCL) and killing git's process group. Already
 # in the tree under tauri; this only makes it a direct dependency.
 libc = "0.2.191"
+# Decoding the path header of a binary write (binary.rs). Already in the
+# tree under tauri; this only makes it a direct dependency.
+percent-encoding = "2.3.2"
 
 # Turning off macOS's smart quotes and dashes in the web view (text_input.rs).
 # Already in the tree under wry, at these versions.

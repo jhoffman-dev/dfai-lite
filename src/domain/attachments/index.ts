@@ -5,6 +5,8 @@ export {
   IMAGE_PICKER_ACCEPT,
   imageFileName,
   imageMimeType,
+  isImagePath,
+  localStamp,
   MAX_IMAGE_BYTES,
   numberedFileName,
   undrawableImageMessage,

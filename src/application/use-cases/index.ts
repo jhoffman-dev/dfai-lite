@@ -17,3 +17,11 @@ export {
   type DeleteFolderResult,
 } from './folders.ts';
 export { isEmptyFolder } from './empty-folders.ts';
+export {
+  embedImage,
+  ImageEmbedError,
+  ImageRefusedError,
+  type EmbedImageDeps,
+  type EmbeddedImage,
+} from './embed-image.ts';
+export { readNoteImage, type NoteImage } from './read-image.ts';
