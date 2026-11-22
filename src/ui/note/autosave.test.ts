@@ -55,4 +55,25 @@ describe('autosave', () => {
     expect(errors).toEqual([new Error('disk full')]);
     expect(saved).toEqual(['good']);
   });
+
+  it('tries a failed save again on its own, with the newest text', async () => {
+    const saved: string[] = [];
+    let fails = 1;
+    const autosave = createAutosave({
+      save: async (text) => {
+        if (fails-- > 0) throw new Error('vault busy');
+        saved.push(text);
+      },
+      onError: () => undefined,
+    });
+    let text = 'first';
+    autosave.schedule(() => text);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(saved).toEqual([]);
+    expect(autosave.isIdle()).toBe(false);
+    text = 'first, then more';
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(saved).toEqual(['first, then more']);
+    expect(autosave.isIdle()).toBe(true);
+  });
 });

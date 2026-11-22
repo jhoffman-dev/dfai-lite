@@ -82,4 +82,25 @@ describe('saving a note from the editor', () => {
     expect(session.file(PLAN)?.text).toBe('One. Two.');
     expect(session.index.paths()).toEqual([PLAN]);
   });
+
+  it('keeps a write that failed waiting, says so, and saves it later without forking', async () => {
+    const { app, session, ui, deps } = await setup();
+    const saver = createNoteSaver(app, PLAN);
+    saver.opened('Parallel run.');
+    vi.spyOn(deps.files, 'write').mockRejectedValueOnce(new Error('The disk is full'));
+    let typed = 'Parallel run, typed.';
+    saver.autosave.schedule(() => typed);
+    await saver.autosave.flush();
+
+    expect(session.file(PLAN)?.text).toBe('Parallel run.');
+    expect(saver.basedOn()).toBe('Parallel run.');
+    expect(ui.getState().notice).toMatch(/Could not save .*The disk is full.*Trying again/);
+    expect(saver.autosave.isIdle()).toBe(false);
+
+    typed = 'Parallel run, typed, and more.';
+    await saver.autosave.flush();
+    expect(session.file(PLAN)?.text).toBe('Parallel run, typed, and more.');
+    expect(session.index.paths()).toEqual([PLAN]);
+    expect(window.location.hash).not.toMatch(/conflict/);
+  });
 });
