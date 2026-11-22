@@ -179,12 +179,12 @@ describe('Add block above and below', () => {
 });
 
 describe('Duplicate', () => {
-  it('copies a paragraph after it, a `^id` in its text copied as the text it is', () => {
+  it('copies a paragraph after it without its `^id`, as DFAI does, so no id is held twice', () => {
     const instance = noteOf(paragraph('Kept. ^keep01'), paragraph('Next.'));
     act(instance, targetOf(instance, 'Kept. ^keep01'), 'duplicate');
     expect(blocks(instance)).toEqual([
       'paragraph:Kept. ^keep01',
-      'paragraph:Kept. ^keep01',
+      'paragraph:Kept.',
       'paragraph:Next.',
     ]);
   });

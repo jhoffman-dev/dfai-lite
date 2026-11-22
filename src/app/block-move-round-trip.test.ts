@@ -135,3 +135,30 @@ describe('a block moved by its handle', () => {
     expect(save()).toBe(inOrder(0, 1, 2, 2, 3, 4));
   });
 });
+
+describe('a duplicate of a block with an id', () => {
+  const duplicate = (text: string, index: number) => {
+    const { editor, save } = open(text);
+    const pos = startOf(editor, index);
+    const target = blockTargetAt(editor.state.doc, { pos, inside: pos });
+    if (target === null) throw new Error('No block.');
+    return { done: runBlockAction(editor.view, { target, action: 'duplicate' }), save };
+  };
+
+  it('is given no `^id` of its own, so the note never holds two of one id', () => {
+    const { save } = duplicate('Ship the bank file. ^ship-1\n', 0);
+    expect(save()).toBe('Ship the bank file. ^ship-1\n\nShip the bank file.\n');
+  });
+
+  it('drops the id of each list item it copies', () => {
+    const { save } = duplicate('- fern ^a1\n- moss\n', 0);
+    expect(save().match(/\^a1/g)).toHaveLength(1);
+  });
+
+  it('is not made of a footnote definition, as two of one label are one', () => {
+    const text = 'See it.[^1]\n\n[^1]: The note.\n';
+    const { done, save } = duplicate(text, 1);
+    expect(done).toBe(false);
+    expect(save()).toBe(text);
+  });
+});

@@ -1,5 +1,5 @@
 import { closeHistory } from '@tiptap/pm/history';
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { Fragment, type Node as ProseMirrorNode } from '@tiptap/pm/model';
 import {
   NodeSelection,
   Selection,
@@ -125,12 +125,58 @@ export function insertBlock(
   return ownStep(tr);
 }
 
-/** A copy of `target` after it, the caret at its start (or the copy selected whole, an atom). */
-export function duplicateBlock(state: EditorState, target: BlockTarget): Transaction {
+/**
+ * A copy of `target` after it, the caret at its start (or the copy selected
+ * whole, an atom). As DFAI cleans a duplicate, no `^id` the block holds is
+ * given to the copy, so the note never has two blocks of one id; a footnote
+ * definition is not copied at all (null), as two of one label are one.
+ */
+export function duplicateBlock(state: EditorState, target: BlockTarget): Transaction | null {
+  const copy = withoutBlockIds(target.node);
+  if (copy === null) return null;
   const at = target.pos + target.node.nodeSize;
-  const tr = state.tr.insert(at, target.node);
+  const tr = state.tr.insert(at, copy);
   tr.setSelection(selectionInBlockAt(tr.doc, at));
   return ownStep(tr);
+}
+
+/** A `^id` at the end of a block's last line, as Obsidian writes one, with the space before it. */
+const TRAILING_ID = /[ \t]+\^[A-Za-z0-9-]+$/;
+/** The same on a line of its own after a block the editor keeps as markdown. */
+const ID_LINE = /\n[ \t]*\^[A-Za-z0-9-]+[ \t]*$/;
+const FOOTNOTE_DEFINITION = /^ {0,3}\[\^[^\]]+\]:/;
+
+/** `node` with every `^id` it holds taken off; null for a footnote definition. */
+function withoutBlockIds(node: ProseMirrorNode): ProseMirrorNode | null {
+  if (node.type.name === 'rawBlock') {
+    const markdown = String(node.attrs['markdown'] ?? '');
+    if (FOOTNOTE_DEFINITION.test(markdown)) return null;
+    const bare = markdown.replace(ID_LINE, '').replace(TRAILING_ID, '');
+    return bare === markdown ? node : node.type.create({ ...node.attrs, markdown: bare });
+  }
+  if (node.isTextblock) return withoutTrailingId(node);
+  const children: ProseMirrorNode[] = [];
+  let changed = false;
+  for (let index = 0; index < node.childCount; index += 1) {
+    const child = node.child(index);
+    const kept = withoutBlockIds(child) ?? child;
+    changed ||= kept !== child;
+    children.push(kept);
+  }
+  return changed ? node.copy(Fragment.from(children)) : node;
+}
+
+/** A line of text with the `^id` at its end, if it has one, taken off. */
+function withoutTrailingId(block: ProseMirrorNode): ProseMirrorNode {
+  const last = block.lastChild;
+  if (last === null || !last.isText || !TRAILING_ID.test(last.text ?? '')) return block;
+  const text = (last.text ?? '').replace(TRAILING_ID, '');
+  const children: ProseMirrorNode[] = [];
+  block.forEach((child, _offset, index) => {
+    if (index < block.childCount - 1) children.push(child);
+  });
+  if (text !== '') children.push(block.type.schema.text(text, last.marks));
+  return block.copy(Fragment.from(children));
 }
 
 /**
