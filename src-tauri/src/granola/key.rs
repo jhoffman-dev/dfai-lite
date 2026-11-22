@@ -22,9 +22,9 @@ fn keychain(error: String) -> GranolaFailure {
     )
 }
 
-/// The backstop for what TypeScript already checked: a Granola key, and
-/// nothing that could break the header it is written into. The key is never
-/// quoted back.
+/// The one check on what the person pasted (TypeScript only trims it and
+/// takes off a `Bearer ` prefix): a Granola key, and nothing that could break
+/// the header it is written into. The key is never quoted back.
 pub fn check(key: &str) -> Result<(), GranolaFailure> {
     let usable = key.len() > KEY_PREFIX.len()
         && key.len() <= MAX_KEY_BYTES
