@@ -23,7 +23,7 @@ export function createCommands({ actions, ui, layout, workspace }: AppContextVal
   };
   const run: Record<Command, (arg: number) => void> = {
     'note.new': () => actions.newNote().catch(actions.report),
-    'note.togglePreview': () => actions.togglePreview(),
+    'note.toggleSource': () => actions.toggleSource(),
     'note.rename': () => {
       const path = activeNote();
       if (path !== null) ui.setState({ pendingFocus: { path, target: 'title' } });
@@ -34,8 +34,8 @@ export function createCommands({ actions, ui, layout, workspace }: AppContextVal
       ui.setState({ paletteOpen: true });
     },
     'tab.close': () => {
-      const { preview } = ui.getState();
-      workspace.arrange((current) => closeTab(current, currentTab(current).id, { preview }));
+      const { source } = ui.getState();
+      workspace.arrange((current) => closeTab(current, currentTab(current).id, { source }));
     },
     'tab.next': () => workspace.arrange((current) => cycleTab(current, 1)),
     'tab.previous': () => workspace.arrange((current) => cycleTab(current, -1)),

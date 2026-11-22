@@ -18,7 +18,7 @@ export interface UiState {
   /** The sidebar, on a phone-width screen where it is a drawer. */
   readonly drawerOpen: boolean;
   /** Rendered view (true) or the editor (false). */
-  readonly preview: boolean;
+  readonly source: boolean;
   readonly pendingFocus: PendingFocus | null;
   /** A short message for the person: a refused rename, a failed save. */
   readonly notice: string | null;
@@ -26,13 +26,13 @@ export interface UiState {
 
 export type UiStore = StoreApi<UiState>;
 
-export function createUiStore({ preview }: { preview: boolean }): UiStore {
+export function createUiStore({ source }: { source: boolean }): UiStore {
   return createStore<UiState>(() => ({
     paletteOpen: false,
     settingsOpen: false,
     shortcutsOpen: false,
     drawerOpen: false,
-    preview,
+    source,
     pendingFocus: null,
     notice: null,
   }));

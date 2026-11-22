@@ -10,6 +10,7 @@ import {
   FixedClock,
   MemorySettingsStore,
   MemoryVaultFiles,
+  plainMarkdown,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
@@ -35,18 +36,27 @@ export function giveElementsASize(): void {
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 260 });
 }
 
+// One promise, as the app's loader gives: a new one each render would suspend the note each render.
+const loadedPlainMarkdown = Promise.resolve(plainMarkdown);
+const PLAIN_MARKDOWN: AppServices['loadMarkdown'] = () => loadedPlainMarkdown;
+
 /**
- * Renders the whole app on `files`, in the rendered view unless told
- * otherwise. The tabs are kept in memory (`layout`), never in jsdom's storage.
+ * Renders the whole app on `files`, notes shown as their plain markdown
+ * unless told otherwise: the editor and its markdown reader load lazily,
+ * and these tests are about the app around the note. The tabs are kept in
+ * memory (`layout`), never in jsdom's storage.
  */
 export async function renderApp({
   files = TEST_VAULT,
-  preview = true,
+  source = true,
   layout = memoryLayoutStorage(),
+  loadMarkdown = PLAIN_MARKDOWN,
 }: {
   files?: Readonly<Record<VaultPath, string>>;
-  preview?: boolean;
+  source?: boolean;
   layout?: LayoutStorage;
+  /** The markdown port: the UI's tests cannot reach the real one, so the note is read as one raw block. */
+  loadMarkdown?: AppServices['loadMarkdown'];
 } = {}) {
   const vaultFiles = MemoryVaultFiles.of(files);
   const session = new VaultSession();
@@ -55,7 +65,7 @@ export async function renderApp({
   search.index(
     session.index.paths().map((path) => ({ path, text: session.file(path)?.text ?? '' })),
   );
-  const initial: Settings = { ...DEFAULT_SETTINGS, ui: { ...DEFAULT_SETTINGS.ui, preview } };
+  const initial: Settings = { ...DEFAULT_SETTINGS, ui: { ...DEFAULT_SETTINGS.ui, source } };
   const services: AppServices = {
     files: vaultFiles,
     session,
@@ -65,6 +75,7 @@ export async function renderApp({
     sync: null,
     desktop: null,
     pendingEdits: { add: () => () => undefined },
+    loadMarkdown,
   };
   return { services, layout, ...render(<App services={services} layoutStorage={layout} />) };
 }

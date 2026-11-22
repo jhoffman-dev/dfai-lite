@@ -18,7 +18,7 @@ const MAX_ZOOM = 4;
 /** How far the pointer may move and still count as a click, not a drag. */
 const CLICK_SLOP = 4;
 /** Up to this many notes every title is drawn; past it, only when zoomed in or pointed at. */
-const ALWAYS_LABELLED = 24;
+const ALWAYS_LABELED = 24;
 /** The zoom past which every title is drawn, however many notes there are. */
 const LABEL_ALL_ZOOM = 1.4;
 
@@ -51,7 +51,7 @@ export function GraphCanvas({
   const view = chosen ?? fitView(positions, size);
   const neighbors = useMemo(() => neighborsOf(graph.edges), [graph.edges]);
   const lit = hovered === null ? null : new Set([hovered, ...(neighbors.get(hovered) ?? [])]);
-  const labelAll = graph.nodes.length <= ALWAYS_LABELLED || view.k >= LABEL_ALL_ZOOM;
+  const labelAll = graph.nodes.length <= ALWAYS_LABELED || view.k >= LABEL_ALL_ZOOM;
   const radiusOf = (id: string) => nodeRadius(neighbors.get(id)?.size ?? 0);
   const labels: LabeledNode[] = graph.nodes
     .map((node) => ({

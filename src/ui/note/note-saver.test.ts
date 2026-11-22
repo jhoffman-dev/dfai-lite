@@ -3,6 +3,7 @@ import {
   FixedClock,
   MemorySettingsStore,
   MemoryVaultFiles,
+  plainMarkdown,
   SimpleSearchEngine,
 } from '../../application/testing/index.ts';
 import { createAppContext } from '../app-context.ts';
@@ -25,6 +26,7 @@ async function setup() {
     sync: null,
     desktop: null,
     pendingEdits: { add: () => () => undefined },
+    loadMarkdown: () => Promise.resolve(plainMarkdown),
   };
   const app = createAppContext(services, memoryLayoutStorage());
   app.workspace.open({ kind: 'note', path: PLAN });

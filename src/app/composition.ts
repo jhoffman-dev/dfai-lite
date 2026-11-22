@@ -3,7 +3,13 @@ import { sampleVaultFiles } from '../adapters/memory/index.ts';
 import { createLocalSettingsStore } from '../adapters/settings/index.ts';
 import { isTauri } from '../adapters/tauri/index.ts';
 import type { AppServices } from '../ui/services.ts';
-import { createPendingEdits, deviceLayoutStorage, openSession, type Boot } from './app-boot.ts';
+import {
+  createPendingEdits,
+  deviceLayoutStorage,
+  loadMarkdown,
+  openSession,
+  type Boot,
+} from './app-boot.ts';
 import { bootDesktop } from './desktop.ts';
 
 export type { Boot } from './app-boot.ts';
@@ -28,6 +34,7 @@ async function bootBrowser(): Promise<Boot> {
     sync: null,
     desktop: null,
     pendingEdits: createPendingEdits(),
+    loadMarkdown,
   };
   return { kind: 'app', services, layoutStorage: deviceLayoutStorage(), start: () => undefined };
 }

@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type {
   Clock,
+  MarkdownPort,
   SearchEngine,
   SettingsStore,
   VaultDeps,
@@ -36,6 +37,8 @@ export interface AppServices {
   /** The Mac app's own controls (vault folder, hotkey); null in a browser. */
   readonly desktop: DesktopControls | null;
   readonly pendingEdits: PendingEdits;
+  /** The markdown reader and writer the editor saves through, loaded with it after the first paint. */
+  readonly loadMarkdown: () => Promise<MarkdownPort>;
 }
 
 /** The services plus the stores the components read slices of. */

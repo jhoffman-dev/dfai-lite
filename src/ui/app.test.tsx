@@ -45,21 +45,6 @@ describe('the sidebar', () => {
   });
 });
 
-describe('following a link', () => {
-  it('creates the note a link names when none answers, and opens it', async () => {
-    const user = userEvent.setup();
-    const { services } = await renderApp();
-    await go('#/note/Projects%2FGarden%20shed.md');
-    const link = await screen.findByRole('link', { name: 'Materials list' });
-    await user.click(link);
-    expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue(
-      'Materials list',
-    );
-    expect(services.session.file('Inbox/Materials list.md')).not.toBeNull();
-    expect(window.location.hash).toBe('#/note/Inbox%2FMaterials%20list.md');
-  });
-});
-
 describe('the tags view', () => {
   it('lists the notes carrying a tag, nested tags included', async () => {
     await renderApp();

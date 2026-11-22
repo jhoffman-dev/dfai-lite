@@ -26,14 +26,12 @@ describe('the page menu', () => {
     expect(rightClick(place('<nav><button data-target>Inbox</button></nav>'))).toBe(true);
   });
 
-  it('stays in the editor, a field and the read view', () => {
+  it('stays in the editor, a field and the note’s markdown', () => {
     expect(rightClick(place('<div contenteditable="true"><p data-target>hi</p></div>'))).toBe(
       false,
     );
     expect(rightClick(place('<input data-target />'))).toBe(false);
-    expect(rightClick(place('<article class="read-view"><p data-target>hi</p></article>'))).toBe(
-      false,
-    );
+    expect(rightClick(place('<textarea class="note-source" data-target></textarea>'))).toBe(false);
   });
 
   it('stays while text is selected, for Copy', () => {

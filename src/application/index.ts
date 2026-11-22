@@ -11,10 +11,11 @@ export {
   formatWikiLink,
   openLinkInText,
   rankNoteSuggestions,
+  splitWikiLinks,
   wikiLinkLabel,
   wikiLinkSpans,
 } from '../domain/links/index.ts';
-export { findTags, tagKey } from '../domain/tags/index.ts';
+export { findTags, rankTagSuggestions, tagHue, tagKey } from '../domain/tags/index.ts';
 export {
   flattenFolderTree,
   noteTitle,
@@ -23,4 +24,5 @@ export {
   pathAfterMove,
 } from '../domain/vault/index.ts';
 export { isConflictCopyPath } from '../domain/sync/index.ts';
+export { calloutLabel } from '../domain/markdown/index.ts';
 export { FAVORITES_PATH } from '../domain/favorites/index.ts';

@@ -1,73 +1,602 @@
-.note-editor {
-  min-height: 60vh;
+/* The note editor, as DFAI draws it (its editor.css): the body, wiki links,
+   tags, suggestion popups, callouts, tables, images and code highlighting. */
+
+/* The body is running text meant to be read: 14 on a 720px measure,
+   with headings at 600 and nothing heavier. */
+.editor {
+  color: var(--ink-body);
+  font-size: var(--text-body-lg);
+  line-height: 1.6;
+  outline: none;
 }
 
-.note-editor .cm-editor {
-  height: 100%;
+.editor > * + * {
+  margin-top: 0.85em;
 }
 
-.cm-link-pill,
-.cm-tag-pill {
-  border-radius: var(--radius-chip);
-  padding: 1px 2px;
-}
-
-.cm-link-pill {
-  background: var(--link-bg);
-  color: var(--link-ink);
-}
-
-.cm-link-pill.is-unresolved {
-  background: transparent;
-  color: var(--link-ink);
-  box-shadow: inset 0 0 0 1px var(--link-bg);
-}
-
-.cm-tag-pill {
-  background: var(--tag-bg);
-  color: var(--tag-ink);
-}
-
-.cm-tooltip.cm-tooltip-autocomplete {
-  border: 0;
-  border-radius: var(--radius-popover);
-  background: var(--surface);
-  box-shadow: var(--shadow-popover);
-  padding: 4px;
-  font-family: var(--font-ui);
-}
-
-.cm-tooltip.cm-tooltip-autocomplete > ul {
-  max-height: 300px;
-  font-family: var(--font-ui);
-}
-
-.cm-tooltip.cm-tooltip-autocomplete > ul > li {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: 4px 8px;
-  border-radius: var(--radius-row);
+.editor h1,
+.editor h2,
+.editor h3,
+.editor h4 {
   color: var(--ink);
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+  line-height: var(--leading-tight);
+  margin-top: 1.6em;
 }
 
-.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+.editor h1 {
+  font-size: var(--text-note-title);
+}
+.editor h2 {
+  font-size: var(--text-section);
+}
+.editor h3 {
+  font-size: var(--text-body-lg);
+}
+
+.editor ul,
+.editor ol {
+  padding-left: 1.4em;
+}
+
+.editor li > p,
+.editor li > div > p {
+  margin: 0;
+}
+
+/* Restore spacing only where an item genuinely holds several paragraphs. */
+.editor li p + p {
+  margin-top: 0.6em;
+}
+
+.editor ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+.editor ul[data-type='taskList'] li {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+}
+
+.editor blockquote {
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink-2);
+  margin-left: 0;
+  padding-left: 14px;
+}
+
+.editor pre {
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  font: var(--text-mono) / 1.6 var(--font-mono);
+  overflow-x: auto;
+  padding: 12px 14px;
+}
+
+/* Inline code: 12.5 mono on the code ground, radius 4. The
+   longhands, not the `font` shorthand, so the weight of the words round it
+   — bold, a heading — carries into the code. */
+.editor code {
+  background: var(--code-bg);
+  border-radius: var(--radius-chip);
+  color: var(--code-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  line-height: 1.4;
+  padding: 1px 4px;
+}
+
+/* A code block's text is the block's, not the inline atom's: the `pre` sets
+   the size and leading, and the `code` inside it adds nothing. */
+.editor pre code {
+  background: none;
+  border-radius: 0;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+}
+
+/* Code inside a heading keeps the heading's scale. */
+.editor :is(h1, h2, h3, h4, h5, h6) code {
+  font-size: 0.86em;
+}
+
+.editor hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.editor a {
+  color: var(--accent-text);
+}
+
+/* A construct the editor cannot edit yet. Shown as source, saved untouched. */
+.raw-block {
+  background: var(--well);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-chip);
+  color: var(--ink-2);
+  font: var(--text-mono) / 1.6 var(--font-mono);
+  overflow-x: auto;
+  padding: 10px 12px;
+  white-space: pre;
+}
+
+.raw-block.ProseMirror-selectednode {
+  border-color: var(--focus);
+}
+
+/* A comment on its own, kept but not read: the markers round a meeting's summary. */
+.raw-block--comment {
+  background: none;
+  border-color: transparent;
+  font-size: 11px;
+  opacity: 0.55;
+  padding: 0 4px;
+}
+
+/* ---- wiki links ---- */
+
+/* A link in the text is the text's own ink, underlined in the focus color: a word to follow, not a colored word. */
+.wikilink {
+  border-radius: var(--radius-chip);
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--focus);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.wikilink:hover {
+  background: var(--hover);
+}
+
+/* ---- tags ---- */
+
+/* A #tag in a note: the accent's text color on its chip tint, like a link but
+   solid, since the whole word is the tag. It stays inline text — padding
+   would push the caret off it. */
+.editor .tag {
+  background: var(--you);
+  border-radius: var(--radius-chip);
+  box-decoration-break: clone;
+  color: var(--accent-text);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.editor .tag:hover {
+  background: color-mix(in srgb, var(--accent-text) 20%, transparent);
+}
+
+/* Each tag in its own pastel, the same one wherever the tag is shown. */
+.editor .tag[data-hue] {
+  background: var(--pill);
+  color: var(--pill-ink);
+}
+
+.editor .tag[data-hue]:hover {
+  text-decoration: underline;
+}
+
+/* ---- suggestion popups ---- */
+
+.atlas-suggestion {
+  /* The text of a half-typed `[[` or `/` command. It is ordinary inline text and
+     must stay that way: giving it a box moves the caret off the end of the line. */
+  display: inline;
+}
+
+/* The editor's popups — the slash menu, the `[[`, `@` and `#` lists — are
+   popovers, as the app's menus are: the surface with a hairline, an 8px
+   radius and the one shadow content never gets, over 36px rows. */
+.suggestions {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  list-style: none;
+  margin: 0;
+  max-height: 320px;
+  max-width: 380px;
+  min-width: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  position: fixed;
+  z-index: 20;
+}
+
+.suggest-option {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: var(--text-body);
+  font-weight: 400;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 0 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.suggest-option:hover {
+  background: var(--hover);
+}
+
+.suggest-option--on,
+.suggest-option--on:hover {
   background: var(--selected);
   color: var(--ink);
 }
 
-.cm-tooltip-autocomplete .cm-completionDetail {
-  margin-left: auto;
+.suggest-option__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggest-option__path {
   color: var(--ink-3);
-  font-style: normal;
+  flex-shrink: 0;
   font-size: var(--text-meta);
+  font-weight: 400;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.cm-tooltip-autocomplete .cm-completionMatchedText {
-  text-decoration: none;
+/* On the selected fill the quiet ink falls just under AA at 12px; a step up keeps it. */
+.suggest-option--on .suggest-option__path {
+  color: var(--ink-2);
+}
+
+/* ---- callouts ---- */
+
+/* A callout is a hairline card with a badge before its title: a faint wash
+   of its kind's color, never a heavy rule down its edge or a filled block. */
+.callout {
+  --callout-tint: var(--accent-text);
+  --callout-mark: 'i';
+  background: color-mix(in srgb, var(--callout-tint) 6%, var(--surface));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  margin: 1em 0;
+  padding: 10px 14px;
+}
+
+.callout[data-callout='warning'],
+.callout[data-callout='caution'],
+.callout[data-callout='attention'] {
+  --callout-tint: var(--warning);
+  --callout-mark: '!';
+}
+
+.callout[data-callout='danger'],
+.callout[data-callout='error'],
+.callout[data-callout='bug'],
+.callout[data-callout='failure'] {
+  --callout-tint: var(--danger);
+  --callout-mark: '!';
+}
+
+.callout[data-callout='tip'],
+.callout[data-callout='success'],
+.callout[data-callout='done'] {
+  --callout-tint: var(--success);
+  --callout-mark: '✓';
+}
+
+.callout__title {
+  align-items: center;
+  color: var(--callout-tint);
+  display: flex;
+  font-size: var(--text-body);
   font-weight: 600;
+  gap: 8px;
+  margin-bottom: 4px;
+  user-select: none;
 }
 
-.cm-placeholder {
+/* The badge is a dot: the one thing besides an avatar that is fully round. */
+.callout__title::before {
+  align-items: center;
+  background: var(--callout-tint);
+  border-radius: var(--radius-pill);
+  color: var(--surface);
+  content: var(--callout-mark);
+  display: inline-flex;
+  flex: none;
+  font-size: 10px;
+  font-weight: 600;
+  height: 16px;
+  justify-content: center;
+  width: 16px;
+}
+
+.callout__body > *:first-child {
+  margin-top: 0;
+}
+
+/* ---- tables ---- */
+
+/* A table in a note is a hairline card: the wrapper TipTap draws round it
+   carries the line and the 4px radius, the head sits on the well, and rows
+   are parted by the soft line, as the views' tables are. */
+.editor .tableWrapper {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.editor table {
+  border-collapse: collapse;
+  margin: 0;
+  width: 100%;
+}
+
+.editor th,
+.editor td {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 6px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.editor th {
+  background: var(--well);
+  border-bottom-color: var(--line);
   color: var(--ink-3);
+  font-size: var(--text-header);
+  font-weight: 500;
+}
+
+/* The wrapper draws the card's last line, so the last row draws none. */
+.editor tr:last-child td,
+.editor tr:last-child th {
+  border-bottom: 0;
+}
+
+.editor td > p,
+.editor th > p {
+  margin: 0;
+}
+
+/* Under the selection's wash the quiet header ink falls short of AA; a step up keeps it. */
+.editor th.selectedCell {
+  color: var(--ink-2);
+}
+
+.editor .selectedCell::after {
+  background: color-mix(in srgb, var(--focus) 16%, transparent);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.editor td,
+.editor th {
+  position: relative;
+}
+
+/* ---- images ---- */
+.image__img {
+  border-radius: var(--radius-chip);
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.image__missing {
+  background: var(--hover);
+  border-radius: var(--radius-chip);
+  color: var(--ink-2);
+  font-size: var(--text-meta);
+  font-weight: 500;
+  padding: 3px 8px;
+}
+
+/* An image is an atom in the text: clicking it selects it, and its alt text
+   opens under it in a small popover. */
+.image {
+  /* A box the image's own size, capped at the column, so the alt text
+     popover can hang from its bottom edge. */
+  display: inline-block;
+  max-width: 100%;
+  position: relative;
+  vertical-align: middle;
+}
+
+.image--selected .image__img {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.image__alt {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--shadow-popover);
+  left: 8px;
+  padding: 4px;
+  position: absolute;
+  top: calc(100% + 6px);
+  width: min(320px, calc(100% - 16px));
+  z-index: 5;
+}
+
+.image__alt-input {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-body);
+  height: 28px;
+  padding: 0 8px;
+  width: 100%;
+}
+
+.image__alt-input:focus-visible {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+  outline: none;
+}
+
+/* ---- code highlighting ---- */
+
+.editor .hljs-comment,
+.editor .hljs-quote {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.editor .hljs-keyword,
+.editor .hljs-selector-tag,
+.editor .hljs-literal {
+  color: var(--code-keyword);
+}
+
+.editor .hljs-string,
+.editor .hljs-attr {
+  color: var(--code-string);
+}
+
+.editor .hljs-number,
+.editor .hljs-built_in {
+  color: var(--code-number);
+}
+
+.editor .hljs-title,
+.editor .hljs-name,
+.editor .hljs-function {
+  color: var(--accent-text);
+}
+
+.editor .hljs-type,
+.editor .hljs-symbol {
+  color: var(--code-type);
+}
+
+/* ---- Lite's own: around the editor ---- */
+
+.note-editor {
+  min-height: 60vh;
+}
+
+.editor-host {
+  position: relative;
+}
+
+/* Bullets sit with air between them, not packed like a table (DFAI's page body). */
+.editor li + li {
+  margin-top: 8px;
+}
+
+.editor ul,
+.editor ol {
+  padding-left: 22px;
+}
+
+/* A task's box is a real checkbox, so a click or Space ticks it. */
+.editor input[type='checkbox'] {
+  accent-color: var(--focus);
+  cursor: pointer;
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
+.editor ul[data-type='taskList'] li > label {
+  flex: none;
+}
+
+.editor ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+/* Where a dragged block will land. */
+.editor-drop-line {
+  background: var(--focus);
+  border-radius: 1px;
+}
+
+/* A note not yet migrated still opens on its YAML block: shown, kept, never edited. */
+.raw-block--frontmatter {
+  margin: 0 0 0.85em;
+}
+
+/* The note as its plain markdown (⌘E): every character as the file has it. */
+.note-source {
+  background: transparent;
+  border: 0;
+  box-sizing: border-box;
+  color: var(--ink);
+  font: var(--text-mono) / 1.6 var(--font-mono);
+  min-height: 60vh;
+  outline: none;
+  padding: 0;
+  resize: none;
+  width: 100%;
+  field-sizing: content;
+}
+
+/* A tag's pastel, by the hue its name hashes to (tagHue): the same one wherever it is shown. */
+
+.editor .tag[data-hue='brown'] {
+  --pill: var(--hue-brown-bg);
+  --pill-ink: var(--hue-brown-ink);
+}
+
+.editor .tag[data-hue='orange'] {
+  --pill: var(--hue-orange-bg);
+  --pill-ink: var(--hue-orange-ink);
+}
+
+.editor .tag[data-hue='yellow'] {
+  --pill: var(--hue-yellow-bg);
+  --pill-ink: var(--hue-yellow-ink);
+}
+
+.editor .tag[data-hue='green'] {
+  --pill: var(--hue-green-bg);
+  --pill-ink: var(--hue-green-ink);
+}
+
+.editor .tag[data-hue='blue'] {
+  --pill: var(--hue-blue-bg);
+  --pill-ink: var(--hue-blue-ink);
+}
+
+.editor .tag[data-hue='purple'] {
+  --pill: var(--hue-purple-bg);
+  --pill-ink: var(--hue-purple-ink);
+}
+
+.editor .tag[data-hue='pink'] {
+  --pill: var(--hue-pink-bg);
+  --pill-ink: var(--hue-pink-ink);
+}
+
+.editor .tag[data-hue='red'] {
+  --pill: var(--hue-red-bg);
+  --pill-ink: var(--hue-red-ink);
 }

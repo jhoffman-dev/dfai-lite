@@ -1,26 +1,43 @@
 import type { NoteSuggestion } from '../../domain/links/index.ts';
+import type { TagSuggestion } from '../../domain/tags/index.ts';
 import type { OpenIn } from '../panes/layout.ts';
 
 /**
- * What the editor asks of the app, in one object the extensions read through
- * a ref, so the editor is built once per note and never rebuilt on a render.
+ * What the editor asks of the app, in one object the editor reads through a
+ * ref, so it is built once per note and never rebuilt on a render.
  */
 export interface EditorBridge {
   /** Notes for a half-typed `[[link`, best first. */
   suggestNotes(query: string): readonly NoteSuggestion[];
-  /** Existing tags whose name starts with `prefix`, as written. */
-  suggestTags(prefix: string): readonly string[];
-  /** Whether a link to `target` opens a note today. */
-  resolves(target: string): boolean;
+  /** Tags for what is typed after `#`: the typed one first, then the vault's own. */
+  suggestTags(query: string): readonly TagSuggestion[];
   /** Makes the note a link names (no navigation); for the picker's "Create" row. */
   createLinkedNote(target: string): void;
   followLink(target: string, openIn: OpenIn): void;
   openTag(name: string, openIn: OpenIn): void;
-  /** The editor was built on `text`. */
+  /** What the webview can show for an image's source, or null when there is none. */
+  loadImage(src: string): Promise<string | null>;
+  /** The view was built on `text`, the vault's: saves are based on it. */
   opened(text: string): void;
-  /** The text changed: the editor hands a reader, not the text, so a keystroke reads nothing. */
+  /** The text changed: the view hands a reader, not the text, so a keystroke reads nothing. */
   changed(read: () => string): void;
   blurred(): void;
-  /** The editor is gone (its tab hidden, or the note read instead): save what waits. */
+  /** The view is gone (its tab hidden, or switched to the other view): save what waits. */
   closed(): void;
+}
+
+/** The bridge as the editor reads it: the latest one handed in, read when used, never during a render. */
+export interface LatestBridge {
+  get(): EditorBridge;
+  set(bridge: EditorBridge): void;
+}
+
+export function latestOf(first: EditorBridge): LatestBridge {
+  let current = first;
+  return {
+    get: () => current,
+    set: (bridge) => {
+      current = bridge;
+    },
+  };
 }

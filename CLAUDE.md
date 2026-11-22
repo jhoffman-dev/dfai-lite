@@ -83,8 +83,8 @@ direction.
 | `skills/`         | Agent Skills for James's Claude account, so Claude finds and uses the vault from any product.                                                            |
 
 Stack: Tauri 2, React 19, Vite, TypeScript (strict, erasable syntax only),
-CodeMirror 6, `markdown-it` + DOMPurify for the read view, MiniSearch,
-d3-force, zustand, Vitest, Playwright. Plain CSS, one file per feature.
+TipTap 3 (ProseMirror) for the editor and remark for its markdown, both
+lifted from DFAI, MiniSearch, d3-force, zustand, Vitest, Playwright. Plain CSS, one file per feature.
 Headless libraries only, no component kit.
 
 ## How it works
@@ -126,8 +126,14 @@ A change to the contract changes `vault-template/CLAUDE.md`, the skill in
 
 - **The webview has no Node.** `Buffer`, `process`, `node:fs` pass Vitest and
   fail in the app. `tools/` may use Node; `src/` may not (ESLint holds it).
-- **Rendered markdown is untrusted.** The read view goes through DOMPurify,
-  always.
+- **Markdown saves are byte-preserving** (DFAI's ADR-0003). An untouched
+  block is written back from its own bytes; anything the editor does not
+  model is a raw block, saved unchanged. Change how a block serializes and
+  run the round-trip tests in `src/adapters/markdown`.
+- **Anything that is not markdown needs a serializer handler** (DFAI's
+  ADR-0004), or remark escapes it: `[[Note]]` left as text is written
+  `\[\[Note]]`. The editor never renders note HTML: notes are parsed into
+  ProseMirror nodes, so there is no HTML to sanitize.
 - **Never force-push a vault, never rebase it, never `git clean` or
   `reset --hard` it.** A refused push means fetch, merge, push again.
 - **Git arguments are fixed shapes.** A note's name never becomes a git

@@ -6,15 +6,15 @@ export interface UiPrefs {
   readonly expandedFolders: readonly VaultPath[];
   /** The note open when the app was last closed, reopened on start. */
   readonly lastOpenPath: VaultPath | null;
-  /** Rendered view (true) or source (false) when a note opens. */
-  readonly preview: boolean;
+  /** The note's markdown as plain text (true), or the editor (false), when a note opens. */
+  readonly source: boolean;
 }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
   theme: 'system',
   expandedFolders: [],
   lastOpenPath: null,
-  preview: false,
+  source: false,
 };
 
 /** The key that makes a new note from anywhere on the Mac, as Tauri names keys. */

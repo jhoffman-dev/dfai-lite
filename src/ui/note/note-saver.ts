@@ -21,8 +21,18 @@ export function createNoteSaver(app: AppContextValue, path: VaultPath): NoteSave
   const { deps, services, actions, ui, workspace } = app;
   let basedOnText = services.session.file(path)?.text ?? '';
   const save = async (text: string) => {
-    const result = await saveNoteText(deps, { path, text, basedOnText, clock: services.clock });
+    const based = basedOnText;
+    // Taken as the base before the write lands, so when the session hears the
+    // write back it knows it for this save, not a change from disk. A write that fails
+    // leaves the base ahead of the file: the next save then forks to a
+    // conflict copy rather than writing over it, and nothing is lost.
     basedOnText = text;
+    const result = await saveNoteText(deps, {
+      path,
+      text,
+      basedOnText: based,
+      clock: services.clock,
+    });
     if (result.kind !== 'forked') return;
     ui.setState({
       notice: `“${noteTitle(path)}” changed elsewhere while you typed. Your text is in “${noteTitle(result.path)}”.`,

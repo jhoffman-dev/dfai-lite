@@ -12,7 +12,7 @@ function threeTabs(): Layout {
       openView(layout, {
         view: { kind: 'note', path },
         openIn: 'new-tab',
-        preview: false,
+        source: false,
         canSplit: true,
       }),
     initialLayout(),

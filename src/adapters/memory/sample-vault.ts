@@ -16,7 +16,7 @@ export const SAMPLE_VAULT: Readonly<Record<VaultPath, string>> = {
   'People/Tobias Fenn.md':
     'Tobias Fenn is the engineering lead on the payroll integration. #person\n\nWorks closely with [[Mara Quill]].\n',
   'Projects/Larkspur Payroll.md':
-    'Moving Larkspur onto the new payroll system by the end of the quarter. #project/active\n\n## Goals\n\n- Parallel run for two pay cycles.\n- Sign-off from [[Mara Quill]].\n\n## Links\n\n- [[2026-11-14 Larkspur kickoff]]\n- [[2026-11-21 Weekly sync]]\n- [[Data migration plan]]\n',
+    'Moving Larkspur onto the new payroll system by the **end of the quarter**. #project/active\n\n## Goals\n\n- Parallel run for two pay cycles.\n- Sign-off from [[Mara Quill]].\n\n## Cut-over\n\n- [x] Freeze changes in the old system\n- [ ] Run the second parallel cycle\n- [ ] Switch the bank file\n\n| Cycle | Date | Status |\n| --- | --- | --- |\n| First | 2026-11-28 | Planned |\n| Second | 2026-12-12 | Planned |\n\n```bash\npayroll export --cycle 1 --to staging\n```\n\n## Links\n\n- [[2026-11-14 Larkspur kickoff]]\n- [[2026-11-21 Weekly sync]]\n- [[Data migration plan]]\n',
   'Projects/Data migration plan.md':
     'How employee records move from the old system. #project/active #payroll\n\n1. Export from the old system.\n2. Validate with [[Tobias Fenn]].\n3. Load into staging.\n\n```\n#not-a-tag inside code\n```\n',
   'Projects/Garden shed.md':

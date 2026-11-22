@@ -18,7 +18,7 @@ export interface Tab {
   readonly id: string;
   readonly view: TabView;
   /** Rendered view (true) or the editor (false), per tab. */
-  readonly preview: boolean;
+  readonly source: boolean;
 }
 
 export interface Pane {
@@ -42,9 +42,9 @@ export const EVEN_SPLIT = 0.5;
 const MIN_SPLIT = 0.2;
 const MAX_SPLIT = 0.8;
 
-export function initialLayout({ view = BLANK, preview = false } = {}): Layout {
+export function initialLayout({ view = BLANK, source = false } = {}): Layout {
   return {
-    panes: [{ tabs: [{ id: 't1', view, preview }], activeTab: 't1' }],
+    panes: [{ tabs: [{ id: 't1', view, source }], activeTab: 't1' }],
     activePane: 0,
     split: EVEN_SPLIT,
     nextId: 2,
@@ -84,8 +84,8 @@ function withPane(layout: Layout, index: number, pane: Pane): Layout {
   return { ...layout, panes: layout.panes.map((old, at) => (at === index ? pane : old)) };
 }
 
-function mintTab(layout: Layout, view: TabView, preview: boolean): [Layout, Tab] {
-  const tab = { id: `t${layout.nextId}`, view, preview };
+function mintTab(layout: Layout, view: TabView, source: boolean): [Layout, Tab] {
+  const tab = { id: `t${layout.nextId}`, view, source };
   return [{ ...layout, nextId: layout.nextId + 1 }, tab];
 }
 
@@ -109,10 +109,10 @@ export function openInActive(layout: Layout, view: TabView): Layout {
 }
 
 /** Shows `view` in a new tab after the active one; a blank active tab is reused. */
-export function openInNewTab(layout: Layout, view: TabView, preview: boolean): Layout {
+export function openInNewTab(layout: Layout, view: TabView, source: boolean): Layout {
   const pane = activePaneOf(layout);
   if (activeTabOf(pane).view.kind === 'home') return openInActive(layout, view);
-  const [minted, tab] = mintTab(layout, view, preview);
+  const [minted, tab] = mintTab(layout, view, source);
   return withPane(minted, layout.activePane, insertAfterActive(pane, tab));
 }
 
@@ -120,16 +120,16 @@ export function openInNewTab(layout: Layout, view: TabView, preview: boolean): L
  * Shows `view` in the other pane, splitting the window if it is not yet:
  * focuses a tab there that already shows it, else opens it in a new tab.
  */
-export function openToSide(layout: Layout, view: TabView, preview: boolean): Layout {
+export function openToSide(layout: Layout, view: TabView, source: boolean): Layout {
   if (layout.panes.length < MAX_PANES) {
-    const [minted, tab] = mintTab(layout, view, preview);
+    const [minted, tab] = mintTab(layout, view, source);
     return {
       ...minted,
       panes: [...layout.panes, { tabs: [tab], activeTab: tab.id }],
       activePane: 1,
     };
   }
-  return openInNewTab({ ...layout, activePane: otherPane(layout) }, view, preview);
+  return openInNewTab({ ...layout, activePane: otherPane(layout) }, view, source);
 }
 
 /**
@@ -141,16 +141,16 @@ export function openView(
   {
     view,
     openIn,
-    preview,
+    source,
     canSplit,
-  }: { view: TabView; openIn: OpenIn; preview: boolean; canSplit: boolean },
+  }: { view: TabView; openIn: OpenIn; source: boolean; canSplit: boolean },
 ): Layout {
   if (openIn === 'side' && canSplit) {
     const there = layout.panes[otherPane(layout)]?.tabs.find((tab) => sameView(tab.view, view));
-    return there === undefined ? openToSide(layout, view, preview) : activate(layout, there.id);
+    return there === undefined ? openToSide(layout, view, source) : activate(layout, there.id);
   }
   if (openIn === 'active') return openInActive(layout, view);
-  return openInNewTab(layout, view, preview);
+  return openInNewTab(layout, view, source);
 }
 
 function otherPane(layout: Layout): number {
@@ -191,18 +191,18 @@ function withoutTab(layout: Layout, tabId: string): { layout: Layout; pane: numb
 }
 
 /** A pane left with no tabs closes; the last pane instead shows a blank tab. */
-function settleEmptied(layout: Layout, index: number, preview: boolean): Layout {
+function settleEmptied(layout: Layout, index: number, source: boolean): Layout {
   const pane = layout.panes[index];
   if (pane === undefined || pane.tabs.length > 0) return layout;
   if (layout.panes.length > 1) return dropPane(layout, index);
-  const [minted, tab] = mintTab(layout, BLANK, preview);
+  const [minted, tab] = mintTab(layout, BLANK, source);
   return withPane(minted, index, { tabs: [tab], activeTab: tab.id });
 }
 
 /** Closes a tab. Closing a pane's last tab closes the pane, unless it is the last pane. */
-export function closeTab(layout: Layout, tabId: string, { preview = false } = {}): Layout {
+export function closeTab(layout: Layout, tabId: string, { source = false } = {}): Layout {
   const removed = withoutTab(layout, tabId);
-  return removed.pane < 0 ? layout : settleEmptied(removed.layout, removed.pane, preview);
+  return removed.pane < 0 ? layout : settleEmptied(removed.layout, removed.pane, source);
 }
 
 export function closeOthers(layout: Layout, tabId: string): Layout {
@@ -259,7 +259,7 @@ export function splitRight(layout: Layout, tabId?: string): Layout {
       ? currentTab(layout)
       : layout.panes.flatMap((pane) => pane.tabs).find((tab) => tab.id === tabId);
   if (source === undefined) return layout;
-  const [minted, tab] = mintTab(layout, source.view, source.preview);
+  const [minted, tab] = mintTab(layout, source.view, source.source);
   return { ...minted, panes: [...layout.panes, { tabs: [tab], activeTab: tab.id }], activePane: 1 };
 }
 
@@ -331,11 +331,11 @@ export function jumpToTab(layout: Layout, position: number): Layout {
   return tab === undefined ? layout : activate(layout, tab.id);
 }
 
-export function setPreview(layout: Layout, tabId: string, preview: boolean): Layout {
+export function setSource(layout: Layout, tabId: string, source: boolean): Layout {
   const index = paneIndexOf(layout, tabId);
   const pane = layout.panes[index];
   if (pane === undefined) return layout;
-  const tabs = pane.tabs.map((tab) => (tab.id === tabId ? { ...tab, preview } : tab));
+  const tabs = pane.tabs.map((tab) => (tab.id === tabId ? { ...tab, source } : tab));
   return withPane(layout, index, { ...pane, tabs });
 }
 
@@ -374,7 +374,7 @@ export function closeMissingNotes(layout: Layout, exists: (path: VaultPath) => b
   const missing = layout.panes.flatMap((pane) =>
     pane.tabs.filter((tab) => tab.view.kind === 'note' && !exists(tab.view.path)),
   );
-  return missing.reduce((next, tab) => closeTab(next, tab.id, { preview: tab.preview }), layout);
+  return missing.reduce((next, tab) => closeTab(next, tab.id, { source: tab.source }), layout);
 }
 
 /**
@@ -419,7 +419,7 @@ function tabFrom(raw: unknown): Tab | null {
   if (!isRecord(raw) || typeof raw['id'] !== 'string' || !/^t\d+$/.test(raw['id'])) return null;
   const view = viewFrom(raw['view']);
   if (view === null) return null;
-  return { id: raw['id'], view, preview: raw['preview'] === true };
+  return { id: raw['id'], view, source: raw['source'] === true };
 }
 
 function viewFrom(raw: unknown): TabView | null {

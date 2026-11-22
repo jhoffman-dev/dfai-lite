@@ -78,14 +78,16 @@ describe('tabs', () => {
     expect(services.session.file('Projects/Payroll move.md')).toBeNull();
   });
 
-  it('keeps each tab’s own read or edit mode', async () => {
+  it('keeps each tab’s own view, the editor or the markdown', async () => {
     await renderApp();
     await go('#/note/Welcome.md');
     fireEvent.click(treeRow('Larkspur Payroll'), { ctrlKey: true });
-    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(screen.getByRole('button', { name: 'Read' })).toBeInTheDocument();
+    const markdown = () => screen.getByRole('button', { name: 'Markdown' });
+    expect(markdown()).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(markdown());
+    expect(markdown()).toHaveAttribute('aria-pressed', 'false');
     await userEvent.click(screen.getByRole('tab', { name: /Welcome/ }));
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(markdown()).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('moves the active tab left and right from the keyboard', async () => {
@@ -122,12 +124,12 @@ describe('tabs', () => {
       panes: [
         {
           tabs: [
-            { id: 't1', view: { kind: 'note', path: 'Welcome.md' }, preview: true },
-            { id: 't2', view: { kind: 'note', path: 'Gone.md' }, preview: true },
+            { id: 't1', view: { kind: 'note', path: 'Welcome.md' }, source: true },
+            { id: 't2', view: { kind: 'note', path: 'Gone.md' }, source: true },
           ],
           activeTab: 't2',
         },
-        { tabs: [{ id: 't3', view: { kind: 'graph' }, preview: false }], activeTab: 't3' },
+        { tabs: [{ id: 't3', view: { kind: 'graph' }, source: false }], activeTab: 't3' },
       ],
       activePane: 0,
       split: 0.4,

@@ -86,7 +86,7 @@ const THEMES: readonly UiPrefs['theme'][] = ['system', 'light', 'dark'];
 
 function uiFrom(raw: unknown): UiPrefs {
   if (!isRecord(raw)) return DEFAULT_UI_PREFS;
-  const { theme, expandedFolders, lastOpenPath, preview } = raw;
+  const { theme, expandedFolders, lastOpenPath, source } = raw;
   return {
     theme: THEMES.find((known) => known === theme) ?? DEFAULT_UI_PREFS.theme,
     expandedFolders:
@@ -94,6 +94,6 @@ function uiFrom(raw: unknown): UiPrefs {
         ? expandedFolders
         : DEFAULT_UI_PREFS.expandedFolders,
     lastOpenPath: isString(lastOpenPath) ? lastOpenPath : DEFAULT_UI_PREFS.lastOpenPath,
-    preview: typeof preview === 'boolean' ? preview : DEFAULT_UI_PREFS.preview,
+    source: typeof source === 'boolean' ? source : DEFAULT_UI_PREFS.source,
   };
 }
