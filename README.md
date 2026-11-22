@@ -84,6 +84,49 @@ Sync never guesses on your behalf:
 - While sync commits or merges, saves wait; a note the merge changed gets your
   typing as a conflict copy.
 
+## Granola
+
+The Mac app imports the meetings you record in [Granola](https://granola.ai)
+the way DFAI does: through Granola's public API, with a personal API key.
+Each meeting becomes a note at `Meetings/<YYYY>/<MM>/<YYYY-MM-DD> <title>.md`
+in the vault's meeting shape: its first sentence, `- When:`, `- With:` (each
+person as a `[[link]]`; no People note is made), `- Source:` (the meeting in
+Granola), then Summary (Granola's notes), Notes (your own notes) and the
+Transcript, with speakers and times. A picture in Granola's text is written as
+a plain link to it (`[image](https://…)`), so opening a note never loads
+anything from the web; wiki links and ordinary links stay as they are.
+
+- **Connect**: in Granola, Settings → Connectors → API keys (a Business or
+  Enterprise plan), make a key, and paste it in DFAI Lite's Settings → Granola.
+  The app imports once the vault has synced, then every 15 minutes while it is
+  open (turn "Import automatically" off to import only with Import now).
+  Import now lists every meeting, to find one that is missing.
+- **Where the key is kept**: in this Mac's login Keychain (service
+  `com.dailyflowai.dfai-lite`, one item per vault folder). Only the app's Rust
+  host reads it, to call `https://public-api.granola.ai`; the window can ask
+  whether a key is kept, never for the key itself. It is never written to the
+  vault, the settings file or a log. Each Mac needs its own key pasted.
+- **Disconnect**: Settings → Granola → Disconnect removes the key from the
+  Keychain. Meetings already imported stay. The key is kept for the vault
+  folder where it is: move the vault and paste the key again.
+- **The first import** lists every meeting in Granola, as DFAI's first pull
+  does, oldest first; an import cut short carries on where it stopped.
+- **No duplicates**: `.dfai-lite/imports.json` (synced, like the favorites)
+  records which Granola meeting became which note, and follows a note you
+  rename or move. A meeting Granola changes later gets only the sections its
+  note lacks (a transcript that came after the summary); nothing you wrote is
+  rewritten. A meeting whose note you deleted is not imported again; Settings
+  offers to bring those back. If the ledger is lost, the notes' `- Source:`
+  lines stand in for it; if it cannot be read, imports stop and Settings
+  offers to rebuild it from those lines (the deleted meetings come back then)
+  or start an empty one.
+- **Granola and the n8n/Gemini flow together**: both may be on. A note at the
+  same path is the same meeting, as the vault contract says, so a Granola
+  import adds the sections a Gemini note lacks rather than making a second
+  note. Two different Granola meetings with the same title on the same day
+  are kept apart as DFAI does: the second is
+  `<YYYY-MM-DD> <title> (granola <8 hex>).md`.
+
 ## Layout
 
 | Where              | What                                                                                                   |

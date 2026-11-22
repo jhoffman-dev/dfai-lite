@@ -29,14 +29,28 @@ libc = "0.2.191"
 # Decoding the path header of a binary write (binary.rs). Already in the
 # tree under tauri; this only makes it a direct dependency.
 percent-encoding = "2.3.2"
+# Granola's API, asked from the host so the key never reaches the web view
+# (granola.rs). As DFAI has it: the client only, on the system's TLS, so no
+# build-time toolchain beyond Tauri's. reqwest is already in the tree under
+# tauri at this version; native-tls is what this adds.
+reqwest = { version = "0.13.5", default-features = false, features = ["native-tls"] }
+# A vault's Keychain scope is a hash of its folder, as in DFAI. Already in the
+# tree under tauri at this version.
+sha2 = "0.10.9"
 
-# Turning off macOS's smart quotes and dashes in the web view (text_input.rs).
-# Already in the tree under wry, at these versions.
 [target.'cfg(target_os = "macos")'.dependencies]
 # A deleted note goes to the Trash. Mac only: its Linux side does not build
 # without default features, and the app does not run there. No default
 # features: they are chrono and Windows COM settings this app has no use for.
 trash = { version = "5.4.0", default-features = false }
+# The Granola key lives in the login Keychain (secrets/keychain.rs), as in
+# DFAI: keyring-core plus its Apple store, which is how the keyring-rs
+# maintainers ask applications to link it. Mac only: elsewhere a stub
+# refuses to keep a key.
+keyring-core = "1.0.0"
+apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
+# Turning off macOS's smart quotes and dashes in the web view (text_input.rs).
+# Already in the tree under wry, at these versions.
 objc2 = "0.6.5"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSDictionary", "NSString", "NSUserDefaults", "NSValue"] }
 

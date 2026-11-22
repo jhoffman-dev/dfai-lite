@@ -41,6 +41,7 @@ async function setup() {
     search: new SimpleSearchEngine(),
     sync: null,
     desktop: null,
+    granola: null,
     pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },
     loadMarkdown: () => Promise.resolve(plainMarkdown),
   };

@@ -18,6 +18,13 @@ export {
   type SaveCalloutTypeResult,
 } from './callouts.ts';
 export {
+  ImportLedgerUnreadableError,
+  importLedgerProblem,
+  readImportLedger,
+  replaceImportLedger,
+  updateImportLedger,
+} from './import-ledger.ts';
+export {
   createFolder,
   deleteFolder,
   moveFolderInto,

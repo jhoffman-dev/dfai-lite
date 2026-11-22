@@ -3,6 +3,7 @@ export * from './ports/index.ts';
 export * from './session/index.ts';
 export * from './use-cases/index.ts';
 export * from './sync/index.ts';
+export * from './granola/index.ts';
 
 // Pure readings of the vault's rules that a view needs to draw (the editor's
 // links and tags, the link picker, the tree rows). The UI may import domain

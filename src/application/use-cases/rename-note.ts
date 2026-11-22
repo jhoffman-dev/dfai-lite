@@ -14,6 +14,7 @@ import {
 } from '../../domain/vault/index.ts';
 import { appearancesFollowMove } from './appearance.ts';
 import { writeFavorites } from './favorites.ts';
+import { followMoveInLedger } from './import-ledger.ts';
 import { filesNow, imagesFollowingMove } from './images-across-move.ts';
 import { writeFile, type VaultDeps } from './vault-deps.ts';
 
@@ -70,6 +71,7 @@ export async function renameNote(
   }
   await writeFavorites(deps, favoritesAfterMove(deps.session.favorites, { from, to }));
   await appearancesFollowMove(deps, { from, to });
+  await followMoveInLedger(deps, { from, to });
   return { kind: 'renamed', path: to, retargeted };
 }
 
