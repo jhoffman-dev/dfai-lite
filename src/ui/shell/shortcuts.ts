@@ -116,7 +116,8 @@ export const SHORTCUTS: readonly Shortcut[] = [
   // ⌘B is the editor's bold, so the sidebar takes ⌘⌥S.
   { chord: { mod: true, alt: true, code: 'KeyS' }, command: 'sidebar.toggle' },
   { chord: { mod: true, shift: true, code: 'KeyL' }, command: 'view.toggleTheme' },
-  { chord: { mod: true, code: 'Slash' }, command: 'help.shortcuts' },
+  // ⌘/ is the editor's block menu, as in DFAI, so the list takes ⌘? (⇧⌘/).
+  { chord: { mod: true, shift: true, code: 'Slash' }, command: 'help.shortcuts' },
 ];
 
 interface KeyLike {

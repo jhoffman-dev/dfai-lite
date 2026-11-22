@@ -102,7 +102,7 @@ describe('tabs', () => {
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Garden shed');
   });
 
-  it('lists the keyboard shortcuts from the sidebar, ⌘/ and the palette', async () => {
+  it('lists the keyboard shortcuts from the sidebar, ⌘? and the palette', async () => {
     await renderApp();
     await userEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
     const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
@@ -110,7 +110,7 @@ describe('tabs', () => {
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).toBeNull();
 
-    fireEvent.keyDown(window, { code: 'Slash', metaKey: true });
+    fireEvent.keyDown(window, { code: 'Slash', metaKey: true, shiftKey: true });
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).toBeNull();
 
