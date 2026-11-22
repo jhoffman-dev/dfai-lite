@@ -94,9 +94,11 @@ test('back and forward: the scroll comes back with the note', async ({ page }) =
   await panel.evaluate((element) => {
     element.scrollTop = 200;
   });
+  // Each place keeps its own: Forward is back at the top of the plan, not at 200.
   await forwardIn(left).click();
   await expect(titleIn(left)).toHaveValue('Data migration plan');
+  await expect(panel).toHaveJSProperty('scrollTop', 0);
   await backIn(left).click();
   await expect(titleIn(left)).toHaveValue('Larkspur Payroll');
-  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeGreaterThan(150);
+  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBeGreaterThan(195);
 });
