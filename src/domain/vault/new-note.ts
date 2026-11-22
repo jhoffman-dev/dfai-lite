@@ -2,6 +2,13 @@ import { cleanNoteName } from './file-name.ts';
 import { foldedPath, joinPath, type VaultPath } from './note-path.ts';
 
 /** Where a quick note goes: notes with no obvious home (the vault contract). */
+/**
+ * The folder at the vault root that pasted and dropped pictures go in, as
+ * Obsidian's does, and as DFAI saves them by default. (DFAI can also be set
+ * to save beside the note; Lite has no setting for it.)
+ */
+export const ATTACHMENTS_FOLDER = 'attachments';
+
 export const INBOX_FOLDER = 'Inbox';
 
 /** The name a note is given when none is typed. */

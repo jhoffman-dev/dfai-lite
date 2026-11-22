@@ -1,4 +1,4 @@
-import { INBOX_FOLDER } from './new-note.ts';
+import { ATTACHMENTS_FOLDER, INBOX_FOLDER } from './new-note.ts';
 import { fileNameOf, joinPath, noteTitle, VAULT_ROOT, type VaultPath } from './note-path.ts';
 import { isVisibleFolder, isVisibleNote } from './visibility.ts';
 
@@ -40,14 +40,19 @@ export function compareNames(left: string, right: string): number {
 
 /**
  * Orders two folders for display: by name, but the Inbox, at the top level,
- * comes first, because it is where new notes land and are filed from.
+ * comes first, because it is where new notes land and are filed from; and
+ * `attachments`, where pasted pictures pile up, comes last, as in DFAI, so
+ * it is there when wanted and out of the way when not.
  */
 function compareFolders(left: FolderNode, right: FolderNode): number {
-  const inboxFirst = Number(isInbox(right.path)) - Number(isInbox(left.path));
-  return inboxFirst || compareNames(left.name, right.name);
+  return rankOf(left.path) - rankOf(right.path) || compareNames(left.name, right.name);
 }
 
-const isInbox = (path: VaultPath) => path.toLowerCase() === INBOX_FOLDER.toLowerCase();
+function rankOf(path: VaultPath): number {
+  const lower = path.toLowerCase();
+  if (lower === INBOX_FOLDER.toLowerCase()) return -1;
+  return lower === ATTACHMENTS_FOLDER ? 1 : 0;
+}
 
 interface Building {
   path: VaultPath;

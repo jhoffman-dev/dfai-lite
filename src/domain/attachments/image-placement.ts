@@ -1,13 +1,6 @@
 import { folderOf, type VaultPath } from '../vault/note-path.ts';
 
 /**
- * The folder at the vault root that embedded images go in, as Obsidian's
- * does, and as DFAI saves them by default. (DFAI can also be set to save
- * beside the note; Lite has no setting for it.)
- */
-export const ATTACHMENTS_FOLDER: VaultPath = 'attachments';
-
-/**
  * What the note writes in `![alt](…)` to reach `imagePath`: relative to the
  * note's folder, climbing with `../` where it has to, with each segment
  * percent-encoded.

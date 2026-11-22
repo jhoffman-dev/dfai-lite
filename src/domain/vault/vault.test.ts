@@ -139,6 +139,15 @@ describe('folders', () => {
     ]);
   });
 
+  it('puts attachments last at the top level, as DFAI does, and nowhere else', () => {
+    const tree = buildFolderTree(
+      ['Areas/Health.md', 'Zoo/z.md'],
+      ['attachments', 'Areas/attachments'],
+    );
+    expect(tree.folders.map((folder) => folder.path)).toEqual(['Areas', 'Zoo', 'attachments']);
+    expect(tree.folders[0]?.folders.map((folder) => folder.path)).toEqual(['Areas/attachments']);
+  });
+
   it('shows an empty folder the disk lists, but never a hidden one', () => {
     const tree = buildFolderTree(
       ['Inbox/Idea.md'],
