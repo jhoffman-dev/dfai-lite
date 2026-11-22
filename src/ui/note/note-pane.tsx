@@ -1,4 +1,4 @@
-import { lazy, Suspense, use, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, use, useEffect, useMemo, useState } from 'react';
 import {
   createNoteFromLink,
   embedImage,
@@ -20,6 +20,7 @@ import { Backlinks } from './backlinks.tsx';
 import type { OpenNote } from './open-notes.ts';
 import { NoteFolderButton } from './note-folder-button.tsx';
 import { createNoteImages, type NoteImages } from './note-images.ts';
+import { useKeptScroll } from './kept-scroll.ts';
 import { NoteTitle } from './note-title.tsx';
 import { LoadFailedBoundary } from './load-failed-boundary.tsx';
 import { SourceView } from './source-view.tsx';
@@ -149,20 +150,6 @@ function NoteView({
   ) : (
     <NoteEditor {...view} markdown={markdown} />
   );
-}
-
-/** Puts the tab's scroll back where it was left, and keeps it when the tab is hidden. */
-function useKeptScroll(memory: TabMemory) {
-  const article = useRef<HTMLElement>(null);
-  useLayoutEffect(() => {
-    const scroller = article.current?.closest<HTMLElement>('[role="tabpanel"]') ?? null;
-    if (scroller === null) return;
-    scroller.scrollTop = memory.scrollTop;
-    return () => {
-      memory.scrollTop = scroller.scrollTop;
-    };
-  }, [memory]);
-  return article;
 }
 
 /**

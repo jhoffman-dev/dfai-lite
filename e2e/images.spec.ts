@@ -152,3 +152,41 @@ test('a click opens the picture larger, and Escape closes it', async ({ page }) 
   await expect(viewer).toBeHidden();
   expect(await markdownOf(page)).toBe(ORIGINAL);
 });
+
+test('the picture’s block moves by its handle, with its bytes, size and all', async ({ page }) => {
+  const editor = await openReport(page);
+  const image = editor.getByRole('img', { name: 'Pay runs by month' });
+  await expect.poll(() => naturalWidth(image)).toBe(320);
+  const box = (await image.boundingBox())!;
+  await page.mouse.move(box.x + 30, box.y + 6);
+  const grip = page.locator('[data-block-handle]');
+  await expect(grip).toBeVisible();
+  const [from, to] = [await grip.boundingBox(), await editor.locator('p').first().boundingBox()];
+  if (from === null || to === null) throw new Error('Not drawn.');
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + 40, to.y + 10, { steps: 8 });
+  await page.mouse.move(to.x + 40, to.y + 4, { steps: 2 });
+  await page.mouse.up();
+  const lines = ORIGINAL.split('\n\n');
+  await expect.poll(() => markdownOf(page)).toBe([lines[1], lines[0], lines[2]].join('\n\n'));
+});
+
+test('back to a note with a picture lands where it was left', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 380 });
+  const editor = await openReport(page);
+  const panel = page.getByRole('tabpanel');
+  await expect
+    .poll(() => naturalWidth(editor.getByRole('img', { name: 'Pay runs by month' })))
+    .toBe(320);
+  const left = await panel.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
+  });
+  expect(left).toBeGreaterThan(100);
+  await editor.locator('a.wikilink', { hasText: 'Larkspur Payroll' }).click();
+  await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Larkspur Payroll');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Pay run report');
+  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBe(left);
+});

@@ -141,7 +141,8 @@ describe('a picture opened larger', () => {
       app.editor.commands.keyboardShortcut('Space');
     });
     const viewer = await screen.findByRole('dialog', { name: 'One' });
-    expect(viewer).toHaveFocus();
+    // The focus is held inside the viewer, as Base UI's dialog holds it.
+    await waitFor(() => expect(viewer.contains(document.activeElement)).toBe(true));
     fireEvent.keyDown(viewer, { key: '+', metaKey: true });
     expect(within(viewer).getByRole('status', { name: 'Zoom' })).toHaveTextContent('125%');
     fireEvent.click(within(viewer).getByRole('button', { name: 'Close' }));

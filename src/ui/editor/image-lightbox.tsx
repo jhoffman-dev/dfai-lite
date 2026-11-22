@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { createPortal } from 'react-dom';
+import { Dialog } from '@base-ui/react/dialog';
 import {
   usePinchAndWheel,
   useRoomSize,
@@ -17,14 +17,12 @@ export interface LightboxImage {
 
 /**
  * A note's images, one at a time, as large as the window holds them (DFAI
- * #568). ⌘+ / ⌘− / ⌘0, pinch or ⌘-scroll zoom; a double-click goes between
- * fit and the image's own pixels; a drag pans a zoomed image; ← → step
- * through the note's images. Escape or a click beside the image closes it,
- * and `onReturnFocus` hands the focus back to the image it was opened from.
- *
- * DFAI draws it in Base UI's dialog; Lite has no component library, so this
- * is the same dialog by hand: over the window, modal, the focus held inside
- * while it is open and handed back when it closes.
+ * #568), in Base UI's dialog as DFAI draws it: modal, the focus held inside
+ * and the page behind kept still while it is open.
+ * ⌘+ / ⌘− / ⌘0, pinch or ⌘-scroll zoom; a double-click goes between fit and
+ * the image's own pixels; a drag pans a zoomed image; ← → step through the
+ * note's images. Escape or a click beside the image closes it, and
+ * `onReturnFocus` hands the focus back to the image it was opened from.
  */
 export function ImageLightbox({
   images,
@@ -37,7 +35,7 @@ export function ImageLightbox({
   start: number;
   loadImage: (src: string) => Promise<string | null>;
   onClose: () => void;
-  /** Puts the focus back where the viewer was opened from; false leaves it to the viewer. */
+  /** Puts the focus back where the viewer was opened from; false leaves it to the dialog. */
   onReturnFocus: () => boolean;
 }) {
   const [index, setIndex] = useState(start);
@@ -45,7 +43,6 @@ export function ImageLightbox({
   const src = image?.src ?? '';
   const view = useZoomedView(src);
   const loaded = useLoadedUrl(src, loadImage);
-  const popup = useFocusHeld(onReturnFocus);
 
   const step = (by: number) => {
     const next = index + by;
@@ -55,80 +52,40 @@ export function ImageLightbox({
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
-    // Kept from the editor underneath, whose own keys would act on the note.
-    event.stopPropagation();
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key === 'Tab') holdTab(event, popup.current);
-    else if (zoomKey(event, view) || stepKey(event, step)) event.preventDefault();
+    const handled = zoomKey(event, view) || stepKey(event, step);
+    if (handled) event.preventDefault();
   };
 
-  const title = image?.alt !== undefined && image.alt !== '' ? image.alt : 'Image';
-  return createPortal(
-    <>
-      <div className="lightbox__backdrop" />
-      <div
-        ref={popup}
-        className="lightbox"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-        onKeyDown={onKeyDown}
-      >
-        <Stage
-          key={index}
-          src={src}
-          loaded={loaded}
-          alt={image?.alt ?? ''}
-          view={view}
-          onClose={onClose}
-        />
-        <ZoomBar view={view} count={images.length} index={index} onStep={step} onClose={onClose} />
-      </div>
-    </>,
-    document.body,
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="lightbox__backdrop" />
+        <Dialog.Popup
+          className="lightbox"
+          onKeyDown={onKeyDown}
+          finalFocus={() => !onReturnFocus()}
+        >
+          <Dialog.Title className="visually-hidden">
+            {image?.alt !== undefined && image.alt !== '' ? image.alt : 'Image'}
+          </Dialog.Title>
+          <Stage
+            key={index}
+            src={src}
+            loaded={loaded}
+            alt={image?.alt ?? ''}
+            view={view}
+            onClose={onClose}
+          />
+          <ZoomBar view={view} count={images.length} index={index} onStep={step} />
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-}
-
-/**
- * The viewer's element, focused as it opens; on close the focus goes back
- * where `onReturnFocus` puts it, else to what had it before.
- */
-function useFocusHeld(onReturnFocus: () => boolean) {
-  const popup = useRef<HTMLDivElement>(null);
-  const returnFocus = useRef(onReturnFocus);
-  useEffect(() => {
-    returnFocus.current = onReturnFocus;
-  });
-  useEffect(() => {
-    const before = document.activeElement;
-    popup.current?.focus();
-    return () => {
-      if (returnFocus.current()) return;
-      if (before instanceof HTMLElement) before.focus();
-    };
-  }, []);
-  return popup;
-}
-
-/** Tab and ⇧Tab go round the viewer's own controls, never out to the note underneath. */
-function holdTab(event: KeyboardEvent, popup: HTMLElement | null): void {
-  const stops = [...(popup?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? [])];
-  const first = stops[0];
-  const last = stops.at(-1);
-  if (first === undefined || last === undefined) return;
-  const active = document.activeElement;
-  if (event.shiftKey && (active === first || active === popup)) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && active === last) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 /** An image's url as it loads: none yet, or none to be had. */
@@ -274,13 +231,11 @@ function ZoomBar({
   count,
   index,
   onStep,
-  onClose,
 }: {
   view: ZoomedView;
   count: number;
   index: number;
   onStep: (by: number) => void;
-  onClose: () => void;
 }) {
   return (
     <div className="lightbox__bar" role="toolbar" aria-label="Image viewer controls">
@@ -335,9 +290,9 @@ function ZoomBar({
       >
         Fit
       </button>
-      <button type="button" className="lightbox__button" aria-label="Close" onClick={onClose}>
+      <Dialog.Close className="lightbox__button" aria-label="Close">
         ×
-      </button>
+      </Dialog.Close>
     </div>
   );
 }
