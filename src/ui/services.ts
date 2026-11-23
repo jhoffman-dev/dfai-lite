@@ -14,6 +14,7 @@ import type { OpenNotes } from './note/open-notes.ts';
 import type { LayoutStore } from './panes/layout-store.ts';
 import type { ThemeController } from './theme/theme.ts';
 import type { Workspace } from './panes/workspace.ts';
+import type { BuildInfo } from './settings/about-section.tsx';
 import type { DesktopControls } from './settings/desktop-controls.ts';
 import type { NoteActions } from './state/note-actions.ts';
 import type { SyncControls } from './sync/sync-status.ts';
@@ -54,6 +55,8 @@ export interface AppServices {
   readonly pendingEdits: PendingEdits;
   /** The markdown reader and writer the editor saves through, loaded with it after the first paint. */
   readonly loadMarkdown: LoadMarkdown;
+  /** The version and commit this build is, for Settings → About. */
+  readonly build: BuildInfo;
 }
 
 /** The services plus the stores the components read slices of. */

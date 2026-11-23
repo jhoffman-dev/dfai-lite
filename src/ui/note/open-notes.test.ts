@@ -44,6 +44,7 @@ async function setup() {
     granola: null,
     pendingEdits: { add: () => () => undefined, flushAll: () => Promise.resolve() },
     loadMarkdown: () => Promise.resolve(plainMarkdown),
+    build: { version: '0.0.0-test', commit: 'test' },
   };
   const app = createAppContext(services, memoryLayoutStorage());
   app.layout.apply(() => SPLIT_ON_PLAN);

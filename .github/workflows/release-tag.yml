@@ -1,0 +1,51 @@
+name: release-tag
+
+# When a new version reaches main, tag it `v<version>` and publish a GitHub
+# Release whose notes are that version's CHANGELOG.md section. Does nothing
+# when the tag already exists. Not a required check, and apart from `check`.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Tag and release the version, if it is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          version="$(jq -r .version package.json)"
+          tag="v${version}"
+          if gh api "repos/${REPO}/git/ref/tags/${tag}" --silent 2>/dev/null; then
+            echo "${tag} is already tagged: nothing to do."
+            exit 0
+          fi
+          # The section under "## <version>", up to the next "## ".
+          awk -v v="$version" '
+            /^## / { if (found) exit; if ($2 == v) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no lines for ${version}."
+            exit 1
+          fi
+          gh release create "$tag" --repo "$REPO" --target "$GITHUB_SHA" \
+            --title "DFAI Lite ${version}" --notes-file notes.md

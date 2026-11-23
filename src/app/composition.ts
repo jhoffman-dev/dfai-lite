@@ -11,6 +11,7 @@ import {
   openSession,
   type Boot,
 } from './app-boot.ts';
+import { buildInfo } from './build-info.ts';
 import { bootDesktop } from './desktop.ts';
 
 export type { Boot } from './app-boot.ts';
@@ -38,6 +39,7 @@ async function bootBrowser(): Promise<Boot> {
     granola: null,
     pendingEdits: createPendingEdits(),
     loadMarkdown,
+    build: buildInfo,
   };
   return { kind: 'app', services, layoutStorage: deviceLayoutStorage(), start: () => undefined };
 }
