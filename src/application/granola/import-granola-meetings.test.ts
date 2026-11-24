@@ -1,5 +1,11 @@
 import { buildAiIndex } from '../../domain/ai-index/index.ts';
-import { IMPORTS_PATH, parseImportLedger, recordImport } from '../../domain/meetings/index.ts';
+import {
+  IMPORTS_PATH,
+  MEETING_QUEUE_PATH,
+  parseImportLedger,
+  queuedMeetings,
+  recordImport,
+} from '../../domain/meetings/index.ts';
 import { VaultSession } from '../session/index.ts';
 import {
   FakeGranola,
@@ -180,7 +186,9 @@ describe('importing Granola meetings', () => {
     expect(report.counts).toMatchObject({ imported: 0, unchanged: 1 });
     expect(files.peek(PATH)).toBe(otherFiles.peek(PATH));
     expect(
-      (await files.readAll()).notes.filter(({ path }) => path.startsWith('Meetings/')),
+      (await files.readAll()).notes.filter(
+        ({ path }) => path.startsWith('Meetings/') && path !== MEETING_QUEUE_PATH,
+      ),
     ).toHaveLength(1);
   });
 
@@ -343,5 +351,128 @@ describe('the ledger while an import runs', () => {
       'not_FromOtherMac',
       'not_Lk7pQ2rTs9vWx3',
     ]);
+  });
+});
+
+describe('the meetings queue for Claude', () => {
+  const queued = () => queuedMeetings(files.peek(MEETING_QUEUE_PATH) ?? '');
+  const SECOND = { id: 'not_Second1', web_url: 'https://notes.granola.ai/d/second' };
+
+  /** The queue's writes refused while `refusing` is true, as a full disk or a locked file would. */
+  function refuseQueueWrites(): { refusing: boolean } {
+    const state = { refusing: true };
+    const write = files.write.bind(files);
+    files.write = async (request) => {
+      if (state.refusing && request.path === MEETING_QUEUE_PATH)
+        throw new Error('The disk is full.');
+      await write(request);
+    };
+    return state;
+  }
+
+  it('queues a new meeting’s note once, on the day it was imported in the person’s zone', async () => {
+    await importNow();
+    expect(queued()).toEqual([PATH]);
+    expect(files.peek(MEETING_QUEUE_PATH)).toContain(
+      '- [[Meetings/2026/11/2026-11-17 Larkspur Payroll renewal]] added 2026-11-19\n',
+    );
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    await importNow();
+    expect(queued()).toEqual([PATH]);
+  });
+
+  it('does not queue a note again after Claude took its line out, when the meeting changes', async () => {
+    granola.add(fictionalGranolaNote({ transcript: [] }));
+    await importNow();
+    const header = (files.peek(MEETING_QUEUE_PATH) ?? '').split('- [[')[0] ?? '';
+    files.edit(MEETING_QUEUE_PATH, header);
+    await applyExternalChanges({ files, session }, [MEETING_QUEUE_PATH]);
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    expect((await importNow()).counts.updated).toBe(1);
+    expect(queued()).toEqual([]);
+  });
+
+  it('does not queue a note it only added to: one another Mac or n8n wrote', async () => {
+    const other = MemoryVaultFiles.of({});
+    const otherSession = new VaultSession();
+    await openVault({ files: other, session: otherSession });
+    const untranscribed = new FakeGranola().add(fictionalGranolaNote({ transcript: [] }));
+    await importGranolaMeetings(
+      { ...deps, granola: untranscribed, vault: { files: other, session: otherSession } },
+      { mode: 'import-now', watermark: null },
+    );
+    files.edit(PATH, other.peek(PATH) ?? '');
+    expect((await importNow()).counts.updated).toBe(1);
+    expect(files.peek(MEETING_QUEUE_PATH)).toBeUndefined();
+  });
+
+  it('adds to a queue Claude changed on disk meanwhile, keeping its edit', async () => {
+    await importNow();
+    const edited = `${files.peek(MEETING_QUEUE_PATH) ?? ''}Claude was here.\n`;
+    files.edit(MEETING_QUEUE_PATH, edited);
+    granola.add(fictionalGranolaNote(SECOND));
+    await importNow();
+    const text = files.peek(MEETING_QUEUE_PATH) ?? '';
+    expect(text.startsWith(edited)).toBe(true);
+    expect(queued()).toHaveLength(2);
+  });
+
+  it('imports all the same when the queue cannot be written, and queues the note next time', async () => {
+    const queue = refuseQueueWrites();
+    const report = await importNow();
+    expect(report).toMatchObject({ ended: 'imported', written: [PATH], problems: [] });
+    expect(files.peek(PATH)).toContain('## Transcript');
+    expect(ledger()[0]?.queueWaiting).toBe(true);
+
+    await importNow();
+    expect(ledger()[0]?.queueWaiting).toBe(true);
+
+    queue.refusing = false;
+    granola.calls.length = 0;
+    const next = await importNow();
+    expect(next.counts.unchanged).toBe(1);
+    expect(queued()).toEqual([PATH]);
+    expect(ledger()[0]?.queueWaiting).toBeUndefined();
+    await importNow();
+    expect(queued()).toEqual([PATH]);
+  });
+
+  it('imports all the same when the ledger cannot be told a waiting line was written', async () => {
+    const queue = refuseQueueWrites();
+    await importNow();
+    queue.refusing = false;
+    const write = files.write.bind(files);
+    files.write = async (request) => {
+      if (request.path === IMPORTS_PATH) throw new Error('The disk is full.');
+      await write(request);
+    };
+    expect((await importNow()).ended).toBe('imported');
+    expect(queued()).toEqual([PATH]);
+  });
+
+  it('keeps a waiting note waiting when its meeting is updated before the queue can be written', async () => {
+    refuseQueueWrites();
+    granola.add(fictionalGranolaNote({ transcript: [] }));
+    await importNow();
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    expect((await importNow()).counts.updated).toBe(1);
+    expect(ledger()[0]?.queueWaiting).toBe(true);
+  });
+
+  it('forgets a waiting line whose note the person deleted', async () => {
+    const queue = refuseQueueWrites();
+    await importNow();
+    await deleteNote({ files, session }, { path: PATH });
+    queue.refusing = false;
+    await importNow();
+    expect(files.peek(MEETING_QUEUE_PATH)).toBeUndefined();
+  });
+
+  it('is not a meeting in the AI index', async () => {
+    await importNow();
+    const index = buildAiIndex((await files.readAll()).notes);
+    const meetings = index.filter(({ path }) => path.startsWith('_index/meetings/'));
+    expect(meetings.map(({ path }) => path)).toEqual(['_index/meetings/2026-11.md']);
+    expect(meetings[0]?.text).not.toContain('Processing queue');
   });
 });

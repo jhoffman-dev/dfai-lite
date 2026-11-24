@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, truncate, writeFile } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  addToMeetingQueue,
   applyExternalChanges,
   createDeletionApprovals,
   createFolder,
@@ -26,6 +27,7 @@ import {
   type WriteGate,
 } from '../src/application/index.ts';
 import { buildAiIndex } from '../src/domain/ai-index/index.ts';
+import { MEETING_QUEUE_PATH, queuedMeetings } from '../src/domain/meetings/index.ts';
 import { NodeGit, runGit } from './testing/node-git.ts';
 import { NodeVaultFiles } from './testing/node-vault-files.ts';
 
@@ -232,6 +234,54 @@ describe('sync with real git', { timeout: 30_000 }, () => {
     expect(await onRemote(MARA)).toBe('Edited in the studio.\n');
     expect(await onRemote(copy)).toBe('Edited on the laptop.\n');
     expect(await git(here.dir, 'status', '--porcelain')).toBe('');
+  });
+
+  it('keeps every queued meeting when one Mac adds to the queue while Claude empties it on another', async () => {
+    const meeting = (day: string) => `Meetings/2026/11/2026-11-${day} Weekly sync.md`;
+    const queue = (mac: Mac, ...days: string[]) =>
+      addToMeetingQueue(
+        mac.deps,
+        days.map((day) => ({ path: meeting(day), added: '2026-11-24' })),
+      );
+    const here = await clone('Studio', 'here');
+    await queue(here, '10', '17');
+    await here.sync();
+    const there = await clone('Laptop', 'there');
+    // Claude on the laptop has done the last meeting, and the app there queued another.
+    const withoutLast = (await there.read(MEETING_QUEUE_PATH))?.replace(
+      /- \[\[[^\n]*17[^\n]*\n$/,
+      '',
+    );
+    await there.write(MEETING_QUEUE_PATH, withoutLast ?? '');
+    await queue(there, '19');
+    await there.sync();
+    await queue(here, '21');
+    const result = await here.sync();
+    expect(result).toMatchObject({ kind: 'synced', pushed: true, conflicts: [] });
+    const merged = (await here.read(MEETING_QUEUE_PATH)) ?? '';
+    expect(queuedMeetings(merged)).toEqual(['10', '17', '21', '19'].map(meeting));
+    expect(await onRemote(MEETING_QUEUE_PATH)).toBe(merged);
+    expect((await remotePaths()).filter((path) => path.includes('conflict'))).toEqual([]);
+    expect(await git(here.dir, 'status', '--porcelain')).toBe('');
+  });
+
+  it('merges the queue as git does when the two Macs’ changes do not touch', async () => {
+    const meeting = (day: string) => `Meetings/2026/11/2026-11-${day} Weekly sync.md`;
+    const here = await clone('Studio', 'here');
+    await addToMeetingQueue(here.deps, [
+      { path: meeting('10'), added: '2026-11-24' },
+      { path: meeting('17'), added: '2026-11-24' },
+    ]);
+    await here.sync();
+    const there = await clone('Laptop', 'there');
+    const text = (await there.read(MEETING_QUEUE_PATH)) ?? '';
+    await there.write(MEETING_QUEUE_PATH, text.replace(/- \[\[[^\n]*10[^\n]*\n/, ''));
+    await there.sync();
+    await addToMeetingQueue(here.deps, [{ path: meeting('21'), added: '2026-11-24' }]);
+    expect(await here.sync()).toMatchObject({ kind: 'synced', conflicts: [] });
+    expect(queuedMeetings((await here.read(MEETING_QUEUE_PATH)) ?? '')).toEqual(
+      ['17', '21'].map(meeting),
+    );
   });
 
   it('never lets a delete here beat an edit there', async () => {

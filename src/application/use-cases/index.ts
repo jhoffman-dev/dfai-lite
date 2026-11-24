@@ -42,3 +42,4 @@ export {
   type EmbeddedImage,
 } from './embed-image.ts';
 export { readNoteImage, type NoteImage } from './read-image.ts';
+export { addToMeetingQueue } from './meeting-queue.ts';

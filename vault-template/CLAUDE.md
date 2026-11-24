@@ -91,6 +91,14 @@ notes came from, when there is a link. `Notes` holds the detail behind the
 summary. The transcript, when there is one, goes last so a reader can stop
 before it.
 
+## Meetings waiting for a summary
+
+`Meetings/Processing queue.md` lists the meetings DFAI Lite imported that
+have no summary yet, one `- [[link]]` line each. When a session starts in
+this vault, or James says "process meetings", read it; if it lists any,
+work it with `skills/meeting-processing/SKILL.md`: a summary block in each
+note, then its line removed. Never remove a line any other way.
+
 ## Rules for writing here
 
 1. **Pull before you write, and commit small.** One commit per piece of work,

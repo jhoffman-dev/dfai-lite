@@ -23,6 +23,7 @@ import {
   IMPORTS_PATH,
   MeetingInputError,
   recordImport,
+  withQueueWaiting,
   type ImportEntry,
   type ImportLedger,
 } from '../../domain/meetings/index.ts';
@@ -37,6 +38,7 @@ import {
 import { listGranolaNotes, readGranolaNote, type GranolaReader } from './granola-reading.ts';
 import { isSlowDown, pacedRequests, type Wait } from './granola-requests.ts';
 import { placeMeeting, sourcesIn } from './place-meeting.ts';
+import { queueNewMeeting, queueWaitingMeetings } from './queue-new-meetings.ts';
 import { GranolaError, type GranolaPort } from './ports.ts';
 
 const PROVIDER = 'granola';
@@ -237,7 +239,16 @@ async function write(run: Run, summary: GranolaNoteSummary, note: GranolaNote): 
   });
   if (placed.outcome !== 'unchanged') run.tally.written.push(placed.path);
   if (input.sourceUrl !== undefined) run.sources.set(input.sourceUrl, placed.path);
-  await record(run, entryFor(summary, placed.path, input.sourceUrl ?? null));
+  // Only a note this import created is queued for Claude, once; a line that
+  // could not be written waits in the ledger for the next import.
+  const waiting =
+    placed.outcome === 'imported'
+      ? !(await queueNewMeeting(deps, placed.path))
+      : entry?.queueWaiting === true;
+  await record(
+    run,
+    withQueueWaiting(entryFor(summary, placed.path, input.sourceUrl ?? null), waiting),
+  );
   settle(run, summary, placed.outcome);
 }
 
@@ -307,6 +318,7 @@ async function importChecked(run: Run, since: string | null): Promise<Ending> {
   const parsed = readImportLedger(run.deps.vault.session);
   if (parsed.kind === 'malformed') return ledgerStop(parsed.reason);
   try {
+    await queueWaitingMeetings(run.deps, parsed.ledger);
     return await importAll(run, since);
   } catch (error) {
     if (error instanceof ImportLedgerUnreadableError) return ledgerStop(error.message);
@@ -321,8 +333,9 @@ async function importChecked(run: Run, since: string | null): Promise<Ending> {
  * `fromGranola` and writes it — a new note at its contract path, or the
  * sections it lacks added to the note that holds it — recording it in the
  * import ledger. A meeting whose note the person deleted is not imported
- * again; with a ledger that cannot be read, nothing is. Never rejects for
- * Granola's failures: they are the report's.
+ * again; with a ledger that cannot be read, nothing is. Each note it
+ * creates gets a line in the meetings queue, for Claude to summarize. Never
+ * rejects for Granola's failures: they are the report's.
  */
 export async function importGranolaMeetings(
   deps: GranolaImportDeps,

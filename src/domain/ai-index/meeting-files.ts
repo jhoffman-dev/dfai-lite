@@ -1,5 +1,6 @@
 import type { VaultIndex } from '../index/index.ts';
 import { splitWikiLinks } from '../links/index.ts';
+import { MEETING_QUEUE_PATH } from '../meetings/index.ts';
 import { isConflictCopyPath } from '../sync/index.ts';
 import { fileNameOf, type VaultPath } from '../vault/index.ts';
 import { lineSummary } from './note-line.ts';
@@ -36,8 +37,9 @@ export interface MeetingMonth {
   readonly file: string;
 }
 
-/** Whether a note is a meeting note: anything under `Meetings/`. */
-export const isMeetingPath = (path: VaultPath): boolean => path.startsWith(`${MEETINGS_FOLDER}/`);
+/** Whether a note is a meeting note: anything under `Meetings/` but the queue of meetings to process. */
+export const isMeetingPath = (path: VaultPath): boolean =>
+  path.startsWith(`${MEETINGS_FOLDER}/`) && path !== MEETING_QUEUE_PATH;
 
 /** `_index/meetings/<YYYY>-<MM>.md`, and `undated.md` for meeting files whose name has no date. */
 export function meetingFiles(
