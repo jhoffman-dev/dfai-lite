@@ -236,4 +236,30 @@ describe('convertNote', () => {
     expect(converted).toMatchObject({ path: 'Inbox/M.md', rule: 'frontmatter' });
     expect(converted.text).toBe('Met.\n\n- Title: Sync\n');
   });
+
+  it('opens a meeting with the first sentence of a callout, not its title line', () => {
+    const { text } = convertNote({
+      path: 'Inbox/M.md',
+      text: "---\ntype: meeting\ndate: '2026-11-24'\ntitle: Sync\n---\n\n> [!summary] Summary by Claude\n> We shipped it. Then lunch.\n",
+    });
+    expect(text.split('\n')[0]).toBe('We shipped it. #meeting');
+  });
+});
+
+describe('migrate: meetings recorded twice', () => {
+  it('keeps the second recording under the name DFAI gave it, not a number', async () => {
+    const meeting = (provider: string) =>
+      `---\ntype: meeting\ndate: '2026-11-24'\ntitle: 'Sync'\nprovider: ${provider}\n---\nMet.\n`;
+    await put(source, 'Meetings/2026/11/2026-11-24 Sync.md', meeting('gemini'));
+    await put(source, 'Meetings/2026/11/2026-11-24 Sync (granola 68b8456f).md', meeting('granola'));
+    const report = await migrate(source, output);
+    const written = [...(await snapshot(output)).keys()].filter((path) => path.includes('Sync'));
+    expect(written.sort()).toEqual([
+      'Meetings/2026/11/2026-11-24 Sync (granola 68b8456f).md',
+      'Meetings/2026/11/2026-11-24 Sync.md',
+    ]);
+    expect(report.collisions).toContain(
+      'Meetings/2026/11/2026-11-24 Sync (granola 68b8456f).md → Meetings/2026/11/2026-11-24 Sync (granola 68b8456f).md',
+    );
+  });
 });

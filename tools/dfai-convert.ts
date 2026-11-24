@@ -249,10 +249,11 @@ function firstParagraphEnd(lines: readonly string[]): number {
 
 /**
  * The first sentence of the body's first prose paragraph, its wrapped lines
- * joined first, so a sentence that runs over a line break is not cut.
+ * joined first, so a sentence that runs over a line break is not cut. A quote
+ * counts as prose without its `>`; a callout's `> [!type] Title` line does not.
  */
 function openingSentence(body: string): string {
-  const lines = body.split(/\r?\n/);
+  const lines = body.split(/\r?\n/).map((line) => (CALLOUT_TITLE.test(line) ? '' : unquoted(line)));
   let inFence = false;
   for (let at = 0; at < lines.length; at += 1) {
     const line = lines[at] as string;
@@ -270,6 +271,8 @@ function openingSentence(body: string): string {
 
 const FENCE = /^\s*(?:```|~~~)/;
 const NOT_PROSE = /^\s*(?:#{1,6}(?:\s|$)|[-*_]{3,}\s*$|\||```|~~~)/;
+const CALLOUT_TITLE = /^\s*>\s*\[![^\]]*\]/;
+const unquoted = (line: string): string => line.replace(/^\s*(?:>\s?)+/, '');
 
 /** A path made unique among `taken` (folded): `Name 2.md`, `Name 3.md`… */
 export function uniquePath(path: string, taken: ReadonlySet<string>): string {

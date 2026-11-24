@@ -6,7 +6,7 @@ import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FAVORITES_PATH, serializeFavorites } from '../src/domain/favorites/index.ts';
 import { moveResolvers, retargetLinks } from '../src/domain/links/index.ts';
-import { foldedPath } from '../src/domain/vault/index.ts';
+import { fileNameOf, foldedPath, folderOf, joinPath } from '../src/domain/vault/index.ts';
 import { buildIndex } from './build-index.ts';
 import { convertNote, uniquePath, type ConvertedNote } from './dfai-convert.ts';
 import {
@@ -177,19 +177,44 @@ function settleNotes(
   const ordered = [...notes.filter(stays), ...notes.filter((note) => !stays(note))];
   return ordered.map(({ from, converted, template }) => ({
     from,
-    to: claim(template ?? converted.path, from, { taken, collisions }),
+    to: claim(
+      template ?? converted.path,
+      from,
+      { taken, collisions },
+      meetingFallback(converted, from),
+    ),
     text: converted.text,
     linkable: template === undefined,
   }));
 }
 
-/** `wanted`, or the next free name beside it (recorded as a collision), now taken. */
+/**
+ * A meeting whose clean name is taken keeps the file name DFAI gave it when
+ * that is the clean name with a suffix, `<date> <title> (granola <hex>).md`:
+ * the name DFAI Lite gives a second recording of the same title and day.
+ * Any other name would lose the date and title, so it is numbered instead.
+ */
+function meetingFallback(converted: ConvertedNote, from: string): string | undefined {
+  if (converted.rule !== 'meeting') return undefined;
+  const stem = fileNameOf(converted.path).replace(/\.md$/i, '');
+  const name = fileNameOf(from);
+  if (!name.startsWith(`${stem} (`)) return undefined;
+  return joinPath(folderOf(converted.path), name);
+}
+
+/**
+ * `wanted`; else `fallback`, when there is one and it is free; else the next
+ * free name beside `wanted`. Anything but `wanted` is recorded as a collision.
+ */
 function claim(
   wanted: string,
   from: string,
   { taken, collisions }: { taken: Set<string>; collisions: string[] },
+  fallback?: string,
 ): string {
-  const to = uniquePath(wanted, taken);
+  const useFallback =
+    taken.has(foldedPath(wanted)) && fallback !== undefined && !taken.has(foldedPath(fallback));
+  const to = useFallback ? fallback : uniquePath(wanted, taken);
   if (to !== wanted) collisions.push(`${from} → ${to}`);
   taken.add(foldedPath(to));
   return to;
