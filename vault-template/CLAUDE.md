@@ -97,7 +97,10 @@ before it.
 have no summary yet, one `- [[link]]` line each. When a session starts in
 this vault, or James says "process meetings", read it; if it lists any,
 work it with `skills/meeting-processing/SKILL.md`: a summary block in each
-note, then its line removed. Never remove a line any other way.
+note, then its line removed. Never remove a line any other way. In this
+folder on a Mac, DFAI Lite syncs: save the files and run no git. Through
+GitHub, a conflict in the queue keeps every `- [[` line from both sides,
+never a conflict copy (the skill says how).
 
 ## Rules for writing here
 

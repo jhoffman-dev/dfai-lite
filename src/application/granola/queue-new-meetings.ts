@@ -24,21 +24,35 @@ export interface QueueDeps {
 const today = ({ clock, timeZone }: QueueDeps): string =>
   wallClockIn(timeZone)(clock.now().getTime()).day;
 
-/** Puts the notes' lines in the queue; false when it could not be written. */
+/**
+ * A failure of the vault's write itself: the guard (`FileChangedError`,
+ * `FileExistsError`), or the host or the sync gate refusing, which reject
+ * with a plain `Error` naming why. JavaScript's own errors are bugs, not
+ * refusals, and are not taken for one.
+ */
+const isWriteRefusal = (error: unknown): boolean =>
+  error instanceof Error &&
+  !(
+    error instanceof TypeError ||
+    error instanceof RangeError ||
+    error instanceof ReferenceError ||
+    error instanceof SyntaxError
+  );
+
+/** Puts the notes' lines in the queue; false when the vault refused the write. */
 async function queued(deps: QueueDeps, paths: readonly VaultPath[]): Promise<boolean> {
+  const added = today(deps);
   try {
-    const added = today(deps);
     await addToMeetingQueue(
       deps.vault,
       paths.map((path) => ({ path, added })),
     );
     return true;
   } catch (error) {
-    // The queue could not be written (the disk, the sync gate, a queue that kept
-    // changing). The meeting is in the vault all the same, so the import goes on;
-    // the ledger keeps the note waiting and the next import writes its line.
-    if (error instanceof Error) return false;
-    throw error;
+    if (!isWriteRefusal(error)) throw error;
+    // The meeting is in the vault all the same, so the import goes on; the
+    // ledger keeps the note waiting and the next import writes its line.
+    return false;
   }
 }
 
@@ -68,7 +82,7 @@ export async function queueWaitingMeetings(deps: QueueDeps, ledger: ImportLedger
       ),
     );
   } catch (error) {
-    if (error instanceof ImportLedgerUnreadableError || !(error instanceof Error)) throw error;
+    if (error instanceof ImportLedgerUnreadableError || !isWriteRefusal(error)) throw error;
     // The lines are in the queue; only the ledger still says they wait. The
     // next import finds them listed (nothing written twice) and clears them then.
   }

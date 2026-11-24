@@ -450,6 +450,17 @@ describe('the meetings queue for Claude', () => {
     expect(queued()).toEqual([PATH]);
   });
 
+  it('lets a bug in the queue’s write surface rather than taking it for a refusal', async () => {
+    const write = files.write.bind(files);
+    files.write = async (request) => {
+      if (request.path === MEETING_QUEUE_PATH) throw new TypeError('undefined is not a function');
+      await write(request);
+    };
+    const report = await importNow();
+    expect(report.counts.failed).toBe(1);
+    expect(report.problems[0]?.problem).toContain('undefined is not a function');
+  });
+
   it('keeps a waiting note waiting when its meeting is updated before the queue can be written', async () => {
     refuseQueueWrites();
     granola.add(fictionalGranolaNote({ transcript: [] }));

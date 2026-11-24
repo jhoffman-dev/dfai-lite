@@ -126,3 +126,39 @@ export async function removeFile(root: string, path: string, stopAt: string): Pr
     folder = dirname(folder);
   }
 }
+
+/**
+ * Changes `root/path` by `change` (null: no file yet) and writes it, making its
+ * folders; false when nothing changed. Guarded as far as Node allows: the file
+ * is read again just before the write and the change made afresh if another
+ * program wrote it meanwhile, and a new file is only ever created, never
+ * written over. Never through a link.
+ */
+export async function changeFile(
+  root: string,
+  path: string,
+  change: (text: string | null) => string,
+): Promise<boolean> {
+  await assertNoLinks(root, path);
+  const absolute = join(root, ...path.split('/'));
+  const read = () =>
+    readFile(absolute, 'utf8').catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const current = await read();
+    const next = change(current);
+    if (next === current) return false;
+    if ((await read()) !== current) continue;
+    await mkdir(dirname(absolute), { recursive: true });
+    try {
+      await writeFile(absolute, next, { encoding: 'utf8', flag: current === null ? 'wx' : 'w' });
+      return true;
+    } catch (error) {
+      // Created by another program since it was read: make the change to that file.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+  }
+  throw new Error(`${path} kept changing while it was written.`);
+}

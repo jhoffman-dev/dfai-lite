@@ -284,6 +284,59 @@ describe('sync with real git', { timeout: 30_000 }, () => {
     );
   });
 
+  describe('the meetings queue', () => {
+    const meeting = (day: string) => `Meetings/2026/11/2026-11-${day} Weekly sync.md`;
+    const queue = (mac: Mac, ...days: string[]) =>
+      addToMeetingQueue(
+        mac.deps,
+        days.map((day) => ({ path: meeting(day), added: '2026-11-24' })),
+      );
+    const listed = async (mac: Mac) => queuedMeetings((await mac.read(MEETING_QUEUE_PATH)) ?? '');
+
+    it('is one queue when both Macs started it before either synced', async () => {
+      const here = await clone('Studio', 'here');
+      const there = await clone('Laptop', 'there');
+      await queue(there, '19');
+      await there.sync();
+      await queue(here, '21');
+      expect(await here.sync()).toMatchObject({ kind: 'synced', pushed: true, conflicts: [] });
+      expect(await listed(here)).toEqual(['21', '19'].map(meeting));
+      expect((await remotePaths()).filter((path) => path.includes('conflict'))).toEqual([]);
+    });
+
+    it('keeps lines written into it after git stopped on its conflict', async () => {
+      const here = await clone('Studio', 'here');
+      const there = await clone('Laptop', 'there');
+      await queue(there, '19');
+      await there.sync();
+      await queue(here, '21');
+      const file = join(here.dir, ...MEETING_QUEUE_PATH.split('/'));
+      const typing = actingAfter(here, 'showSide', async () => {
+        const marked = await readFile(file, 'utf8');
+        await writeFile(file, `${marked}- [[${meeting('24').slice(0, -3)}]] added 2026-11-24\n`);
+      });
+      expect(await here.sync(typing)).toMatchObject({ kind: 'synced', conflicts: [] });
+      const text = (await here.read(MEETING_QUEUE_PATH)) ?? '';
+      expect(queuedMeetings(text)).toEqual(['21', '19', '24'].map(meeting));
+      expect(text).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
+    });
+
+    it('keeps the queue one Mac added to when the other deleted it', async () => {
+      const here = await clone('Studio', 'here');
+      await queue(here, '19');
+      await here.sync();
+      const there = await clone('Laptop', 'there');
+      await deleteNote(there.deps, { path: MEETING_QUEUE_PATH });
+      await there.sync();
+      await queue(here, '21');
+      expect(await here.sync()).toMatchObject({ kind: 'synced', conflicts: [] });
+      expect(await listed(here)).toEqual(['19', '21'].map(meeting));
+      expect(queuedMeetings((await onRemote(MEETING_QUEUE_PATH)) ?? '')).toEqual(
+        ['19', '21'].map(meeting),
+      );
+    });
+  });
+
   it('never lets a delete here beat an edit there', async () => {
     const here = await clone('Studio', 'here');
     const there = await clone('Laptop', 'there');

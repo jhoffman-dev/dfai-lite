@@ -2,13 +2,14 @@
 //   node tools/meeting-note.ts <vault dir> [input.json | -] [--gemini]
 // Reads a meeting note's input as JSON (from the file, else stdin), writes the
 // note at Meetings/<YYYY>/<MM>/<date> <title>.md, or adds to it when that file
-// exists, and prints its path. A new note gets a line in the meetings queue,
-// for Claude to summarize. `--gemini` reads the JSON as a "Notes by Gemini"
+// exists, and prints its path. A note with no summary yet gets a line in the
+// meetings queue, once, for Claude to summarize. `--gemini` reads the JSON as a "Notes by Gemini"
 // meeting first. Plain Node, erasable TypeScript, no dependencies.
 import { readFile, stat } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  hasMeetingSummary,
   MEETING_QUEUE_PATH,
   MeetingInputError,
   fromGeminiNotes,
@@ -19,13 +20,13 @@ import {
   wallClockIn,
   type MeetingInput,
 } from '../src/domain/meetings/index.ts';
-import { writeIfChanged } from './vault-files.ts';
+import { changeFile } from './vault-files.ts';
 
 export interface FiledMeeting {
   readonly path: string;
   /** False when the note already held everything in the input. */
   readonly written: boolean;
-  /** True when the note was new, and its line went into the meetings queue. */
+  /** True when this run put the note's line in the meetings queue. */
   readonly queued: boolean;
 }
 
@@ -34,17 +35,11 @@ export function meetingInputOf(json: unknown, gemini: boolean): MeetingInput {
   return gemini ? fromGeminiNotes(json) : parseMeetingInput(json);
 }
 
-/** The file's text in `vault`, or null when there is none. */
-async function textAt(vault: string, path: string): Promise<string | null> {
-  return readFile(join(vault, ...path.split('/')), 'utf8').catch((error: NodeJS.ErrnoException) => {
-    if (error.code === 'ENOENT') return null;
-    throw error;
-  });
-}
-
 /**
  * Writes the meeting's note into `vault`, merging into the note already at
- * its path. A new note is queued for Claude, added on `today` (`YYYY-MM-DD`).
+ * its path. A note with no summary by Claude yet is queued for Claude, added on
+ * `today` (`YYYY-MM-DD`): a rerun queues a note whose line an earlier run
+ * could not write, and never queues one twice.
  */
 export async function fileMeeting(
   vault: string,
@@ -52,13 +47,16 @@ export async function fileMeeting(
   today: string,
 ): Promise<FiledMeeting> {
   const path = meetingPath(input);
-  const existing = await textAt(vault, path);
-  const written = await writeIfChanged(vault, path, mergeMeetingNote(existing ?? '', input));
-  const queued = existing === null && written;
-  if (queued) {
-    const queue = queueMeetings(await textAt(vault, MEETING_QUEUE_PATH), [{ path, added: today }]);
-    await writeIfChanged(vault, MEETING_QUEUE_PATH, queue);
-  }
+  let note = '';
+  const written = await changeFile(vault, path, (existing) => {
+    note = mergeMeetingNote(existing ?? '', input);
+    return note;
+  });
+  const queued =
+    !hasMeetingSummary(note) &&
+    (await changeFile(vault, MEETING_QUEUE_PATH, (queue) =>
+      queueMeetings(queue, [{ path, added: today }]),
+    ));
   return { path, written, queued };
 }
 

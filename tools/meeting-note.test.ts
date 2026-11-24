@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -56,6 +56,31 @@ describe('fileMeeting', () => {
     const queue = await readFile(queueFile, 'utf8');
     expect(queue).toContain('Kept.\n- [[Meetings/2026/11/2026-11-21 Weekly sync]]');
     expect(queuedMeetings(queue)).toHaveLength(2);
+  });
+});
+
+describe('fileMeeting and the queue', () => {
+  const queueFile = () => join(vault, ...MEETING_QUEUE_PATH.split('/'));
+
+  it('queues on a rerun a note whose line an earlier run could not write', async () => {
+    await fileMeeting(vault, meetingInputOf(input, false), TODAY);
+    await unlink(queueFile());
+    expect(await fileMeeting(vault, meetingInputOf(input, false), TODAY)).toEqual({
+      path: PATH,
+      written: false,
+      queued: true,
+    });
+    expect(queuedMeetings(await readFile(queueFile(), 'utf8'))).toEqual([PATH]);
+  });
+
+  it('does not queue a note that already has Claude’s summary', async () => {
+    await fileMeeting(vault, meetingInputOf(input, false), TODAY);
+    await unlink(queueFile());
+    const file = join(vault, ...PATH.split('/'));
+    const text = await readFile(file, 'utf8');
+    await writeFile(file, `${text}\n<!-- dfai-lite:summary v1 -->\n`);
+    expect((await fileMeeting(vault, meetingInputOf(input, false), TODAY)).queued).toBe(false);
+    await expect(readFile(queueFile(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });
 

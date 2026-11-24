@@ -12,7 +12,8 @@ wins wherever this skill differs; read it first if you have not this session.
 
 ## 1. Read the queue
 
-Pull first. Open `Meetings/Processing queue.md`. Every line starting
+Start from the latest vault (section 2a says how). Open
+`Meetings/Processing queue.md`. Every line starting
 `- [[` is one waiting meeting:
 
 ```markdown
@@ -39,11 +40,28 @@ header, anything James typed) as it is. No queue, or no lines: say so, stop.
 6. **Then remove the line**, only after the note is saved. Delete that one
    line, nothing else.
 
-When the list is done, commit the notes and the queue together, as the vault
-rules say: one commit, `Meetings: summaries for 2026-11-17 Larkspur Payroll
-renewal` (or `for 3 meetings`), then push. If the push is refused, pull and
-push again; never force. If git says the index is locked, DFAI Lite on this
-Mac is syncing: wait a moment and try again.
+## 2a. Saving and syncing: who runs git
+
+Where you are decides it. There is no third way.
+
+- **In the vault's folder on a Mac** (Claude Code started in it): DFAI Lite
+  syncs this folder. **Do not run git at all**: no pull, commit, push, merge
+  or stash. Read and save the files only; the app sees each save, commits it
+  and syncs it within about a minute, and it merges the queue itself when
+  another Mac changed it too. If the app is not open, the saves wait in the
+  folder until it is.
+- **Through the GitHub repository** (no local folder of the vault; the
+  `notes-vault` skill): read the newest `main`, and save the notes and the
+  queue in one commit, named for what it did:
+  `Meetings: summaries for 3 meetings`. Never force. If the commit is refused
+  because `main` moved, read the files again and redo your edits on them.
+  If a merge leaves `Meetings/Processing queue.md` in conflict, settle it by
+  hand this way: keep every `- [[` line from both sides (one line per note;
+  where only one side's line has a ` — not processed:` reason, keep that
+  one), keep every other line either side has, delete the `<<<<<<<`,
+  `=======` and `>>>>>>>` lines, and never make a conflict copy. The only
+  lines you may leave out are ones you removed yourself because that
+  meeting is done. A line coming back is harmless; a lost one is not.
 
 ## 3. The summary block
 
@@ -155,4 +173,4 @@ Rate stays flat if we sign for two years.
 **Tobias Fenn** [00:00:09] For two years, yes. I'll flag the cache issue before Friday.
 ```
 
-Then the line is removed from the queue, and both files go in one commit.
+Then the line is removed from the queue, and both files are saved (section 2a).

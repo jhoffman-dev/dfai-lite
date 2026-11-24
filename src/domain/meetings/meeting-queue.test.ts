@@ -3,6 +3,7 @@ import {
   MEETING_QUEUE_PATH,
   mergeMeetingQueues,
   queuedMeetings,
+  hasMeetingSummary,
   queueMeetings,
 } from './meeting-queue.ts';
 
@@ -58,18 +59,52 @@ describe('the meetings queue', () => {
   it('merges both Macs’ queues, this Mac’s text first, losing no queued line', () => {
     const base = queueOf(line(RENEWAL), line(SYNC));
     const ours = `${base}${line(KICKOFF)}\n`;
-    const theirs = queueOf(line(RENEWAL), `${line(SYNC)} — not processed: no notes yet`);
-    const merged = mergeMeetingQueues(ours, theirs);
-    expect(merged).toBe(ours);
+    const theirs = queueOf(line(SYNC));
+    expect(mergeMeetingQueues(ours, theirs)).toBe(ours);
     const added = queueOf(line(RENEWAL), line('Meetings/2026/11/2026-11-24 Retro.md'));
     const both = mergeMeetingQueues(queueOf(line(SYNC)), added);
     expect(queuedMeetings(both)).toEqual([SYNC, RENEWAL, 'Meetings/2026/11/2026-11-24 Retro.md']);
   });
 
-  it('takes no conflict markers or other text from the other side, and ends on a newline', () => {
-    const theirs = `<<<<<<< HEAD\n${line(SYNC)}\n=======\n>>>>>>> origin/main\nProse.`;
+  it('takes no conflict markers or blank lines from the other side, and ends on a newline', () => {
+    const theirs = `<<<<<<< HEAD\n${line(SYNC)}\n=======\n\n>>>>>>> origin/main\n`;
     expect(mergeMeetingQueues('Ours, no newline', theirs)).toBe(
       `Ours, no newline\n${line(SYNC)}\n`,
     );
+  });
+
+  it('carries across what the person typed on the other side, once', () => {
+    const ours = queueOf(line(SYNC));
+    const theirs = `${queueOf(line(SYNC))}Ask Mara about the cache.\n`;
+    const merged = mergeMeetingQueues(ours, theirs);
+    expect(merged).toBe(`${ours}Ask Mara about the cache.\n`);
+    expect(mergeMeetingQueues(merged, theirs)).toBe(merged);
+  });
+
+  it('keeps the other side’s line for a meeting when only it says why Claude could not do it', () => {
+    const reasoned = `${line(SYNC)} — not processed: no transcript or notes yet`;
+    const ours = queueOf(line(RENEWAL), line(SYNC), line(KICKOFF));
+    expect(mergeMeetingQueues(ours, queueOf(reasoned))).toBe(
+      queueOf(line(RENEWAL), reasoned, line(KICKOFF)),
+    );
+    const ownReason = queueOf(`${line(SYNC)} — not processed: note not found`);
+    expect(mergeMeetingQueues(ownReason, queueOf(reasoned))).toBe(ownReason);
+  });
+
+  it('writes new lines in the file’s own line ending', () => {
+    const crlf = queueOf(line(SYNC)).replace(/\n/g, '\r\n');
+    expect(queueMeetings(crlf, [{ path: RENEWAL, added: '2026-11-20' }])).toBe(
+      `${crlf}${line(RENEWAL)}\r\n`,
+    );
+    const reasoned = `${line(SYNC)} — not processed: note not found`;
+    const merged = mergeMeetingQueues(crlf, queueOf(reasoned, line(KICKOFF)));
+    expect(merged).toBe(queueOf(reasoned, line(KICKOFF)).replace(/\n/g, '\r\n'));
+  });
+
+  it('knows a note that already has Claude’s summary block', () => {
+    expect(hasMeetingSummary('One.\n\n<!-- dfai-lite:summary v1 -->\n\n> [!summary] S\n')).toBe(
+      true,
+    );
+    expect(hasMeetingSummary('One. <!-- dfai-lite:summary v1 --> in a sentence\n')).toBe(false);
   });
 });
