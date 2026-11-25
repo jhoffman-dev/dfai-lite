@@ -1,6 +1,6 @@
 [package]
 name = "dfai-lite"
-version = "0.3.0"
+version = "0.4.0"
 description = "DFAI Lite: fast local markdown notes, synced with git"
 authors = ["James Hoffman"]
 license = "MIT"
