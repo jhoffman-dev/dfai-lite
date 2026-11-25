@@ -13,6 +13,8 @@ export interface ReadmeInput {
   readonly months: readonly MeetingMonth[];
   readonly tags: readonly TagTreeNode[];
   readonly conflictCopies: readonly string[];
+  /** Transcript notes under `Transcripts/`: counted, never listed. */
+  readonly transcripts: number;
 }
 
 /** `_index/README.md`: the map — what the index is, then where to read next. */
@@ -32,6 +34,7 @@ export function readmeFile(input: ReadmeInput): IndexFile {
         `${folder === '' ? '(vault root)' : `${folder}/`} | ${count} | ${file}`,
     ),
     ...meetingLines(input.months),
+    ...transcriptLines(input.transcripts),
     ...tagLines(input.tags),
     ...conflictLines(input.conflictCopies),
   ];
@@ -45,6 +48,15 @@ function meetingLines(months: readonly MeetingMonth[]): string[] {
     '## Meetings',
     'Line: month | meetings | index file.',
     ...months.map(({ month, count, file }) => `${month} | ${count} | ${file}`),
+  ];
+}
+
+function transcriptLines(count: number): string[] {
+  if (count === 0) return [];
+  return [
+    '',
+    '## Transcripts',
+    `${count} transcript notes under Transcripts/, not indexed. A meeting note's "- Transcript:" line links its own; open one only for verbatim quotes or to write that meeting's summary.`,
   ];
 }
 

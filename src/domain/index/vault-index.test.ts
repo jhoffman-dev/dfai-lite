@@ -88,6 +88,29 @@ describe('the vault index', () => {
       { source: 'Projects/Larkspur Payroll.md', target: 'People/Mara Quill.md' },
     ]);
   });
+
+  it('resolves links to and from transcript notes, but leaves them out of the tags and the graph', () => {
+    const meeting = 'Meetings/2026/11/2026-11-17 Renewal.md';
+    const transcript = 'Transcripts/2026/11/2026-11-17 Renewal (transcript).md';
+    const index = VaultIndex.build([
+      {
+        path: meeting,
+        text: 'Renewal. #meeting\n\n- Transcript: [[2026-11-17 Renewal (transcript)]]',
+      },
+      {
+        path: transcript,
+        text: 'Transcript of the meeting [[2026-11-17 Renewal]].\n\nWe said #meeting and #1.',
+      },
+    ]);
+    expect(index.resolve('2026-11-17 Renewal (transcript)')).toBe(transcript);
+    expect(index.backlinks(meeting)).toEqual([transcript]);
+    expect(index.tagCounts()).toEqual([{ key: 'meeting', name: 'meeting', count: 1 }]);
+    expect(index.notesWithTag('meeting')).toEqual([meeting]);
+    expect(index.graph()).toEqual({
+      nodes: [{ id: meeting, kind: 'note', title: '2026-11-17 Renewal' }],
+      edges: [],
+    });
+  });
 });
 
 describe('a note’s summary', () => {

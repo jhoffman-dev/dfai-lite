@@ -501,15 +501,336 @@ const dfaiMeetings = (() => {
 
     return { fromGeminiNotes };
   })();
+  // src/domain/vault/transcripts-folder.ts
+  const transcriptsFolderModule = (() => {
+    /**
+     * Where meeting transcripts live: one note per transcript, out of the
+     * meetings' way. Nobody reads them as notes, so the graph and the tags leave
+     * them out; a meeting note links its own with a `- Transcript:` line.
+     */
+    const TRANSCRIPTS_FOLDER = 'Transcripts';
+
+    /** Whether a path is under the top-level `Transcripts/` folder. */
+    const isTranscriptPath = (path) => path.startsWith(`${TRANSCRIPTS_FOLDER}/`);
+
+    return { TRANSCRIPTS_FOLDER, isTranscriptPath };
+  })();
+  // src/domain/vault/note-path.ts
+  const notePathModule = (() => {
+    const VAULT_ROOT = '';
+
+    const MARKDOWN = /\.md$/i;
+
+    /** Whether the file is a note: a `.md` file. */
+    function isNotePath(path) {
+      return MARKDOWN.test(path);
+    }
+
+    /** The last part of a path: `Name.md` of `Folder/Name.md`. */
+    function fileNameOf(path) {
+      return path.slice(path.lastIndexOf('/') + 1);
+    }
+
+    /** The folder a path is in: `Folder` of `Folder/Name.md`, the root for a root file. */
+    function folderOf(path) {
+      const slash = path.lastIndexOf('/');
+      return slash === -1 ? VAULT_ROOT : path.slice(0, slash);
+    }
+
+    /** A note's title: its file name without `.md`. The vault has no other title. */
+    function noteTitle(path) {
+      return fileNameOf(path).replace(MARKDOWN, '');
+    }
+
+    /** The path without its `.md`: how a link written as a path names a note. */
+    function withoutExtension(path) {
+      return path.replace(MARKDOWN, '');
+    }
+
+    /** `folder/name`, or `name` alone in the root. */
+    function joinPath(folder, name) {
+      return folder === VAULT_ROOT ? name : `${folder}/${name}`;
+    }
+
+    /** The folders above a path, nearest first, the root left out: `A/B` and `A` for `A/B/x.md`. */
+    function foldersAbove(path) {
+      const folders = [];
+      for (let folder = folderOf(path); folder !== VAULT_ROOT; folder = folderOf(folder)) {
+        folders.push(folder);
+      }
+      return folders;
+    }
+
+    /** How many folders deep a path is: 0 for a root file. */
+    function pathDepth(path) {
+      let depth = 0;
+      for (const char of path) if (char === '/') depth += 1;
+      return depth;
+    }
+
+    /** Whether `path` is `folder` itself or anywhere under it. The root holds everything. */
+    function isWithin(path, folder) {
+      return folder === VAULT_ROOT || path === folder || path.startsWith(`${folder}/`);
+    }
+
+    /** Paths as the vault compares them for clashes: case folded, accents composed one way. */
+    function foldedPath(path) {
+      return path.normalize('NFC').toLowerCase();
+    }
+
+    /** Where `path` is after the move, or null when the move leaves it be. */
+    function pathAfterMove(path, move) {
+      if (path === move.from) return move.to;
+      if (move.from !== VAULT_ROOT && path.startsWith(`${move.from}/`)) {
+        return `${move.to}${path.slice(move.from.length)}`;
+      }
+      return null;
+    }
+
+    return {
+      VAULT_ROOT,
+      isNotePath,
+      fileNameOf,
+      folderOf,
+      noteTitle,
+      withoutExtension,
+      joinPath,
+      foldersAbove,
+      pathDepth,
+      isWithin,
+      foldedPath,
+      pathAfterMove,
+    };
+  })();
+  // src/domain/meetings/meeting-transcript.ts
+  const meetingTranscriptModule = (() => {
+    const { TRANSCRIPTS_FOLDER } = transcriptsFolderModule;
+    const { noteTitle } = notePathModule;
+
+    /*
+     * A meeting's transcript is a note of its own, so the meeting note stays
+     * short for the person and for Claude:
+     *
+     *   Transcripts/<YYYY>/<MM>/<meeting note's name> (transcript).md
+     *
+     * Its first line says whose transcript it is and links the meeting note back;
+     * the meeting note carries one `- Transcript: [[… (transcript)]]` line in its
+     * header list. The ` (transcript)` suffix keeps the two names apart, so a
+     * `[[link]]` to either never resolves to the other.
+     */
+
+    const SUFFIX = ' (transcript)';
+    const DATED = /^(\d{4})-(0[1-9]|1[0-2])-\d{2}\b/;
+    const LINK_LINE = /^- Transcript: \[\[([^\][|#\r\n]+)(?:[|#][^\]\r\n]*)?\]\][ \t]*\r?$/;
+    const HEADER_ITEM = /^- [A-Za-z][\w ]*:/;
+    const SECTION_HEADING = /^##[ \t]+(.+?)[ \t]*#*[ \t]*\r?$/;
+    const FENCE = /^\s*(?:```|~~~)/;
+    const SUMMARY_MARKER = /^<!-- dfai-lite:summary v1 -->\r?$/;
+
+    /** Text on one line: runs of white space, line breaks included, become one space. */
+    const oneLine = (value) => value.replace(/\s+/g, ' ').trim();
+
+    /** The transcript note's name for a meeting note: its own name, ` (transcript)` after it. */
+    const transcriptNameOf = (meetingPath) => `${noteTitle(meetingPath)}${SUFFIX}`;
+
+    /**
+     * Where a meeting note's transcript goes: `Transcripts/<YYYY>/<MM>/` from the
+     * date its name starts with, else straight under `Transcripts/`.
+     */
+    function transcriptPathOf(meetingPath) {
+      const name = transcriptNameOf(meetingPath);
+      const dated = DATED.exec(name);
+      const folder =
+        dated === null ? TRANSCRIPTS_FOLDER : `${TRANSCRIPTS_FOLDER}/${dated[1]}/${dated[2]}`;
+      return `${folder}/${name}.md`;
+    }
+
+    /** The meeting note's header line that links the transcript note named `name`. */
+    const transcriptLinkLine = (name) => `- Transcript: [[${name}]]`;
+
+    /** The note a meeting note's `- Transcript:` line links, read before its first section; null without one. */
+    function linkedTranscriptOf(text) {
+      for (const line of text.split('\n')) {
+        if (SECTION_HEADING.test(line)) return null;
+        const name = LINK_LINE.exec(line)?.[1];
+        if (name !== undefined) return name.trim();
+      }
+      return null;
+    }
+
+    /** The first line of a transcript note, then the turns: the whole note, ending in one newline. */
+    function transcriptNoteText(meetingPath, body) {
+      const opening = `Transcript of the meeting [[${noteTitle(meetingPath)}]].`;
+      return `${opening}\n\n${body.replace(/\n+$/, '')}\n`;
+    }
+
+    function turnText({ speaker, time, text }) {
+      const words = oneLine(text);
+      if (words === '') return '';
+      const who = oneLine(speaker);
+      const stamp = oneLine(time ?? '');
+      const lead = [who === '' ? '' : `**${who}**`, stamp === '' ? '' : `[${stamp}]`]
+        .filter((part) => part !== '')
+        .join(' ');
+      return lead === '' ? words : `${lead} ${words}`;
+    }
+
+    /** The input's turns, one paragraph each, as a transcript note writes them; '' with none. */
+    const transcriptBody = (input) =>
+      (input.transcript ?? [])
+        .map(turnText)
+        .filter((turn) => turn !== '')
+        .join('\n\n');
+
+    /** The transcript note an input carries for the meeting note at `meetingPath`; null with no turns. */
+    function transcriptNote(input, meetingPath) {
+      const body = transcriptBody(input);
+      if (body === '') return null;
+      return { path: transcriptPathOf(meetingPath), text: transcriptNoteText(meetingPath, body) };
+    }
+
+    /**
+     * The transcript note to create beside a meeting note now reading
+     * `meetingText`: the input's, when the note links it by its own name; null
+     * when the input has no turns or the note does not link it (an older note
+     * keeping its transcript inline). Writers create it, never over another.
+     */
+    function transcriptToWrite(meetingText, input, meetingPath) {
+      if (linkedTranscriptOf(meetingText) !== transcriptNameOf(meetingPath)) return null;
+      return transcriptNote(input, meetingPath);
+    }
+
+    /** Each `## ` heading's line number and lower-case name, outside code fences. */
+    function headingsOf(lines) {
+      const found = [];
+      let inFence = false;
+      lines.forEach((line, at) => {
+        if (FENCE.test(line)) inFence = !inFence;
+        const name = inFence ? undefined : SECTION_HEADING.exec(line)?.[1];
+        if (name !== undefined) found.push({ at, name: name.toLowerCase() });
+      });
+      return found;
+    }
+
+    /** Whether a meeting note still holds its transcript inline, under `## Transcript`. */
+    const hasInlineTranscript = (text) =>
+      headingsOf(text.split('\n')).some(({ name }) => name === 'transcript');
+
+    const isBlank = (line) => line.trim() === '';
+
+    /** Where the header list ends: the line after its last `- Key:` item, before any section or summary. */
+    function headerEnd(lines) {
+      let last = null;
+      for (const [at, line] of lines.entries()) {
+        if (SECTION_HEADING.test(line) || SUMMARY_MARKER.test(line)) break;
+        if (HEADER_ITEM.test(line)) last = at + 1;
+      }
+      return last;
+    }
+
+    /** The first line of the note's body after its header: a section, the summary block, or the end. */
+    function bodyStart(lines) {
+      const at = lines.findIndex((line) => SECTION_HEADING.test(line) || SUMMARY_MARKER.test(line));
+      return at === -1 ? lines.length : at;
+    }
+
+    /** `lines` without the blank ones at their end. */
+    function withoutTrailingBlanks(lines) {
+      let end = lines.length;
+      while (end > 0 && isBlank(lines[end - 1])) end -= 1;
+      return lines.slice(0, end);
+    }
+
+    /**
+     * The meeting note with a `- Transcript:` line linking the note named
+     * `transcriptName`: after the last item of its header list, else on its own
+     * before the first section. Every other line stays as it was. A note that
+     * already links a transcript comes back as is.
+     */
+    function withTranscriptLink(text, transcriptName) {
+      if (linkedTranscriptOf(text) !== null) return text;
+      const lines = text.split('\n');
+      const eol = lines[0]?.endsWith('\r') === true ? '\r' : '';
+      const line = `${transcriptLinkLine(transcriptName)}${eol}`;
+      const after = headerEnd(lines);
+      if (after !== null) return [...lines.slice(0, after), line, ...lines.slice(after)].join('\n');
+      const at = bodyStart(lines);
+      const before = withoutTrailingBlanks(lines.slice(0, at));
+      const rest = lines.slice(at);
+      const lead = before.length > 0 ? ['', line] : [line];
+      return [...before, ...lead, ...(rest.length > 0 ? ['', ...rest] : [''])].join('\n');
+    }
+
+    /** Lines without the blank ones at either end. */
+    function trimmedLines(lines) {
+      let start = 0;
+      let end = lines.length;
+      while (start < end && isBlank(lines[start])) start += 1;
+      while (end > start && isBlank(lines[end - 1])) end -= 1;
+      return lines.slice(start, end);
+    }
+
+    /**
+     * Moves a meeting note's inline `## Transcript` section into a transcript
+     * note: the section's body, every byte of it but its outer blank lines, goes
+     * to the transcript note; the meeting note loses that section (and the blank
+     * lines before it) and gains the `- Transcript:` line. Null when there is
+     * nothing to move: no inline transcript, an empty one, or a note that
+     * already links a transcript (a person sorts that out, not a tool).
+     */
+    function splitInlineTranscript(
+      meetingPath,
+      text,
+      transcriptPath = transcriptPathOf(meetingPath),
+    ) {
+      if (linkedTranscriptOf(text) !== null) return null;
+      const lines = text.split('\n');
+      const headings = headingsOf(lines);
+      const index = headings.findIndex(({ name }) => name === 'transcript');
+      if (index === -1) return null;
+      const start = headings[index].at;
+      const end = headings[index + 1]?.at ?? lines.length;
+      const moved = trimmedLines(lines.slice(start + 1, end)).join('\n');
+      if (moved.trim() === '') return null;
+      const before = withoutTrailingBlanks(lines.slice(0, start));
+      const after = lines.slice(end);
+      const rest = trimmedLines(after).length === 0 ? [''] : ['', ...after];
+      const kept = before.length === 0 ? rest.slice(1) : [...before, ...rest];
+      const meeting = withTranscriptLink(kept.join('\n'), noteTitle(transcriptPath));
+      const transcript = { path: transcriptPath, text: transcriptNoteText(meetingPath, moved) };
+      return { meeting, transcript, moved };
+    }
+
+    return {
+      oneLine,
+      transcriptNameOf,
+      transcriptPathOf,
+      transcriptLinkLine,
+      linkedTranscriptOf,
+      transcriptNoteText,
+      transcriptBody,
+      transcriptNote,
+      transcriptToWrite,
+      hasInlineTranscript,
+      withTranscriptLink,
+      splitInlineTranscript,
+    };
+  })();
   // src/domain/meetings/meeting-note.ts
   const meetingNoteModule = (() => {
     const { cleanNoteName } = fileNameModule;
     const { MeetingInputError } = meetingInputModule;
+    const { oneLine, transcriptBody, transcriptLinkLine, transcriptNameOf } =
+      meetingTranscriptModule;
 
     const DAY = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
     /** A web address someone can open: `javascript:` and the like are never written. */
     const WEB_ADDRESS = /^https?:\/\/[^\s/]\S*$/i;
-    /** The sections in the order the contract writes them; the transcript always last. */
+    /**
+     * The sections in the order the contract writes them. `Transcript` is never
+     * written now (the transcript is a note of its own); it stays last here so a
+     * section added to an older note that still holds one goes before it.
+     */
     const SECTION_ORDER = ['Summary', 'Decisions', 'Next steps', 'Notes', 'Transcript'];
     const FALLBACK_TITLE = 'Meeting';
 
@@ -531,9 +852,6 @@ const dfaiMeetings = (() => {
       const fileName = meetingPath(input).split('/').at(-1) ?? '';
       return `Meeting: ${fileName.slice(0, -'.md'.length)}`;
     }
-
-    /** Text on one line: runs of white space, line breaks included, become one space. */
-    const oneLine = (value) => value.replace(/\s+/g, ' ').trim();
 
     /** The people as `[[Name]]` links, each once: the name, else the address's local part; never made up. */
     function peopleLinks(input) {
@@ -581,7 +899,7 @@ const dfaiMeetings = (() => {
     }
 
     /** The opening sentence and the `- Key: value` lines, before any section. */
-    function headerLines(input) {
+    function headerLines(input, path) {
       const people = peopleLinks(input);
       const opening = firstSentence(input.summary) ?? fallbackSentence(input.date, people);
       const about = (input.about ?? []).map(aboutLink).filter((link) => link !== '');
@@ -593,6 +911,7 @@ const dfaiMeetings = (() => {
         ...(people.length === 0 ? [] : [`- With: ${people.join(', ')}`]),
         ...(about.length === 0 ? [] : [`- About: ${about.join(', ')}`]),
         ...(WEB_ADDRESS.test(source) ? [`- Source: ${source}`] : []),
+        ...(transcriptBody(input) === '' ? [] : [transcriptLinkLine(transcriptNameOf(path))]),
       ];
     }
 
@@ -610,28 +929,13 @@ const dfaiMeetings = (() => {
         .map((item) => `- ${item}`)
         .join('\n');
 
-    function turnText({ speaker, time, text }) {
-      const words = oneLine(text);
-      if (words === '') return '';
-      const who = oneLine(speaker);
-      const stamp = oneLine(time ?? '');
-      const lead = [who === '' ? '' : `**${who}**`, stamp === '' ? '' : `[${stamp}]`]
-        .filter((part) => part !== '')
-        .join(' ');
-      return lead === '' ? words : `${lead} ${words}`;
-    }
-
-    /** The note's sections in contract order, the empty ones left out. */
+    /** The note's sections in contract order, the empty ones left out: never a transcript. */
     function noteSections(input) {
       const bodies = {
         Summary: trimmedBlock(input.summary),
         Decisions: bullets(input.decisions),
         'Next steps': bullets(input.nextSteps),
         Notes: trimmedBlock(input.notes),
-        Transcript: (input.transcript ?? [])
-          .map(turnText)
-          .filter((turn) => turn !== '')
-          .join('\n\n'),
       };
       return SECTION_ORDER.map((heading) => ({ heading, body: bodies[heading] ?? '' })).filter(
         ({ body }) => body !== '',
@@ -643,13 +947,15 @@ const dfaiMeetings = (() => {
     /**
      * A meeting note in the vault contract's shape: no frontmatter; an opening
      * sentence (the summary's first, else "Meeting on <date> with …") tagged
-     * `#meeting`; `When`, `With`, `About` lines; then Summary, Decisions, Next
-     * steps, Notes and Transcript, each only when it has something in it. The
-     * same input always gives the same bytes, ending in one newline.
+     * `#meeting`; `When`, `With`, `About`, `Source` lines, and a `Transcript`
+     * line linking the transcript note when there are turns; then Summary,
+     * Decisions, Next steps and Notes, each only when it has something in it.
+     * `path` is where it goes (a copy path, a moved note): the transcript link
+     * is named from it. The same input always gives the same bytes, ending in
+     * one newline.
      */
-    function meetingNote(input) {
-      const path = meetingPath(input);
-      const blocks = [headerLines(input).join('\n'), ...noteSections(input).map(sectionText)];
+    function meetingNote(input, path = meetingPath(input)) {
+      const blocks = [headerLines(input, path).join('\n'), ...noteSections(input).map(sectionText)];
       return { path, text: `${blocks.join('\n\n')}\n` };
     }
 
@@ -665,7 +971,16 @@ const dfaiMeetings = (() => {
   })();
   // src/domain/meetings/merge-meeting-note.ts
   const mergeMeetingNoteModule = (() => {
-    const { SECTION_ORDER, meetingNote, noteSections, sectionText } = meetingNoteModule;
+    const { SECTION_ORDER, meetingNote, meetingPath, noteSections, sectionText } =
+      meetingNoteModule;
+    const {
+      hasInlineTranscript,
+      linkedTranscriptOf,
+      transcriptBody,
+      transcriptNameOf,
+      transcriptToWrite,
+      withTranscriptLink,
+    } = meetingTranscriptModule;
 
     const FENCE = /^\s*(?:```|~~~)/;
     const SECTION_HEADING = /^##[ \t]+(.+?)[ \t]*#*[ \t]*\r?$/;
@@ -707,15 +1022,26 @@ const dfaiMeetings = (() => {
     }
 
     /**
-     * The vault contract's "if that file exists, it is the same meeting: add to
-     * it". Each section the input has and the note lacks (a transcript arriving
-     * after the summary, say) is added in contract order; a section the note
-     * already has, and everything else in it, is left byte for byte, since a
-     * person may have edited it. So merging the same input twice changes nothing.
-     * An empty note is written whole.
+     * The note with its `- Transcript:` line when the input brings turns and the
+     * note has no transcript yet, linked nor inline: an older note keeping its
+     * transcript inline is left as it is (the split tool moves it out).
      */
-    function mergeMeetingNote(existingText, input) {
-      if (existingText.trim() === '') return meetingNote(input).text;
+    function withTranscript(text, input, path) {
+      if (transcriptBody(input) === '' || hasInlineTranscript(text)) return text;
+      return withTranscriptLink(text, transcriptNameOf(path));
+    }
+
+    /**
+     * The vault contract's "if that file exists, it is the same meeting: add to
+     * it". Each section the input has and the note lacks is added in contract
+     * order, and a transcript arriving after the summary adds the `- Transcript:`
+     * line (the writer creates the transcript note); a section the note already
+     * has, and everything else in it, is left byte for byte, since a person may
+     * have edited it. So merging the same input twice changes nothing. An empty
+     * note is written whole. `path` is the note's own, which names its transcript.
+     */
+    function mergeMeetingNote(existingText, input, path = meetingPath(input)) {
+      if (existingText.trim() === '') return meetingNote(input, path).text;
       const lines = existingText.replace(/\n$/, '').split('\n');
       let changed = lines;
       for (const section of noteSections(input)) {
@@ -724,15 +1050,28 @@ const dfaiMeetings = (() => {
         const at = insertionLine(section.heading, starts, changed.length);
         changed = inserted(changed, at, sectionText(section));
       }
-      return changed === lines ? existingText : `${changed.join('\n')}\n`;
+      const merged = changed === lines ? existingText : `${changed.join('\n')}\n`;
+      return withTranscript(merged, input, path);
     }
 
-    return { mergeMeetingNote };
+    /**
+     * {@link mergeMeetingNote}, with the transcript note to create when the merge
+     * is what links it. Writers create the transcript note first, then write the
+     * meeting note, so its link never points at nothing.
+     */
+    function meetingWrite(existingText, input, path = meetingPath(input)) {
+      const text = mergeMeetingNote(existingText, input, path);
+      const linksAlready = linkedTranscriptOf(existingText) !== null;
+      return { text, transcript: linksAlready ? null : transcriptToWrite(text, input, path) };
+    }
+
+    return { mergeMeetingNote, meetingWrite };
   })();
   return {
     fromGeminiNotes: geminiNotesModule.fromGeminiNotes,
     meetingNote: meetingNoteModule.meetingNote,
     mergeMeetingNote: mergeMeetingNoteModule.mergeMeetingNote,
+    meetingWrite: mergeMeetingNoteModule.meetingWrite,
     meetingCommitMessage: meetingNoteModule.meetingCommitMessage,
     parseMeetingInput: meetingInputModule.parseMeetingInput,
     MeetingInputError: meetingInputModule.MeetingInputError,

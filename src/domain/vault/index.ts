@@ -41,3 +41,4 @@ export {
   type TreeRow,
 } from './folder-tree.ts';
 export { dropFolderAt, pathMovedInto, type DropPoint, type VaultEntry } from './moves.ts';
+export { TRANSCRIPTS_FOLDER, isTranscriptPath } from './transcripts-folder.ts';

@@ -2,7 +2,8 @@
 //   node tools/meeting-note.ts <vault dir> [input.json | -] [--gemini]
 // Reads a meeting note's input as JSON (from the file, else stdin), writes the
 // note at Meetings/<YYYY>/<MM>/<date> <title>.md, or adds to it when that file
-// exists, and prints its path. A note with no summary yet gets a line in the
+// exists, and prints its path. A transcript goes to its own note under
+// Transcripts/, linked from the meeting note. A note with no summary yet gets a line in the
 // meetings queue, once, for Claude to summarize. `--gemini` reads the JSON as a "Notes by Gemini"
 // meeting first. Plain Node, erasable TypeScript, no dependencies.
 import { readFile, stat } from 'node:fs/promises';
@@ -14,13 +15,13 @@ import {
   MeetingInputError,
   fromGeminiNotes,
   meetingPath,
-  mergeMeetingNote,
+  meetingWrite,
   parseMeetingInput,
   queueMeetings,
   wallClockIn,
   type MeetingInput,
 } from '../src/domain/meetings/index.ts';
-import { changeFile } from './vault-files.ts';
+import { changeFile, readVaultFile } from './vault-files.ts';
 
 export interface FiledMeeting {
   readonly path: string;
@@ -36,8 +37,18 @@ export function meetingInputOf(json: unknown, gemini: boolean): MeetingInput {
 }
 
 /**
+ * Creates the transcript note the meeting note is about to link, before the
+ * link: never over a transcript note already there, which is this meeting's.
+ */
+async function fileTranscript(vault: string, path: string, input: MeetingInput): Promise<void> {
+  const { transcript } = meetingWrite((await readVaultFile(vault, path)) ?? '', input, path);
+  if (transcript === null) return;
+  await changeFile(vault, transcript.path, (existing) => existing ?? transcript.text);
+}
+
+/**
  * Writes the meeting's note into `vault`, merging into the note already at
- * its path. A note with no summary by Claude yet is queued for Claude, added on
+ * its path, and its transcript into a transcript note. A note with no summary by Claude yet is queued for Claude, added on
  * `today` (`YYYY-MM-DD`): a rerun queues a note whose line an earlier run
  * could not write, and never queues one twice.
  */
@@ -47,9 +58,10 @@ export async function fileMeeting(
   today: string,
 ): Promise<FiledMeeting> {
   const path = meetingPath(input);
+  await fileTranscript(vault, path, input);
   let note = '';
   const written = await changeFile(vault, path, (existing) => {
-    note = mergeMeetingNote(existing ?? '', input);
+    note = meetingWrite(existing ?? '', input, path).text;
     return note;
   });
   const queued =

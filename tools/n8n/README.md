@@ -5,7 +5,9 @@ note to the vault's GitHub repository, at
 `Meetings/<YYYY>/<MM>/<YYYY-MM-DD> <title>.md`, in the shape the vault's
 `CLAUDE.md` gives ("A meeting note"). If that file is already there, it is
 the same meeting: the workflow adds what is new (a transcript arriving after
-the summary) and leaves the rest of the note as it is.
+the summary) and leaves the rest of the note as it is. A transcript goes to
+a note of its own, `Transcripts/<YYYY>/<MM>/<YYYY-MM-DD> <title> (transcript).md`,
+which the meeting note links with a `- Transcript:` line.
 
 | File                                 | What it is                                                                       |
 | ------------------------------------ | -------------------------------------------------------------------------------- |
@@ -14,7 +16,7 @@ the summary) and leaves the rest of the note as it is.
 | `fixtures/gemini-larkspur-sync.json` | A fictional Gemini meeting, to try the bundle or the CLI on.                     |
 
 The bundle defines one name, `dfaiMeetings`, with `fromGeminiNotes`,
-`meetingNote`, `mergeMeetingNote`, `meetingCommitMessage`,
+`meetingNote`, `mergeMeetingNote`, `meetingWrite`, `meetingCommitMessage`,
 `parseMeetingInput` and `MeetingInputError`. A test fails when the bundle is
 behind its sources, so rebuild and commit it after changing them.
 
@@ -55,10 +57,19 @@ credential → GitHub API**, with the token as the Access Token.
      const note = $('Meeting note').itemMatching(index).json;
      const found = typeof item.json.content === 'string';
      const existing = found ? Buffer.from(item.json.content, 'base64').toString('utf8') : '';
-     const text = dfaiMeetings.mergeMeetingNote(existing, note.input);
+     const { text, transcript } = dfaiMeetings.meetingWrite(existing, note.input, note.path);
      if (found && text === existing) return []; // nothing new: no commit
-     const content = Buffer.from(text, 'utf8').toString('base64');
-     return [{ json: { path: note.path, message: note.message, content, sha: item.json.sha } }];
+     const put = (path, body, sha) => ({
+       json: {
+         path,
+         message: note.message,
+         content: Buffer.from(body, 'utf8').toString('base64'),
+         sha,
+       },
+     });
+     // The transcript note first, created only (no sha), then the meeting note that links it.
+     const first = transcript === null ? [] : [put(transcript.path, transcript.text, undefined)];
+     return [...first, put(note.path, text, item.json.sha)];
    });
    ```
 5. **Create or update the file**: an **HTTP Request** node, `PUT
@@ -68,7 +79,10 @@ https://api.github.com/repos/<owner>/<vault repo>/contents/{{ $json.path.split('
    The commit message is `Meeting: <date> <title>`. With no `sha` GitHub
    only creates: if the Get failed for another reason and the file does
    exist, the PUT is refused rather than overwriting the note. (The GitHub
-   node's File → Create and File → Edit do the same in two branches.)
+   node's File → Create and File → Edit do the same in two branches.) Under
+   Settings, **On Error → Continue**: a transcript note already there (an
+   earlier run stopped after writing it) is refused, never overwritten, and
+   the meeting note's PUT after it still runs.
 
 After the push, the vault's own `index` workflow (`.github/workflows/index.yml`)
 rewrites `_index/`, so the meeting shows in `_index/meetings/<YYYY>-<MM>.md`

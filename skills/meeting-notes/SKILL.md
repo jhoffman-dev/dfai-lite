@@ -39,6 +39,7 @@ One sentence on what was decided or discussed. #meeting
 - When: 2026-11-21 10:00–10:30
 - With: [[Mara Quill]], [[Tobias Fenn]]
 - About: [[Larkspur rollout]]
+- Transcript: [[2026-11-21 Weekly sync (transcript)]]
 
 ## Summary
 
@@ -49,27 +50,38 @@ One sentence on what was decided or discussed. #meeting
 - [[Mara Quill]] sends the revised plan by Friday.
 
 ## Notes
-
-## Transcript
-
-**Mara Quill** [00:00:05] Shall we start with the flag?
 ```
 
 - No frontmatter. The first sentence is the summary's first sentence.
-- Leave out any section with nothing in it. The transcript goes last, one
-  `**Speaker** [time] words` paragraph per turn, as given: do not tidy it.
+- Leave out any line or section with nothing in it.
+- **A transcript is a note of its own**, never a section of the meeting note:
+  `Transcripts/<YYYY>/<MM>/<meeting note's name> (transcript).md`, written
+  first, then linked by the meeting note's `- Transcript:` line (last in the
+  header list). Its text, exactly:
+
+  ```markdown
+  Transcript of the meeting [[2026-11-21 Weekly sync]].
+
+  **Mara Quill** [00:00:05] Shall we start with the flag?
+  ```
+
+  One `**Speaker** [time] words` paragraph per turn, as given: do not tidy it.
+
 - Next steps start with their owner as a link. Decisions are bullets.
 - The title in the file name has none of `/ \ : * ? " < > | # ^ [ ]`.
 
 ## 5. Adding to an existing note
 
-Add only the sections the note lacks, in the order above (a transcript goes
-at the end). Leave every existing line byte for byte, even where your version
-reads better: a person may have edited it. If something new belongs in an
-existing section, append it there and say so.
+Add only the sections the note lacks, in the order above. A transcript
+arriving later goes to its transcript note, created only if it is not there,
+and the `- Transcript:` line is added after the last header line; a note that
+already holds its transcript inline under `## Transcript` keeps it, and gets
+no second copy. Leave every existing line byte for byte, even where your
+version reads better: a person may have edited it. If something new belongs
+in an existing section, append it there and say so.
 
 ## 6. Commit
 
-Pull first, one small commit with the message `Meeting: <YYYY-MM-DD> <title>`,
-push. If the push is refused, pull and push again; never force, never touch
+Pull first, one small commit (the meeting note and its transcript note
+together) with the message `Meeting: <YYYY-MM-DD> <title>`, push. If the push is refused, pull and push again; never force, never touch
 `_index/`. Say which path you wrote.

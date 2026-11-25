@@ -37,7 +37,18 @@ describe('fileMeeting', () => {
       queued: false,
     });
     const text = await readFile(file, 'utf8');
-    expect(text).toContain('\nMy own line.\n\n## Transcript\n\n**Mara Quill** Hello.\n');
+    expect(text).toContain('- Transcript: [[2026-11-21 Weekly sync (transcript)]]\n');
+    expect(text.endsWith('\nMy own line.\n')).toBe(true);
+    const transcript = join(
+      vault,
+      'Transcripts',
+      '2026',
+      '11',
+      '2026-11-21 Weekly sync (transcript).md',
+    );
+    expect(await readFile(transcript, 'utf8')).toBe(
+      'Transcript of the meeting [[2026-11-21 Weekly sync]].\n\n**Mara Quill** Hello.\n',
+    );
     expect(await fileMeeting(vault, meetingInputOf(later, false), TODAY)).toEqual({
       path: PATH,
       written: false,

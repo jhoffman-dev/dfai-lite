@@ -18,6 +18,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
     "e2e": "pnpm build && playwright test",
     "index": "node tools/build-index.ts",
+    "split-transcripts": "node tools/split-transcripts.ts",
     "version:bump": "node tools/version-bump.ts",
     "tauri": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri",
     "rust:check": "cd src-tauri && export PATH=\"$HOME/.cargo/bin:$PATH\" && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"

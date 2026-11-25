@@ -1,5 +1,8 @@
 import {
   awaitingQueue,
+  MEETING_QUEUE_PATH,
+  queuedMeetings,
+  unsummarizedMeetings,
   wallClockIn,
   withQueueWaiting,
   type ImportEntry,
@@ -86,4 +89,22 @@ export async function queueWaitingMeetings(deps: QueueDeps, ledger: ImportLedger
     // The lines are in the queue; only the ledger still says they wait. The
     // next import finds them listed (nothing written twice) and clears them then.
   }
+}
+
+/**
+ * Puts every meeting note with no summary by Claude yet in the queue — the
+ * older meetings no import ever queued — once each. Returns how many lines
+ * it added; a vault that refuses the write rejects with why.
+ */
+export async function queueUnsummarizedMeetings(deps: QueueDeps): Promise<number> {
+  const { session } = deps.vault;
+  const listed = new Set(queuedMeetings(session.file(MEETING_QUEUE_PATH)?.text ?? ''));
+  const waiting = unsummarizedMeetings(session.allFiles()).filter((path) => !listed.has(path));
+  if (waiting.length === 0) return 0;
+  const added = today(deps);
+  await addToMeetingQueue(
+    deps.vault,
+    waiting.map((path) => ({ path, added })),
+  );
+  return waiting.length;
 }

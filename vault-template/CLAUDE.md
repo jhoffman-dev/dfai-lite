@@ -25,19 +25,20 @@ and the index disagree, the note is right.
 
 ## Layout
 
-| Folder                   | Holds                                                                                                |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `Inbox/`                 | Quick notes, unfiled. New notes with no obvious home go here.                                        |
-| `Meetings/<YYYY>/<MM>/`  | One note per meeting (shape below).                                                                  |
-| `People/`                | One note per person, named as they are linked: `Mara Quill.md`.                                      |
-| `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                                                      |
-| `Resources/`             | Reference material and permanent notes.                                                              |
-| `Archive/`               | Finished or dormant. Move here; do not delete.                                                       |
-| `attachments/`           | Pictures pasted or dropped into notes.                                                               |
-| `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.                                            |
-| `_index/`                | Generated. Never edit.                                                                               |
-| `.dfai-lite/`            | The app's own state (favorites, icons and colors, callout types, imported meetings). Leave it alone. |
-| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.                                            |
+| Folder                     | Holds                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `Inbox/`                   | Quick notes, unfiled. New notes with no obvious home go here.                                        |
+| `Meetings/<YYYY>/<MM>/`    | One note per meeting (shape below).                                                                  |
+| `Transcripts/<YYYY>/<MM>/` | One note per meeting transcript, linked from its meeting note. Do not open unless asked (below).     |
+| `People/`                  | One note per person, named as they are linked: `Mara Quill.md`.                                      |
+| `Projects/`, `Areas/`      | Work with an end, and ongoing responsibilities.                                                      |
+| `Resources/`               | Reference material and permanent notes.                                                              |
+| `Archive/`                 | Finished or dormant. Move here; do not delete.                                                       |
+| `attachments/`             | Pictures pasted or dropped into notes.                                                               |
+| `skills/<name>/SKILL.md`   | Instructions for Claude on jobs done often in this vault.                                            |
+| `_index/`                  | Generated. Never edit.                                                                               |
+| `.dfai-lite/`              | The app's own state (favorites, icons and colors, callout types, imported meetings). Leave it alone. |
+| `<folder>/.gitkeep`        | Empty; keeps a folder with no notes yet in git. Leave it.                                            |
 
 ## How a note is written
 
@@ -72,6 +73,14 @@ One sentence on what was decided or discussed. #meeting
 - With: [[Mara Quill]], [[Tobias Fenn]]
 - About: [[Larkspur rollout]]
 - Source: https://docs.example.com/document/d/weekly-sync
+- Transcript: [[2026-11-21 Weekly sync (transcript)]]
+
+<!-- dfai-lite:summary v1 -->
+
+> [!summary] Summary by Claude (…)
+> …
+
+<!-- /dfai-lite:summary -->
 
 ## Summary
 
@@ -82,19 +91,28 @@ One sentence on what was decided or discussed. #meeting
 - [[Mara Quill]] sends the revised plan by Friday.
 
 ## Notes
-
-## Transcript
 ```
 
 Leave out a line or a section that has nothing in it. `Source` is where the
 notes came from, when there is a link. `Notes` holds the detail behind the
-summary. The transcript, when there is one, goes last so a reader can stop
-before it.
+summary. Claude's summary block sits at the top, before the first section
+(`skills/meeting-processing/SKILL.md` writes it).
+
+The transcript is a note of its own:
+`Transcripts/<YYYY>/<MM>/<meeting note's name> (transcript).md`. Its first
+line is `Transcript of the meeting [[<meeting note's name>]].`, then the
+turns; the meeting note links it with its `- Transcript:` line. **Do not open
+`Transcripts/` unless asked** for verbatim quotes or to write that meeting's
+summary: they are long, and the meeting note says what was decided. `_index/`
+only counts them. Never write a transcript back into a meeting note. An older
+meeting note may still have its transcript inline under `## Transcript`, last;
+leave it there unless asked to move it.
 
 ## Meetings waiting for a summary
 
 `Meetings/Processing queue.md` lists the meetings DFAI Lite imported that
-have no summary yet, one `- [[link]]` line each. When a session starts in
+have no summary yet, one `- [[link]]` line each (Settings → Granola → "Queue
+meetings without a summary" adds every older one too). When a session starts in
 this vault, or James says "process meetings", read it; if it lists any,
 work it with `skills/meeting-processing/SKILL.md`: a summary block in each
 note, then its line removed. Never remove a line any other way. In this

@@ -23,8 +23,10 @@ Never clone-and-read or list the whole vault to answer a question. In order:
 2. The one index file that fits: `_index/meetings/<YYYY>-<MM>.md` for a
    meeting, `_index/tags.md` for a topic, `_index/folders/<folder>.md` for an
    area. Each line is one note: path, tags, links, first sentence.
-3. Open only the notes those lines point to. For a meeting, stop before
-   `## Transcript` unless the answer needs who said what.
+3. Open only the notes those lines point to. A meeting's transcript is a
+   note of its own under `Transcripts/`, linked by its `- Transcript:` line:
+   open it only for verbatim quotes, or who said what. (An older note may
+   still have it inline under `## Transcript`: stop before it.)
 4. For an exact phrase, use repository code search rather than reading files.
 
 Say which notes an answer came from, by path.

@@ -1,4 +1,5 @@
-import type { VaultPath } from '../vault/index.ts';
+import { isConflictCopyPath } from '../sync/index.ts';
+import { isNotePath, type VaultPath } from '../vault/index.ts';
 
 /*
  * The meetings waiting for Claude: one plain note the app adds a line to when
@@ -27,6 +28,35 @@ export const MEETING_SUMMARY_MARKER = '<!-- dfai-lite:summary v1 -->';
 /** Whether a meeting note already holds Claude's summary block. */
 export const hasMeetingSummary = (note: string): boolean =>
   linesOf(note).some((line) => line.trim() === MEETING_SUMMARY_MARKER);
+
+const MEETINGS_FOLDER = 'Meetings/';
+
+/** Whether a note is a meeting note: a note under `Meetings/` but the queue of meetings to process. */
+export const isMeetingNotePath = (path: VaultPath): boolean =>
+  path.startsWith(MEETINGS_FOLDER) && isNotePath(path) && path !== MEETING_QUEUE_PATH;
+
+/**
+ * The meeting notes with no summary block by Claude yet, sorted by path: what
+ * "queue every meeting without a summary" puts in the queue. A conflict copy
+ * is left out: it is the other Mac's version of a meeting, not one of its own.
+ */
+export function unsummarizedMeetings(
+  notes: Iterable<{ readonly path: VaultPath; readonly text: string }>,
+): VaultPath[] {
+  const found: VaultPath[] = [];
+  for (const { path, text } of notes) {
+    if (isMeetingNotePath(path) && !isConflictCopyPath(path) && !hasMeetingSummary(text)) {
+      found.push(path);
+    }
+  }
+  return found.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+}
+
+/** What queuing the meetings without a summary tells the person, by how many it queued. */
+export const queuedMeetingsNotice = (count: number): string =>
+  count === 0
+    ? 'Every meeting has a summary or is already in the queue.'
+    : `Queued ${count === 1 ? '1 meeting' : `${count} meetings`} for Claude to summarize.`;
 
 /** A meeting to put in the queue: its note, and the day it was added (`YYYY-MM-DD`). */
 export interface QueuedMeeting {

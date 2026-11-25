@@ -45,6 +45,7 @@ export function GranolaSettings({
     | 'importDeletedAgain'
     | 'rebuildLedger'
     | 'startEmptyLedger'
+    | 'queueUnsummarized'
   >;
 }) {
   const hasKey = view.keyState !== 'none' && view.keyState !== 'checking';
@@ -142,6 +143,11 @@ export function GranolaSettings({
           </button>
         </div>
       )}
+      <div className="settings__actions">
+        <button className="btn btn--ghost" type="button" onClick={controls.queueUnsummarized}>
+          Queue meetings without a summary
+        </button>
+      </div>
       {hasKey && <ForgetKey pending={view.pending} onForget={controls.disconnect} />}
     </section>
   );

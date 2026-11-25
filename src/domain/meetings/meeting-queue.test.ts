@@ -4,7 +4,10 @@ import {
   mergeMeetingQueues,
   queuedMeetings,
   hasMeetingSummary,
+  isMeetingNotePath,
+  queuedMeetingsNotice,
   queueMeetings,
+  unsummarizedMeetings,
 } from './meeting-queue.ts';
 
 const RENEWAL = 'Meetings/2026/11/2026-11-17 Larkspur Payroll renewal.md';
@@ -106,5 +109,31 @@ describe('the meetings queue', () => {
       true,
     );
     expect(hasMeetingSummary('One. <!-- dfai-lite:summary v1 --> in a sentence\n')).toBe(false);
+  });
+});
+
+describe('the meetings without a summary', () => {
+  it('are the meeting notes with no summary block, sorted: not the queue, transcripts or conflict copies', () => {
+    const notes = [
+      { path: SYNC, text: 'Sync.\n' },
+      { path: RENEWAL, text: 'Renewal.\n\n<!-- dfai-lite:summary v1 -->\n' },
+      { path: KICKOFF, text: 'Kickoff.\n' },
+      { path: MEETING_QUEUE_PATH, text: MEETING_QUEUE_HEADER },
+      {
+        path: 'Meetings/2026/11/2026-11-14 Larkspur kickoff (conflict from Studio).md',
+        text: 'Kickoff.\n',
+      },
+      { path: 'Transcripts/2026/11/2026-11-14 Larkspur kickoff (transcript).md', text: 'Hi.\n' },
+      { path: 'Meetings/diagram.png', text: '' },
+      { path: 'Projects/Larkspur.md', text: 'Not a meeting.\n' },
+    ];
+    expect(unsummarizedMeetings(notes)).toEqual([KICKOFF, SYNC]);
+    expect(isMeetingNotePath(MEETING_QUEUE_PATH)).toBe(false);
+  });
+
+  it('are counted in a notice', () => {
+    expect(queuedMeetingsNotice(0)).toBe('Every meeting has a summary or is already in the queue.');
+    expect(queuedMeetingsNotice(1)).toBe('Queued 1 meeting for Claude to summarize.');
+    expect(queuedMeetingsNotice(12)).toBe('Queued 12 meetings for Claude to summarize.');
   });
 });

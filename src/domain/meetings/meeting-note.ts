@@ -1,5 +1,11 @@
 import { cleanNoteName } from '../vault/index.ts';
-import { MeetingInputError, type MeetingInput, type TranscriptTurn } from './meeting-input.ts';
+import { MeetingInputError, type MeetingInput } from './meeting-input.ts';
+import {
+  oneLine,
+  transcriptBody,
+  transcriptLinkLine,
+  transcriptNameOf,
+} from './meeting-transcript.ts';
 
 /** A meeting note and where the vault contract puts it. */
 export interface MeetingNote {
@@ -16,7 +22,11 @@ export interface NoteSection {
 const DAY = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 /** A web address someone can open: `javascript:` and the like are never written. */
 const WEB_ADDRESS = /^https?:\/\/[^\s/]\S*$/i;
-/** The sections in the order the contract writes them; the transcript always last. */
+/**
+ * The sections in the order the contract writes them. `Transcript` is never
+ * written now (the transcript is a note of its own); it stays last here so a
+ * section added to an older note that still holds one goes before it.
+ */
 export const SECTION_ORDER = ['Summary', 'Decisions', 'Next steps', 'Notes', 'Transcript'];
 const FALLBACK_TITLE = 'Meeting';
 
@@ -38,9 +48,6 @@ export function meetingCommitMessage(input: Pick<MeetingInput, 'date' | 'title'>
   const fileName = meetingPath(input).split('/').at(-1) ?? '';
   return `Meeting: ${fileName.slice(0, -'.md'.length)}`;
 }
-
-/** Text on one line: runs of white space, line breaks included, become one space. */
-const oneLine = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 /** The people as `[[Name]]` links, each once: the name, else the address's local part; never made up. */
 export function peopleLinks(input: Pick<MeetingInput, 'attendees'>): string[] {
@@ -88,7 +95,7 @@ function whenLine({ date, start, end }: MeetingInput): string {
 }
 
 /** The opening sentence and the `- Key: value` lines, before any section. */
-function headerLines(input: MeetingInput): string[] {
+function headerLines(input: MeetingInput, path: string): string[] {
   const people = peopleLinks(input);
   const opening = firstSentence(input.summary) ?? fallbackSentence(input.date, people);
   const about = (input.about ?? []).map(aboutLink).filter((link) => link !== '');
@@ -100,6 +107,7 @@ function headerLines(input: MeetingInput): string[] {
     ...(people.length === 0 ? [] : [`- With: ${people.join(', ')}`]),
     ...(about.length === 0 ? [] : [`- About: ${about.join(', ')}`]),
     ...(WEB_ADDRESS.test(source) ? [`- Source: ${source}`] : []),
+    ...(transcriptBody(input) === '' ? [] : [transcriptLinkLine(transcriptNameOf(path))]),
   ];
 }
 
@@ -117,28 +125,13 @@ const bullets = (items: readonly string[] | undefined) =>
     .map((item) => `- ${item}`)
     .join('\n');
 
-function turnText({ speaker, time, text }: TranscriptTurn): string {
-  const words = oneLine(text);
-  if (words === '') return '';
-  const who = oneLine(speaker);
-  const stamp = oneLine(time ?? '');
-  const lead = [who === '' ? '' : `**${who}**`, stamp === '' ? '' : `[${stamp}]`]
-    .filter((part) => part !== '')
-    .join(' ');
-  return lead === '' ? words : `${lead} ${words}`;
-}
-
-/** The note's sections in contract order, the empty ones left out. */
+/** The note's sections in contract order, the empty ones left out: never a transcript. */
 export function noteSections(input: MeetingInput): NoteSection[] {
   const bodies: Record<string, string> = {
     Summary: trimmedBlock(input.summary),
     Decisions: bullets(input.decisions),
     'Next steps': bullets(input.nextSteps),
     Notes: trimmedBlock(input.notes),
-    Transcript: (input.transcript ?? [])
-      .map(turnText)
-      .filter((turn) => turn !== '')
-      .join('\n\n'),
   };
   return SECTION_ORDER.map((heading) => ({ heading, body: bodies[heading] ?? '' })).filter(
     ({ body }) => body !== '',
@@ -150,12 +143,14 @@ export const sectionText = ({ heading, body }: NoteSection) => `## ${heading}\n\
 /**
  * A meeting note in the vault contract's shape: no frontmatter; an opening
  * sentence (the summary's first, else "Meeting on <date> with …") tagged
- * `#meeting`; `When`, `With`, `About` lines; then Summary, Decisions, Next
- * steps, Notes and Transcript, each only when it has something in it. The
- * same input always gives the same bytes, ending in one newline.
+ * `#meeting`; `When`, `With`, `About`, `Source` lines, and a `Transcript`
+ * line linking the transcript note when there are turns; then Summary,
+ * Decisions, Next steps and Notes, each only when it has something in it.
+ * `path` is where it goes (a copy path, a moved note): the transcript link
+ * is named from it. The same input always gives the same bytes, ending in
+ * one newline.
  */
-export function meetingNote(input: MeetingInput): MeetingNote {
-  const path = meetingPath(input);
-  const blocks = [headerLines(input).join('\n'), ...noteSections(input).map(sectionText)];
+export function meetingNote(input: MeetingInput, path: string = meetingPath(input)): MeetingNote {
+  const blocks = [headerLines(input, path).join('\n'), ...noteSections(input).map(sectionText)];
   return { path, text: `${blocks.join('\n\n')}\n` };
 }

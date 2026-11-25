@@ -127,6 +127,15 @@ export async function removeFile(root: string, path: string, stopAt: string): Pr
   }
 }
 
+/** The text at `root/path`, or null when there is no file. Never through a link. */
+export async function readVaultFile(root: string, path: string): Promise<string | null> {
+  await assertNoLinks(root, path);
+  return readFile(join(root, ...path.split('/')), 'utf8').catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
+}
+
 /**
  * Changes `root/path` by `change` (null: no file yet) and writes it, making its
  * folders; false when nothing changed. Guarded as far as Node allows: the file

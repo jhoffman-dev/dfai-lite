@@ -26,6 +26,8 @@ import { importGranolaMeetings, type GranolaImportDeps } from './import-granola-
 
 const PATH = 'Meetings/2026/11/2026-11-17 Larkspur Payroll renewal.md';
 const URL = 'https://notes.granola.ai/d/5f1e7c2a-0b3d-4e6f-9a8b-1c2d3e4f5a6b';
+const TRANSCRIPT = 'Transcripts/2026/11/2026-11-17 Larkspur Payroll renewal (transcript).md';
+const LINK = '- Transcript: [[2026-11-17 Larkspur Payroll renewal (transcript)]]';
 
 let files: MemoryVaultFiles;
 let session: VaultSession;
@@ -65,8 +67,13 @@ describe('importing Granola meetings', () => {
     expect(report.watermark).toBe('2026-11-17T17:41:03.000Z');
     const text = files.peek(PATH) ?? '';
     expect(text).toContain('- With: [[Mara Quill]], [[Tobias Fenn]]');
-    expect(text).toContain(`- Source: ${URL}`);
-    expect(text).toContain('## Transcript');
+    expect(text).toContain(`- Source: ${URL}\n${LINK}\n`);
+    expect(text).not.toContain('## Transcript');
+    const transcript = files.peek(TRANSCRIPT) ?? '';
+    expect(transcript.split('\n')[0]).toBe(
+      'Transcript of the meeting [[2026-11-17 Larkspur Payroll renewal]].',
+    );
+    expect(transcript).toContain('**Mara Quill**');
     expect(ledger()).toEqual([
       {
         provider: 'granola',
@@ -102,11 +109,12 @@ describe('importing Granola meetings', () => {
     expect(files.peek(IMPORTS_PATH)).toBe(ledgerText);
   });
 
-  it('merges a transcript that arrives later, once, leaving what the person wrote alone', async () => {
+  it('a transcript that arrives later gets its own note and one link, leaving what the person wrote alone', async () => {
     granola.add(fictionalGranolaNote({ transcript: [] }));
     await importNow();
     const first = files.peek(PATH) ?? '';
-    expect(first).not.toContain('## Transcript');
+    expect(first).not.toContain('Transcript');
+    expect(files.peek(TRANSCRIPT)).toBeUndefined();
     const edited = first.replace('## Summary', 'My own line.\n\n## Summary');
     await files.write({ path: PATH, text: edited, expected: first });
     await applyExternalChanges({ files, session }, [PATH]);
@@ -115,8 +123,8 @@ describe('importing Granola meetings', () => {
     const report = await importNow();
     expect(report.counts.updated).toBe(1);
     const merged = files.peek(PATH) ?? '';
-    expect(merged.startsWith(edited.trimEnd())).toBe(true);
-    expect(merged.match(/## Transcript/g)).toHaveLength(1);
+    expect(merged).toBe(edited.replace(`- Source: ${URL}\n`, `- Source: ${URL}\n${LINK}\n`));
+    expect(files.peek(TRANSCRIPT)).toContain('**Tobias Fenn**');
 
     granola.calls.length = 0;
     expect((await importNow()).counts.unchanged).toBe(1);
@@ -127,6 +135,8 @@ describe('importing Granola meetings', () => {
     await importNow();
     await deleteNote({ files, session }, { path: PATH });
     expect(ledger()[0]?.dismissed).toBe(true);
+    // The transcript stays: deleting a meeting note never deletes another note.
+    expect(files.peek(TRANSCRIPT)).toBeDefined();
     const report = await importNow();
     expect(report.counts).toMatchObject({ imported: 0, skipped: 1 });
     expect(files.peek(PATH)).toBeUndefined();
@@ -212,9 +222,12 @@ describe('importing Granola meetings', () => {
     const report = await importNow();
     expect(report.counts.updated).toBe(1);
     const text = files.peek(PATH) ?? '';
-    expect(text.startsWith(gemini.trimEnd())).toBe(true);
+    expect(text.startsWith(`- When: 2026-11-17 10:00\n${LINK}\n`, gemini.indexOf('- When'))).toBe(
+      true,
+    );
     expect(text).toContain('## Notes');
-    expect(text).toContain('## Transcript');
+    expect(text).not.toContain('## Transcript');
+    expect(files.peek(TRANSCRIPT)).toBeDefined();
     expect(text.match(/## Summary/g)).toHaveLength(1);
   });
 
@@ -421,7 +434,7 @@ describe('the meetings queue for Claude', () => {
     const queue = refuseQueueWrites();
     const report = await importNow();
     expect(report).toMatchObject({ ended: 'imported', written: [PATH], problems: [] });
-    expect(files.peek(PATH)).toContain('## Transcript');
+    expect(files.peek(PATH)).toContain(LINK);
     expect(ledger()[0]?.queueWaiting).toBe(true);
 
     await importNow();
@@ -485,5 +498,32 @@ describe('the meetings queue for Claude', () => {
     const meetings = index.filter(({ path }) => path.startsWith('_index/meetings/'));
     expect(meetings.map(({ path }) => path)).toEqual(['_index/meetings/2026-11.md']);
     expect(meetings[0]?.text).not.toContain('Processing queue');
+  });
+});
+
+describe('transcripts in their own notes', () => {
+  it('leaves an older note that holds its transcript inline as it is: no second copy, no link', async () => {
+    const older = `Renewal. #meeting\n\n- When: 2026-11-17 10:00\n- Source: ${URL}\n\n## Transcript\n\nMara: hello.\n`;
+    await open({ [PATH]: older });
+    await importNow();
+    const text = files.peek(PATH) ?? '';
+    expect(text).not.toContain(LINK);
+    expect(text.match(/## Transcript/g)).toHaveLength(1);
+    expect(files.peek(TRANSCRIPT)).toBeUndefined();
+  });
+
+  it('keeps a transcript note already there, never writing over it, and links it', async () => {
+    await open({ [TRANSCRIPT]: 'Kept as it was.\n' });
+    await importNow();
+    expect(files.peek(TRANSCRIPT)).toBe('Kept as it was.\n');
+    expect(files.peek(PATH)).toContain(LINK);
+  });
+
+  it('a meeting note renamed in the app keeps its transcript linked both ways', async () => {
+    await importNow();
+    const renamed = 'Meetings/2026/11/2026-11-17 Larkspur renewal call.md';
+    await renameNote({ files, session }, { from: PATH, to: renamed });
+    expect(files.peek(TRANSCRIPT)).toContain('[[2026-11-17 Larkspur renewal call]]');
+    expect(files.peek(renamed)).toContain(LINK);
   });
 });

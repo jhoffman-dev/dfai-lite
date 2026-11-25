@@ -16,6 +16,7 @@ const PUBLIC_NAMES = [
   'fromGeminiNotes',
   'meetingNote',
   'mergeMeetingNote',
+  'meetingWrite',
   'meetingCommitMessage',
   'parseMeetingInput',
   'MeetingInputError',

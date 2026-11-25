@@ -29,7 +29,7 @@ const sync: MeetingInput = {
 };
 
 describe('meetingNote', () => {
-  it('writes the contract shape: sentence, header lines, sections, transcript last', () => {
+  it('writes the contract shape: sentence, header lines with the transcript link, sections', () => {
     const note = meetingNote(sync);
     expect(note.path).toBe('Meetings/2026/11/2026-11-21 Larkspur rollout sync.md');
     expect(note.text).toBe(
@@ -39,6 +39,7 @@ describe('meetingNote', () => {
         '- When: 2026-11-21 10:00–10:30',
         '- With: [[Mara Quill]], [[Tobias Fenn]]',
         '- About: [[Larkspur rollout]]',
+        '- Transcript: [[2026-11-21 Larkspur rollout sync (transcript)]]',
         '',
         '## Summary',
         '',
@@ -52,13 +53,14 @@ describe('meetingNote', () => {
         '',
         '- [[Mara Quill]] sends the revised plan by Friday.',
         '',
-        '## Transcript',
-        '',
-        '**Mara Quill** [00:00:05] Shall we start with the flag?',
-        '',
-        '**Tobias Fenn** [00:00:09] Yes. It is ready.',
-        '',
       ].join('\n'),
+    );
+  });
+
+  it('names the transcript link from the path the note is written at', () => {
+    const at = 'Meetings/2026/11/2026-11-21 Larkspur rollout sync (granola 0a1b2c3d).md';
+    expect(meetingNote(sync, at).text).toContain(
+      '- Transcript: [[2026-11-21 Larkspur rollout sync (granola 0a1b2c3d) (transcript)]]',
     );
   });
 
