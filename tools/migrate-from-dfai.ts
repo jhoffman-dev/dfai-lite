@@ -34,7 +34,7 @@ const SKILLS = `${ATLAS}/skills/`;
 const TEMPLATES = `${ATLAS}/templates/`;
 const TEMPLATE = fileURLToPath(new URL('../vault-template/', import.meta.url));
 /** What a new vault needs from the template, when the source has none of its own. */
-const TEMPLATE_FILES = ['CLAUDE.md', '.github/workflows/index.yml'];
+const TEMPLATE_FILES = ['CLAUDE.md', 'README.md', '.github/workflows/index.yml'];
 /** Strict, and keeping a byte-order mark, so the converter sees and reports it. */
 const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 

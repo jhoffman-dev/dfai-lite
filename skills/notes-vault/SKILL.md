@@ -15,19 +15,28 @@ Read `CLAUDE.md` at the root of the repository. It is the vault's own contract
 (layout, how a note is written, the rules for writing) and it wins over this
 skill wherever the two differ, because it travels with the notes.
 
-## Reading: index first, then few files
+## Reading: map, index, search, then few files
 
 Never clone-and-read or list the whole vault to answer a question. In order:
 
-1. `_index/README.md`: the map, with a count per folder.
+1. `README.md`: the map. What each folder holds with its note count, the
+   busiest folders, the most used tags, the latest dated notes. The text
+   around its generated map is James's description of the vault.
 2. The one index file that fits: `_index/meetings/<YYYY>-<MM>.md` for a
    meeting, `_index/tags.md` for a topic, `_index/folders/<folder>.md` for an
    area. Each line is one note: path, tags, links, first sentence.
-3. Open only the notes those lines point to. A meeting's transcript is a
+3. Search. With a shell in a clone of the vault, run
+   `node .dfai-lite/search.mjs "<words>"` (`--tag`, `--folder`,
+   `--since 7d`, `--links-to "<note>"`, `--title`, `--transcripts`,
+   `--limit`; `--help`): the best 10 notes with their matching lines and line
+   numbers, read straight from the files. It skips `Transcripts/` unless
+   given `--transcripts`. Through the GitHub API or a connector there is no
+   script to run: use repository code search for the words or an exact
+   phrase, then check the hits against the index lines.
+4. Open only the notes those lines point to. A meeting's transcript is a
    note of its own under `Transcripts/`, linked by its `- Transcript:` line:
    open it only for verbatim quotes, or who said what. (An older note may
    still have it inline under `## Transcript`: stop before it.)
-4. For an exact phrase, use repository code search rather than reading files.
 
 Say which notes an answer came from, by path.
 

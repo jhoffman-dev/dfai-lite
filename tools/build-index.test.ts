@@ -1,7 +1,9 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { buildIndex, runSummary } from './build-index.ts';
+import { MAP_END, MAP_START } from '../src/domain/ai-index/index.ts';
+import { buildIndex, guidesSummary, runSummary } from './build-index.ts';
+import { SEARCH_BUNDLE_PATH } from './search/build-search.ts';
 
 let vault: string;
 
@@ -53,5 +55,45 @@ describe('buildIndex', () => {
     await rm(join(vault, '_index'), { recursive: true });
     await buildIndex(vault);
     expect(await readFile(join(vault, '_index/tags.md'), 'utf8')).toBe(before);
+  });
+
+  it('writes the README map and the search command, then leaves both alone when nothing changed', async () => {
+    const first = await buildIndex(vault);
+    expect(first).toMatchObject({ readme: 'written', searchScriptWritten: true });
+    const readme = await readFile(join(vault, 'README.md'), 'utf8');
+    expect(readme).toContain('| People/ | 1 | One note per person |');
+    expect(await readFile(join(vault, '.dfai-lite/search.mjs'), 'utf8')).toBe(
+      await readFile(SEARCH_BUNDLE_PATH, 'utf8'),
+    );
+    const second = await buildIndex(vault);
+    expect(guidesSummary(second)).toBe('README.md map unchanged; .dfai-lite/search.mjs unchanged.');
+  });
+
+  it('keeps the README text outside the markers byte for byte', async () => {
+    await put('README.md', `# Mine\r\n\n${MAP_START}\nold\n${MAP_END}\nAfter.`);
+    await buildIndex(vault);
+    const readme = await readFile(join(vault, 'README.md'), 'utf8');
+    expect(readme.startsWith(`# Mine\r\n\n${MAP_START}\n## Map of this vault`)).toBe(true);
+    expect(readme.endsWith(`${MAP_END}\nAfter.`)).toBe(true);
+  });
+
+  it('leaves a README with broken markers as it is, says so, and still writes the index', async () => {
+    const broken = `# Mine\n${MAP_START}\nno end\n`;
+    await put('README.md', broken);
+    const run = await buildIndex(vault);
+    expect(await readFile(join(vault, 'README.md'), 'utf8')).toBe(broken);
+    expect(guidesSummary(run)).toMatch(/^Warning: README\.md needs exactly one/);
+    expect(run.written).toBe(run.files);
+  });
+
+  it('fills the template README’s map and keeps its hand-written part', async () => {
+    const template = new URL('../vault-template/README.md', import.meta.url);
+    await copyFile(template, join(vault, 'README.md'));
+    await buildIndex(vault);
+    const readme = await readFile(join(vault, 'README.md'), 'utf8');
+    const own = (await readFile(template, 'utf8')).slice(0, readme.indexOf(MAP_START));
+    expect(readme.startsWith(own)).toBe(true);
+    expect(readme).toContain('2 notes.');
+    expect(readme).not.toContain('appears here after the first push');
   });
 });
