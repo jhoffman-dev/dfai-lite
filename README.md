@@ -29,7 +29,7 @@ pnpm dev          # the UI alone in a browser, on a sample vault in memory (no s
 pnpm check        # typecheck + lint + format:check + unit and real-git sync tests + build
 pnpm e2e          # build, then the Playwright smoke (Chromium, sample vault)
 pnpm rust:check   # cargo fmt --check, clippy -D warnings, cargo test
-pnpm index <path-to-vault>   # write _index/ for a vault folder by hand
+pnpm index <path-to-vault>   # write _index/, the README map and .dfai-lite/search.mjs by hand
 ```
 
 ## Pick a vault
@@ -40,6 +40,9 @@ GitHub, clone the repository first, then choose its folder:
 ```sh
 git clone https://github.com/<you>/notes.git ~/Notes
 ```
+
+A new vault, the index Action, or the README map and search command for a
+vault you already have: [`docs/vault-setup.md`](docs/vault-setup.md).
 
 Any folder works; one that is not a git clone simply does not sync. Change the
 folder in Settings. The app keeps this Mac's settings (the folder, the

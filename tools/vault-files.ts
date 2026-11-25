@@ -21,6 +21,9 @@ export interface PassedOver {
 const byPath = (left: { path: string }, right: { path: string }): number =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
 
+/** Folders left out at a walk's root: their names, or a test of a name. */
+export type RootSkip = ReadonlySet<string> | ((name: string) => boolean);
+
 /**
  * Every regular file under `root`, sorted by path, and what was passed over.
  * Symbolic links are never followed. `skip` names folders left out at the
@@ -28,8 +31,9 @@ const byPath = (left: { path: string }, right: { path: string }): number =>
  */
 export async function scanFolder(
   root: string,
-  skip: ReadonlySet<string> = SKIPPED_FOLDERS,
+  skip: RootSkip = SKIPPED_FOLDERS,
 ): Promise<{ files: FoundFile[]; passedOver: PassedOver[] }> {
+  const skipped = typeof skip === 'function' ? skip : (name: string) => skip.has(name);
   const files: FoundFile[] = [];
   const passedOver: PassedOver[] = [];
   const walk = async (folder: string): Promise<void> => {
@@ -38,7 +42,7 @@ export async function scanFolder(
       const absolute = join(folder, entry.name);
       const path = relative(root, absolute).split(sep).join('/');
       if (entry.isDirectory()) {
-        if (!(folder === root && skip.has(entry.name))) await walk(absolute);
+        if (!(folder === root && skipped(entry.name))) await walk(absolute);
       } else if (entry.isFile()) {
         files.push({ path, absolute });
       } else {
@@ -53,7 +57,7 @@ export async function scanFolder(
 /** Every regular file under `root`, sorted by path, skipping the `skip` folders at the root. */
 export async function listFiles(
   root: string,
-  skip: ReadonlySet<string> = SKIPPED_FOLDERS,
+  skip: RootSkip = SKIPPED_FOLDERS,
 ): Promise<FoundFile[]> {
   return (await scanFolder(root, skip)).files;
 }

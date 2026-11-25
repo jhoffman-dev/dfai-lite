@@ -6,22 +6,49 @@ point: read it first, then use `_index/` to find notes without opening them.
 
 ## Find things cheaply
 
-Do not list or read the whole vault. Go through the index:
+Do not list or read the whole vault. Go in this order, and stop as soon as
+you have the notes you need:
 
-| To find…                     | Read                                            |
-| ---------------------------- | ----------------------------------------------- |
-| What folders and areas exist | `_index/README.md` (counts per folder, the map) |
-| Notes in a folder            | `_index/folders/<folder>.md`                    |
-| Notes with a tag             | `_index/tags.md`                                |
-| A meeting, by date or person | `_index/meetings/<YYYY>-<MM>.md`                |
-| What links to a note         | the note's line in its folder index (`←` lists) |
+1. **`README.md`** at the root: the map. What each folder holds and how many
+   notes it has, the busiest folders, the most used tags, the latest dated
+   notes. Its map is generated between markers; the text around it is
+   James's own description of the vault.
+2. **The index**, for one line per note (path, tags, links out, `←`
+   backlinks, first sentence):
 
-Each index line is one note: its path, tags, links out, and its first sentence.
-Pick the few notes that matter from those lines, then open only those. For an
-exact phrase, search the repository's code instead of reading files.
+   | To find…                     | Read                                            |
+   | ---------------------------- | ----------------------------------------------- |
+   | What folders and areas exist | `_index/README.md` (counts per folder)          |
+   | Notes in a folder            | `_index/folders/<folder>.md`                    |
+   | Notes with a tag             | `_index/tags.md`                                |
+   | A meeting, by date or person | `_index/meetings/<YYYY>-<MM>.md`                |
+   | What links to a note         | the note's line in its folder index (`←` lists) |
 
-`_index/` is generated on every push. It can be a minute behind: if a note
-and the index disagree, the note is right.
+3. **Search**, when working in this folder: `node .dfai-lite/search.mjs`
+   reads the notes themselves, so it is never behind. It prints the best 10
+   notes, each as its path, tags and change date, then up to three matching
+   lines with their line numbers. Words must all match; quote a phrase
+   (`'"exact phrase"'`); notes named for the words rank first, then headings,
+   then body text, newer first on ties.
+
+   ```sh
+   node .dfai-lite/search.mjs "rollout plan" --folder Projects
+   node .dfai-lite/search.mjs --tag meeting --since 14d
+   node .dfai-lite/search.mjs --links-to "Mara Quill" --limit 25
+   ```
+
+   `--title` matches names only; `--since` takes a date or `Nd` (the file's
+   change time on this Mac); `--transcripts` adds `Transcripts/` for
+   verbatim quotes, which are skipped otherwise; `--help` lists the rest.
+   Prefer it to `grep` or reading folders: its output is already trimmed.
+
+4. **Open a note** only once its index line or search lines say it is the
+   one, and read the part the line numbers point to.
+
+`_index/` and the README map are generated on every push, so they can be a
+minute behind; search is not. If a note and the index disagree, the note is
+right. Through GitHub, without a shell, read `README.md` and `_index/`, then
+use the repository's code search for an exact phrase.
 
 ## Layout
 

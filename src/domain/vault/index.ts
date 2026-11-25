@@ -32,7 +32,8 @@ export {
   isVisibleFolder,
   isVisibleNote,
 } from './visibility.ts';
-export { DEFAULT_NOTE_NAME, INBOX_FOLDER, uniqueNotePath } from './new-note.ts';
+export { ATTACHMENTS_FOLDER, DEFAULT_NOTE_NAME, INBOX_FOLDER, uniqueNotePath } from './new-note.ts';
+export { isVaultGuide } from './vault-guides.ts';
 export {
   buildFolderTree,
   compareNames,

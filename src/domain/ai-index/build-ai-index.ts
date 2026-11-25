@@ -1,15 +1,12 @@
 import { VaultIndex } from '../index/index.ts';
 import { isConflictCopyPath } from '../sync/index.ts';
-import { isVisibleNote, type VaultPath } from '../vault/index.ts';
+import { isVaultGuide, isVisibleNote, type VaultPath } from '../vault/index.ts';
 import { folderFiles } from './folder-files.ts';
 import { meetingFiles } from './meeting-files.ts';
 import { noteLine } from './note-line.ts';
 import { readmeFile } from './readme-file.ts';
 import { sortedTagTree, tagFile } from './tag-file.ts';
 import { byCode, type IndexFile } from './text.ts';
-
-/** The vault's own guides at its root, and the report a migration left: about the vault, not notes in it. */
-const VAULT_GUIDES = new Set<VaultPath>(['CLAUDE.md', 'README.md', 'MIGRATION-REPORT.md']);
 
 /**
  * The `_index/` files for a vault: a map Claude reads instead of the notes, so
@@ -19,7 +16,7 @@ const VAULT_GUIDES = new Set<VaultPath>(['CLAUDE.md', 'README.md', 'MIGRATION-RE
  * root `CLAUDE.md`, `README.md` and `MIGRATION-REPORT.md` are left out.
  */
 export function buildAiIndex(notes: readonly IndexFile[]): readonly IndexFile[] {
-  const visible = notes.filter(({ path }) => isVisibleNote(path) && !VAULT_GUIDES.has(path));
+  const visible = notes.filter(({ path }) => isVisibleNote(path) && !isVaultGuide(path));
   const index = VaultIndex.build(visible);
   const texts = new Map<VaultPath, string>(visible.map(({ path, text }) => [path, text]));
   const paths = index.paths();
