@@ -1,6 +1,7 @@
 import { fromGranola } from './granola-notes.ts';
 import { MeetingInputError } from './meeting-input.ts';
 import { meetingNote } from './meeting-note.ts';
+import { transcriptNote } from './meeting-transcript.ts';
 
 /** A fictional Granola note, `GET /v1/notes/{id}?include=transcript` as the API sends it. */
 const NOTE = {
@@ -95,7 +96,7 @@ describe('fromGranola', () => {
     expect(shared.transcript?.[0]?.speaker).toBe('Unknown');
   });
 
-  it('becomes a note in the vault contract’s shape, the transcript last', () => {
+  it('becomes a note in the vault contract’s shape, its transcript a note of its own', () => {
     const { path, text } = meetingNote(fromGranola(NOTE, LA));
     expect(path).toBe('Meetings/2026/11/2026-11-17 Larkspur Payroll renewal.md');
     expect(text.split('\n').slice(0, 6)).toEqual([
@@ -104,11 +105,13 @@ describe('fromGranola', () => {
       '- When: 2026-11-17 10:00–10:30',
       '- With: [[Mara Quill]], [[tobias.fenn]]',
       `- Source: ${NOTE.web_url}`,
-      '',
+      '- Transcript: [[2026-11-17 Larkspur Payroll renewal (transcript)]]',
     ]);
     const headings = text.split('\n').filter((line) => line.startsWith('## '));
-    expect(headings).toEqual(['## Summary', '## Notes', '## Transcript']);
-    expect(text).toContain('**Tobias Fenn** [10:01:11] Sixty days works.');
+    expect(headings).toEqual(['## Summary', '## Notes']);
+    expect(transcriptNote(fromGranola(NOTE, LA), path)?.text).toContain(
+      '**Tobias Fenn** [10:01:11] Sixty days works.',
+    );
   });
 
   it('with no calendar event, takes the times from the turns, and the title from the note', () => {

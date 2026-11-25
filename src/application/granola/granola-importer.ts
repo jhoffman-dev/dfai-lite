@@ -4,7 +4,11 @@ import {
   granolaReportLine,
   type GranolaPullMode,
 } from '../../domain/granola/index.ts';
-import { IMPORTS_PATH, restoreDismissed } from '../../domain/meetings/index.ts';
+import {
+  IMPORTS_PATH,
+  queuedMeetingsNotice,
+  restoreDismissed,
+} from '../../domain/meetings/index.ts';
 import type { Clock } from '../ports/index.ts';
 import type { VaultChange } from '../session/index.ts';
 import type { SyncTimers } from '../sync/index.ts';
@@ -27,6 +31,7 @@ import {
   type GranolaRecord,
   type GranolaRecords,
 } from './ports.ts';
+import { queueUnsummarizedMeetings } from './queue-new-meetings.ts';
 
 /** How often an open vault is imported into while automatic import is on (DFAI's 15 minutes). */
 export const GRANOLA_IMPORT_EVERY_MS = 15 * 60_000;
@@ -101,6 +106,8 @@ export interface GranolaControls {
   rebuildLedger(): void;
   /** For a ledger that cannot be read: replaces it with an empty one; the next import relinks by Source lines. */
   startEmptyLedger(): void;
+  /** Queues every meeting note with no summary yet for Claude; a notice says how many. */
+  queueUnsummarized(): void;
   /** Hears the quiet notices: meetings arrived, the key was refused, an Import now failed. */
   onNotice(listener: (text: string) => void): () => void;
 }
@@ -352,6 +359,11 @@ export function createGranolaImporter(
           update(ledgerState());
           return pull('import-now');
         })
+        .catch((cause: unknown) => update({ problem: problemOf(cause) }));
+    },
+    queueUnsummarized() {
+      void queueUnsummarizedMeetings(deps)
+        .then((count) => notice(queuedMeetingsNotice(count)))
         .catch((cause: unknown) => update({ problem: problemOf(cause) }));
     },
     rebuildLedger: () => replaceLedger(true),

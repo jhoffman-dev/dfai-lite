@@ -21,6 +21,9 @@ export interface PassedOver {
 const byPath = (left: { path: string }, right: { path: string }): number =>
   left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
 
+/** Folders left out at a walk's root: their names, or a test of a name. */
+export type RootSkip = ReadonlySet<string> | ((name: string) => boolean);
+
 /**
  * Every regular file under `root`, sorted by path, and what was passed over.
  * Symbolic links are never followed. `skip` names folders left out at the
@@ -28,8 +31,9 @@ const byPath = (left: { path: string }, right: { path: string }): number =>
  */
 export async function scanFolder(
   root: string,
-  skip: ReadonlySet<string> = SKIPPED_FOLDERS,
+  skip: RootSkip = SKIPPED_FOLDERS,
 ): Promise<{ files: FoundFile[]; passedOver: PassedOver[] }> {
+  const skipped = typeof skip === 'function' ? skip : (name: string) => skip.has(name);
   const files: FoundFile[] = [];
   const passedOver: PassedOver[] = [];
   const walk = async (folder: string): Promise<void> => {
@@ -38,7 +42,7 @@ export async function scanFolder(
       const absolute = join(folder, entry.name);
       const path = relative(root, absolute).split(sep).join('/');
       if (entry.isDirectory()) {
-        if (!(folder === root && skip.has(entry.name))) await walk(absolute);
+        if (!(folder === root && skipped(entry.name))) await walk(absolute);
       } else if (entry.isFile()) {
         files.push({ path, absolute });
       } else {
@@ -53,7 +57,7 @@ export async function scanFolder(
 /** Every regular file under `root`, sorted by path, skipping the `skip` folders at the root. */
 export async function listFiles(
   root: string,
-  skip: ReadonlySet<string> = SKIPPED_FOLDERS,
+  skip: RootSkip = SKIPPED_FOLDERS,
 ): Promise<FoundFile[]> {
   return (await scanFolder(root, skip)).files;
 }
@@ -125,4 +129,49 @@ export async function removeFile(root: string, path: string, stopAt: string): Pr
     await rmdir(join(root, ...folder.split('/')));
     folder = dirname(folder);
   }
+}
+
+/** The text at `root/path`, or null when there is no file. Never through a link. */
+export async function readVaultFile(root: string, path: string): Promise<string | null> {
+  await assertNoLinks(root, path);
+  return readFile(join(root, ...path.split('/')), 'utf8').catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
+}
+
+/**
+ * Changes `root/path` by `change` (null: no file yet) and writes it, making its
+ * folders; false when nothing changed. Guarded as far as Node allows: the file
+ * is read again just before the write and the change made afresh if another
+ * program wrote it meanwhile, and a new file is only ever created, never
+ * written over. Never through a link.
+ */
+export async function changeFile(
+  root: string,
+  path: string,
+  change: (text: string | null) => string,
+): Promise<boolean> {
+  await assertNoLinks(root, path);
+  const absolute = join(root, ...path.split('/'));
+  const read = () =>
+    readFile(absolute, 'utf8').catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const current = await read();
+    const next = change(current);
+    if (next === current) return false;
+    if ((await read()) !== current) continue;
+    await mkdir(dirname(absolute), { recursive: true });
+    try {
+      await writeFile(absolute, next, { encoding: 'utf8', flag: current === null ? 'wx' : 'w' });
+      return true;
+    } catch (error) {
+      // Created by another program since it was read: make the change to that file.
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+  }
+  throw new Error(`${path} kept changing while it was written.`);
 }

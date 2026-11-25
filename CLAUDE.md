@@ -73,6 +73,7 @@ pnpm version:bump minor   # next version (patch|minor|major) and a new CHANGELOG
 pnpm e2e          # build, then the Playwright smoke (Chromium, sample vault)
 pnpm rust:check   # cargo fmt --check, clippy, test
 pnpm index        # write _index/ for a vault folder: pnpm index <path-to-vault>
+pnpm split-transcripts <path-to-vault> [--write]   # move inline meeting transcripts to Transcripts/ (dry run by default)
 ```
 
 ## Shape of the code
@@ -128,7 +129,10 @@ alike; the app obeys the same rules. The short form:
 - Favorites are `.dfai-lite/favorites.json`: a list of paths, synced.
 - Folder and note icons and colors are `.dfai-lite/appearance.json`: path → `{color, icon}`, synced.
 - `_index/` is generated. Never edit it by hand, never treat it as truth.
-- Meetings land in `Meetings/<YYYY>/<MM>/<YYYY-MM-DD> <title>.md`.
+- Meetings land in `Meetings/<YYYY>/<MM>/<YYYY-MM-DD> <title>.md`; a
+  meeting's transcript in `Transcripts/<YYYY>/<MM>/<meeting name> (transcript).md`,
+  linked by the meeting note's `- Transcript:` line. The graph, the tags and
+  `_index/` leave transcripts out; search finds them.
 
 A change to the contract changes `vault-template/CLAUDE.md`, the skill in
 `skills/`, and the code together.

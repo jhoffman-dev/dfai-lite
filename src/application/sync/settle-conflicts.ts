@@ -4,6 +4,7 @@ import {
   macOfCommit,
   type GitConflict,
 } from '../../domain/sync/index.ts';
+import { MEETING_QUEUE_PATH, mergeMeetingQueues } from '../../domain/meetings/index.ts';
 import { isTextFile, type VaultPath } from '../../domain/vault/index.ts';
 import { FileChangedError, type GitPort, type VaultFiles } from '../ports/index.ts';
 import type { VaultSession } from '../session/index.ts';
@@ -32,7 +33,9 @@ interface SettleDeps {
  *   text byte for byte;
  * - one side deleted it and the other changed it: the changed file stays
  *   (git left it in the folder), since a delete never beats an edit;
- * - `_index/`: left for the caller to write afresh from the merged notes.
+ * - `_index/`: left for the caller to write afresh from the merged notes;
+ * - the meetings queue: both Macs' lines kept in the one file, never a copy,
+ *   since one Mac adds lines while Claude takes them out on another.
  *
  * `marked` is what each text file held the moment git stopped: if a file
  * holds anything else when it is settled (someone typed into it), that text
@@ -57,8 +60,9 @@ export async function settleConflicts(
   for (const conflict of conflicts) {
     if (conflictStep(conflict) !== 'keep-both') continue;
     const { path } = conflict;
-    if (isTextFile(path))
-      await keepBothTexts(deps, { path, marked: marked.get(path) ?? null, other, copyFor });
+    const atMerge = marked.get(path) ?? null;
+    if (path === MEETING_QUEUE_PATH) await keepBothQueues(deps, { path, marked: atMerge });
+    else if (isTextFile(path)) await keepBothTexts(deps, { path, marked: atMerge, other, copyFor });
     else await keepBothFiles(deps, { path, copy: copyFor(path, other) });
   }
   return copies;
@@ -91,6 +95,34 @@ async function keepBothTexts(
       if (written !== null && written !== ours) {
         await files.write({ path: copyFor(path, mac), text: written, expected: null });
       }
+      expected = written;
+    }
+  }
+  throw new FileChangedError(`${path} kept changing while it was settled.`);
+}
+
+/**
+ * Both sides' meetings queues as one at the path. Lines written into the
+ * file since git stopped (Claude, in Terminal) join it too, so a queued
+ * meeting is never dropped; a line one side removed may come back, which
+ * costs Claude one look at a note that already has its summary.
+ */
+async function keepBothQueues(
+  { git, files }: SettleDeps,
+  { path, marked }: { path: VaultPath; marked: string | null },
+): Promise<void> {
+  const ours = await runOk(git, { kind: 'showSide', side: 'ours', path }, `read ${path}`);
+  const theirs = await runOk(git, { kind: 'showSide', side: 'theirs', path }, `read ${path}`);
+  let merged = mergeMeetingQueues(ours, theirs);
+  let expected = marked;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await files.write({ path, text: merged, expected });
+      return;
+    } catch (error) {
+      if (!(error instanceof FileChangedError)) throw error;
+      const written = await files.read(path);
+      if (written !== null) merged = mergeMeetingQueues(merged, written);
       expected = written;
     }
   }

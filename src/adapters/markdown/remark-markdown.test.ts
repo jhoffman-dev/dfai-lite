@@ -65,6 +65,10 @@ const NEIGHBORS: ReadonlyArray<readonly [label: string, markdown: string]> = [
   ['emphasis written with underscores', '__strong__ and _soft_'],
   ['an autolink', '<https://example.com/a_b>'],
   ['an image with a size in its alt text', '![bed|300](<beds/bed one.png>)'],
+  [
+    'a meeting’s summary block, between its markers',
+    '<!-- dfai-lite:summary v1 -->\n\n> [!summary] Summary by Claude (claude-sonnet-5-5, 2026-11-24)\n> Larkspur Payroll renews for a year; the cache flag ships first.\n>\n> **Key points**\n> - Renewal at the current rate\n>\n> **Action items**\n> - Flag the cache before Friday: Tobias Fenn\n\n<!-- /dfai-lite:summary -->',
+  ],
 ];
 
 describe('a note saved with nothing changed', () => {

@@ -5,7 +5,7 @@ import { BUNDLE_PATH, buildBundle } from './build-bundle.ts';
 
 type Bundle = Pick<
   typeof meetings,
-  'fromGeminiNotes' | 'meetingNote' | 'mergeMeetingNote' | 'meetingCommitMessage'
+  'fromGeminiNotes' | 'meetingNote' | 'mergeMeetingNote' | 'meetingWrite' | 'meetingCommitMessage'
 >;
 
 const fixture = async () =>
@@ -34,6 +34,13 @@ describe('the n8n bundle', () => {
     expect(bundle.meetingCommitMessage(input)).toBe('Meeting: 2026-11-20 Larkspur rollout sync');
     const summaryOnly = bundle.meetingNote({ ...input, transcript: [] }).text;
     expect(bundle.mergeMeetingNote(summaryOnly, input)).toBe(bundle.meetingNote(input).text);
+    const { path } = bundle.meetingNote(input);
+    expect(bundle.meetingWrite(summaryOnly, input, { path })).toEqual(
+      meetings.meetingWrite(summaryOnly, meetings.fromGeminiNotes(json), { path }),
+    );
+    expect(bundle.meetingWrite(summaryOnly, input, { path }).transcript?.path).toBe(
+      'Transcripts/2026/11/2026-11-20 Larkspur rollout sync (transcript).md',
+    );
   });
 
   it('refuses a meeting with no day, as the domain does', async () => {

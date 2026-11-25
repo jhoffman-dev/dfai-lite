@@ -21,7 +21,12 @@ import {
 export type TabView = Exclude<Route, { kind: 'new' }>;
 
 /** Where an opened note or view goes: the active tab, a new tab, or the other pane. */
-export type OpenIn = 'active' | 'new-tab' | 'side';
+/**
+ * Where a view opens. `other-pane` is a link followed in the other pane's
+ * open tab (splitting if need be), so a map beside a note can be walked
+ * without piling up tabs there; `side` opens a tab of its own there.
+ */
+export type OpenIn = 'active' | 'new-tab' | 'side' | 'other-pane';
 
 export interface Tab {
   readonly id: string;
@@ -157,7 +162,10 @@ export function openView(
     canSplit,
   }: { view: TabView; openIn: OpenIn; source: boolean; canSplit: boolean },
 ): Layout {
-  if (openIn === 'side' && canSplit) {
+  if (openIn === 'other-pane' && canSplit && layout.panes.length === MAX_PANES) {
+    return openInActive(focusOtherPane(layout), view);
+  }
+  if ((openIn === 'side' || openIn === 'other-pane') && canSplit) {
     const there = layout.panes[otherPane(layout)]?.tabs.find((tab) => sameView(tab.view, view));
     return there === undefined ? openToSide(layout, view, source) : activate(layout, there.id);
   }
@@ -472,7 +480,22 @@ function viewFrom(raw: unknown): TabView | null {
       return raw['tag'] === null || typeof raw['tag'] === 'string'
         ? { kind: 'tags', tag: raw['tag'] }
         : null;
+    case 'map':
+      return mapViewFrom(raw['root']);
     default:
       return null;
   }
+}
+
+/** A saved mind map tab: its root, or null where it follows the open note. */
+function mapViewFrom(raw: unknown): TabView | null {
+  if (raw === null) return { kind: 'map', root: null };
+  if (!isRecord(raw)) return null;
+  if (raw['kind'] === 'note' && typeof raw['path'] === 'string' && raw['path'] !== '') {
+    return { kind: 'map', root: { kind: 'note', path: raw['path'] } };
+  }
+  if (raw['kind'] === 'tag' && typeof raw['key'] === 'string' && raw['key'] !== '') {
+    return { kind: 'map', root: { kind: 'tag', key: raw['key'] } };
+  }
+  return null;
 }

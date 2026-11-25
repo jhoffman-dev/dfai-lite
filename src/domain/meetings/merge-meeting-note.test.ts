@@ -1,4 +1,4 @@
-import { meetingNote, mergeMeetingNote, type MeetingInput } from './index.ts';
+import { meetingNote, meetingWrite, mergeMeetingNote, type MeetingInput } from './index.ts';
 
 const base: MeetingInput = {
   title: 'Larkspur rollout sync',
@@ -8,12 +8,38 @@ const base: MeetingInput = {
   nextSteps: ['[[Tobias Fenn]] flags the ledger move.'],
 };
 const transcript = [{ speaker: 'Mara Quill', time: '00:00:05', text: 'Shall we start?' }];
+const LINK = '- Transcript: [[2026-11-21 Larkspur rollout sync (transcript)]]';
 
 describe('mergeMeetingNote', () => {
-  it('adds a transcript that arrives after the summary, at the end', () => {
+  it('a transcript that arrives after the summary adds only the link line, after the header', () => {
     const first = meetingNote(base).text;
     const merged = mergeMeetingNote(first, { ...base, transcript });
-    expect(merged).toBe(`${first}\n## Transcript\n\n**Mara Quill** [00:00:05] Shall we start?\n`);
+    expect(merged).toBe(first.replace('[[Tobias Fenn]]\n', `[[Tobias Fenn]]\n${LINK}\n`));
+    expect(merged).not.toContain('## Transcript');
+  });
+
+  it('leaves an older note with its transcript inline as it is', () => {
+    const older = 'Sync. #meeting\n\n- When: 2026-11-21\n\n## Transcript\n\nHi.\n';
+    expect(mergeMeetingNote(older, { ...base, summary: '', nextSteps: [], transcript })).toBe(
+      older,
+    );
+  });
+
+  it('meetingWrite hands over the transcript note whenever the note links it and it is not there', () => {
+    const path = 'Meetings/2026/11/2026-11-21 Larkspur rollout sync.md';
+    const first = meetingWrite('', { ...base, transcript }, { path });
+    expect(first.text).toContain(LINK);
+    expect(first.transcript).toEqual({
+      path: 'Transcripts/2026/11/2026-11-21 Larkspur rollout sync (transcript).md',
+      text: 'Transcript of the meeting [[2026-11-21 Larkspur rollout sync]].\n\n**Mara Quill** [00:00:05] Shall we start?\n',
+    });
+    // A link whose transcript note was never written (a write that failed) gets it next time.
+    expect(meetingWrite(first.text, { ...base, transcript }, { path }).transcript).toEqual(
+      first.transcript,
+    );
+    const there = { path, transcriptExists: true };
+    expect(meetingWrite(first.text, { ...base, transcript }, there).transcript).toBeNull();
+    expect(meetingWrite('', base, { path }).transcript).toBeNull();
   });
 
   it('is the whole note when the merged input is the same: merging twice changes nothing', () => {
@@ -34,7 +60,7 @@ describe('mergeMeetingNote', () => {
       nextSteps: ['Something new.'],
       transcript,
     });
-    expect(merged.startsWith(edited)).toBe(true);
+    expect(merged).toBe(edited.replace('[[Mara Quill]]\n', `[[Mara Quill]]\n${LINK}\n`));
     expect(merged).not.toContain('A different summary');
     expect(merged).not.toContain('Something new');
     expect(merged).not.toContain('Ada Example');

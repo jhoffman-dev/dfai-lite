@@ -29,7 +29,7 @@ pnpm dev          # the UI alone in a browser, on a sample vault in memory (no s
 pnpm check        # typecheck + lint + format:check + unit and real-git sync tests + build
 pnpm e2e          # build, then the Playwright smoke (Chromium, sample vault)
 pnpm rust:check   # cargo fmt --check, clippy -D warnings, cargo test
-pnpm index <path-to-vault>   # write _index/ for a vault folder by hand
+pnpm index <path-to-vault>   # write _index/, the README map and .dfai-lite/search.mjs by hand
 ```
 
 ## Pick a vault
@@ -40,6 +40,9 @@ GitHub, clone the repository first, then choose its folder:
 ```sh
 git clone https://github.com/<you>/notes.git ~/Notes
 ```
+
+A new vault, the index Action, or the README map and search command for a
+vault you already have: [`docs/vault-setup.md`](docs/vault-setup.md).
 
 Any folder works; one that is not a git clone simply does not sync. Change the
 folder in Settings. The app keeps this Mac's settings (the folder, the
@@ -120,6 +123,14 @@ anything from the web; wiki links and ordinary links stay as they are.
   lines stand in for it; if it cannot be read, imports stop and Settings
   offers to rebuild it from those lines (the deleted meetings come back then)
   or start an empty one.
+- **Queued for Claude**: each new meeting note gets a line in
+  `Meetings/Processing queue.md`, once (`node tools/meeting-note.ts` queues
+  its new notes too; the n8n flow does not). Claude works the list with the
+  `meeting-processing` skill (`skills/`, and a copy in each new vault), which
+  writes a `[!summary]` callout by Claude before the note's first section and
+  then takes the line out. A queue line that could not be written is written
+  on the next import. When both Macs change the queue, sync keeps both sides'
+  lines in the one file rather than making a conflict copy.
 - **Granola and the n8n/Gemini flow together**: both may be on. A note at the
   same path is the same meeting, as the vault contract says, so a Granola
   import adds the sections a Gemini note lacks rather than making a second

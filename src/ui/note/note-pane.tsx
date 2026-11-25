@@ -10,10 +10,13 @@ import type { VaultPath } from '../../domain/vault/index.ts';
 import { useLook } from '../appearance/look-glyph.tsx';
 import type { EditorBridge } from '../editor/bridge.ts';
 import type { Tab } from '../panes/layout.ts';
+import { openInFor } from '../panes/open-in.ts';
 import type { TabMemory } from '../panes/workspace.ts';
 import { useApp, type AppContextValue, type LoadMarkdown } from '../services.ts';
 import { Icon } from '../shell/icons.tsx';
 import { PageBar, type PageHistory } from '../shell/page-bar.tsx';
+import { keyFor } from '../shell/shortcuts.ts';
+import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { useUi } from '../state/ui-store.ts';
 import { useVault } from '../state/vault-store.ts';
 import type { Autosave } from './autosave.ts';
@@ -116,6 +119,25 @@ function useFlushOnLeave(autosave: Autosave): void {
 function folderName(path: VaultPath): string | null {
   const parts = path.split('/');
   return parts.length > 1 ? (parts[parts.length - 2] ?? null) : null;
+}
+
+function MindMapButton({ path }: { path: VaultPath }) {
+  const { actions } = useApp();
+  const host = useKeyHost();
+  return (
+    <button
+      type="button"
+      className="btn btn--ghost page-bar__action"
+      title={`Open a mind map of this note beside it (${keyFor('map.open', host)})`}
+      onClick={(event) => {
+        const openIn = openInFor(event);
+        actions.openMap({ kind: 'note', path }, openIn === 'active' ? 'side' : openIn);
+      }}
+    >
+      <Icon name="mind-map" size={15} />
+      <span className="page-bar__action-label">Map</span>
+    </button>
+  );
 }
 
 function FavoriteToggle({ path }: { path: VaultPath }) {
@@ -260,6 +282,7 @@ export function NotePane({
       >
         <div className="page-bar__actions">
           <NoteFolderButton path={path} />
+          <MindMapButton path={path} />
           <button
             type="button"
             className="btn btn--ghost page-bar__action"

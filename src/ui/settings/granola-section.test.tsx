@@ -29,6 +29,7 @@ function setUp(change: Partial<GranolaView> = {}) {
     importDeletedAgain: vi.fn(),
     rebuildLedger: vi.fn(),
     startEmptyLedger: vi.fn(),
+    queueUnsummarized: vi.fn(),
   };
   render(<GranolaSettings view={{ ...VIEW, ...change }} controls={controls} />);
   return controls;
@@ -63,6 +64,12 @@ describe('Settings → Granola', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Import now' }));
     expect(controls.importNow).toHaveBeenCalledOnce();
+  });
+
+  it('queues the meetings without a summary when asked, with or without a key', async () => {
+    const controls = setUp({ keyState: 'none' });
+    await userEvent.click(screen.getByRole('button', { name: 'Queue meetings without a summary' }));
+    expect(controls.queueUnsummarized).toHaveBeenCalledOnce();
   });
 
   it('while importing, or before the vault has synced, Import now waits', () => {

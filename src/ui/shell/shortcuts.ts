@@ -16,6 +16,7 @@ export type Command =
   | 'note.toggleSource'
   | 'note.rename'
   | 'note.move'
+  | 'map.open'
   | 'palette.open'
   | 'history.back'
   | 'history.forward'
@@ -40,6 +41,7 @@ export const COMMAND_TITLES: Readonly<Record<Command, string>> = {
   'note.toggleSource': 'Show the note as plain markdown, or back in the editor',
   'note.rename': 'Rename the note',
   'note.move': 'Move the note to another folder',
+  'map.open': 'Open a mind map of the note or tag, beside it',
   'history.back': 'Back',
   'history.forward': 'Forward',
   'tab.new': 'New tab',
@@ -90,6 +92,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { chord: { mod: true, key: 'e' }, command: 'note.toggleSource' },
   { chord: { key: 'F2' }, command: 'note.rename' },
   { chord: { mod: true, shift: true, code: 'KeyM' }, command: 'note.move' },
+  { chord: { mod: true, shift: true, code: 'KeyG' }, command: 'map.open' },
   // ⌘[ and ⌘] go back and forward, as in Safari, Finder, Notion and DFAI; a
   // browser has its own there, so it also takes Alt+← and Alt+→, its other pair.
   { chord: { mod: true, code: 'BracketLeft' }, command: 'history.back' },

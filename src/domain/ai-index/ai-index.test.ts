@@ -182,3 +182,31 @@ describe('buildAiIndex', () => {
     }
   });
 });
+
+describe('transcript notes in the AI index', () => {
+  const meeting = 'Meetings/2026/11/2026-11-17 Renewal.md';
+  const withTranscripts = buildAiIndex([
+    {
+      path: meeting,
+      text: 'Renewal agreed. #meeting\n\n- When: 2026-11-17\n- Transcript: [[2026-11-17 Renewal (transcript)]]\n',
+    },
+    {
+      path: 'Transcripts/2026/11/2026-11-17 Renewal (transcript).md',
+      text: 'Transcript of the meeting [[2026-11-17 Renewal]].\n\n**Mara Quill** We said #budget.\n',
+    },
+  ]);
+  const text = (path: string) => withTranscripts.find((each) => each.path === path)?.text ?? '';
+
+  it('lists no transcript as a meeting, a note or a tag: the README only counts them', () => {
+    expect(withTranscripts.map(({ path }) => path)).not.toContain('_index/folders/Transcripts.md');
+    expect(text('_index/meetings/2026-11.md')).not.toContain('(transcript)');
+    expect(text('_index/tags.md')).not.toContain('budget');
+    const readme = text('_index/README.md');
+    expect(readme).toContain('1 notes.');
+    expect(readme).toContain('## Transcripts\n1 transcript notes under Transcripts/, not indexed.');
+  });
+
+  it('a vault with no transcripts has no Transcripts section', () => {
+    expect(file('_index/README.md')).not.toContain('## Transcripts');
+  });
+});

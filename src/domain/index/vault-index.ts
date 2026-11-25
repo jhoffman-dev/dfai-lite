@@ -7,7 +7,7 @@ import {
 } from '../links/index.ts';
 import { buildTagTree, isTagWithin, noteTags, type TagCount, type TagSort } from '../tags/index.ts';
 import type { TagTreeNode } from '../tags/index.ts';
-import { isVisibleNote, noteTitle, type VaultPath } from '../vault/index.ts';
+import { isTranscriptPath, isVisibleNote, noteTitle, type VaultPath } from '../vault/index.ts';
 import { noteSummary } from './summary.ts';
 
 /** A note as the index reads it. */
@@ -65,6 +65,9 @@ const byCode = (left: string, right: string): number => (left < right ? -1 : lef
  *
  * Only visible notes are indexed (`isVisibleNote`): a path under `_index/` or
  * `.dfai-lite/`, a dotfile, or a file that is not markdown is ignored.
+ * Transcript notes (`Transcripts/`) are indexed, so links to and from them
+ * resolve, but the tag lists and the graph leave them out: a few hundred
+ * transcripts would bury the notes a person reads.
  */
 export class VaultIndex {
   private readonly entries = new Map<VaultPath, Entry>();
@@ -195,7 +198,7 @@ export class VaultIndex {
     const found = new Set<VaultPath>();
     for (const [tag, paths] of this.tagged) {
       if (tag === key || (nested && isTagWithin(tag, key)))
-        for (const path of paths) found.add(path);
+        for (const path of paths) if (!isTranscriptPath(path)) found.add(path);
     }
     return [...found].sort(byCode);
   }
@@ -207,10 +210,12 @@ export class VaultIndex {
   tagCounts(): readonly TagCount[] {
     return [...this.tagged]
       .sort(([left], [right]) => byCode(left, right))
+      .map(([key, all]) => [key, [...all].filter((path) => !isTranscriptPath(path))] as const)
+      .filter(([, paths]) => paths.length > 0)
       .map(([key, paths]) => {
-        const first = [...paths].sort(byCode)[0] as VaultPath;
+        const first = paths.sort(byCode)[0] as VaultPath;
         const name = this.tagsOf(first).find((tag) => tag.key === key)?.name ?? key;
-        return { key, name, count: paths.size };
+        return { key, name, count: paths.length };
       });
   }
 
@@ -220,20 +225,22 @@ export class VaultIndex {
 
   /**
    * The vault as a graph: a node per note, a ghost node per target nothing
-   * answers to, and one edge per linking pair (a note's links to itself left out).
+   * answers to, and one edge per linking pair (a note's links to itself left
+   * out). Transcript notes, and the links to and from them, are left out.
    */
   graph(): VaultGraph {
-    const nodes: GraphNode[] = this.paths().map((path) => ({
+    const shown = this.paths().filter((path) => !isTranscriptPath(path));
+    const nodes: GraphNode[] = shown.map((path) => ({
       id: path,
       kind: 'note',
       title: noteTitle(path),
     }));
     const ghosts = new Map<string, string>();
     const edges = new Map<string, GraphEdge>();
-    for (const source of this.paths()) {
+    for (const source of shown) {
       for (const link of (this.entries.get(source) as Entry).links) {
         const resolved = this.resolve(link.target);
-        if (resolved === source) continue;
+        if (resolved === source || (resolved !== null && isTranscriptPath(resolved))) continue;
         let target = resolved;
         if (target === null) {
           const key = foldedLinkName(link.target);

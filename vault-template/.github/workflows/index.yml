@@ -2,7 +2,10 @@ name: index
 
 # Keeps _index/ in step with the notes when anyone but the app pushes: Claude,
 # the meeting importer, an edit on github.com. The app writes the same index
-# into its own commits, so after an app push this finds nothing to do.
+# into its own commits, so after an app push this finds nothing to do there.
+# It is also the one writer of the map in README.md (between its markers) and
+# of .dfai-lite/search.mjs, the search command Claude runs in the vault: one
+# writer, so two Macs never conflict over them.
 on:
   push:
     branches: [main]
@@ -33,12 +36,13 @@ jobs:
           node-version: 24
 
       # The writer is plain TypeScript with no dependencies, so Node runs it as it is.
+      # It writes _index/, the README map and .dfai-lite/search.mjs.
       - run: node .dfai/tools/build-index.ts .
 
       - name: Commit the index if it changed
         run: |
           rm -rf .dfai
-          git add -A _index
+          git add -A _index README.md .dfai-lite/search.mjs
           if git diff --cached --quiet; then exit 0; fi
           git -c user.name='vault index' -c user.email='vault-index@users.noreply.github.com' \
             commit -m 'Index: refresh'

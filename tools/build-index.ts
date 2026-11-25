@@ -1,13 +1,20 @@
 // Writes `_index/` for a vault folder: `node tools/build-index.ts <vault dir>`.
 // It is what the vault's GitHub Action runs, so it has no dependencies and
 // uses only TypeScript that Node can strip (no enums, no parameter properties).
-import { lstat, stat } from 'node:fs/promises';
+import { lstat, readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { INDEX_ROOT, buildAiIndex } from '../src/domain/ai-index/index.ts';
-import { isVisibleNote } from '../src/domain/vault/index.ts';
+import {
+  INDEX_ROOT,
+  README_PATH,
+  SEARCH_SCRIPT_PATH,
+  buildAiIndex,
+  vaultReadme,
+} from '../src/domain/ai-index/index.ts';
+import { isVaultGuide, isVisibleNote } from '../src/domain/vault/index.ts';
 import {
   UnsafePathRefused,
+  changeFile,
   listFiles,
   readMarkdown,
   removeFile,
@@ -19,9 +26,20 @@ export interface IndexRun {
   readonly files: number;
   readonly written: number;
   readonly removed: number;
+  /** What happened to the map in the root README: written, unchanged, or why it was left alone. */
+  readonly readme: 'written' | 'unchanged' | { readonly refused: string };
+  /** Whether `.dfai-lite/search.mjs` was written (new, or a newer version). */
+  readonly searchScriptWritten: boolean;
 }
 
-/** Regenerates `<vault>/_index/`: writes what changed, deletes what the index no longer has. */
+/** The search command a vault gets, built beside this file (tools/search/build-search.ts). */
+const SEARCH_SCRIPT_SOURCE = fileURLToPath(new URL('./search/search.mjs', import.meta.url));
+
+/**
+ * Regenerates `<vault>/_index/` (writes what changed, deletes what the index
+ * no longer has), the map in the root `README.md`, and the vault's copy of
+ * the search command.
+ */
 export async function buildIndex(vault: string): Promise<IndexRun> {
   await assertIndexFolder(vault);
   const notes = await readMarkdown(vault);
@@ -43,8 +61,30 @@ export async function buildIndex(vault: string): Promise<IndexRun> {
     await removeFile(vault, vaultPath, INDEX_ROOT);
     removed += 1;
   }
-  const indexed = notes.filter(({ path }) => isVisibleNote(path)).length;
-  return { notes: indexed, files: files.length, written, removed };
+  const indexed = notes.filter(({ path }) => isVisibleNote(path) && !isVaultGuide(path)).length;
+  const readme = await writeReadmeMap(vault, notes);
+  const searchScriptWritten = await writeIfChanged(
+    vault,
+    SEARCH_SCRIPT_PATH,
+    await readFile(SEARCH_SCRIPT_SOURCE, 'utf8'),
+  );
+  return { notes: indexed, files: files.length, written, removed, readme, searchScriptWritten };
+}
+
+/** Rewrites the generated map in the README; text outside its markers is never changed. */
+async function writeReadmeMap(
+  vault: string,
+  notes: readonly { path: string; text: string }[],
+): Promise<IndexRun['readme']> {
+  let refused: string | null = null;
+  const changed = await changeFile(vault, README_PATH, (current) => {
+    const update = vaultReadme(current, notes);
+    if (update.kind === 'write') return update.text;
+    refused = update.reason;
+    return current ?? '';
+  });
+  if (refused !== null) return { refused };
+  return changed ? 'written' : 'unchanged';
 }
 
 /**
@@ -63,9 +103,16 @@ async function assertIndexFolder(vault: string): Promise<void> {
   );
 }
 
-/** The one line a run prints. */
+/** The one line a run prints about `_index/`. */
 export const runSummary = ({ notes, files, written, removed }: IndexRun): string =>
   `Indexed ${notes} notes into ${files} files in ${INDEX_ROOT}/: ${written} written, ${removed} removed.`;
+
+/** The line a run prints about the README map and the search command. */
+export function guidesSummary({ readme, searchScriptWritten }: IndexRun): string {
+  const map =
+    typeof readme === 'string' ? `${README_PATH} map ${readme}` : `Warning: ${readme.refused}`;
+  return `${map}; ${SEARCH_SCRIPT_PATH} ${searchScriptWritten ? 'written' : 'unchanged'}.`;
+}
 
 async function main(args: readonly string[]): Promise<number> {
   const [vault] = args;
@@ -79,7 +126,9 @@ async function main(args: readonly string[]): Promise<number> {
     return 2;
   }
   try {
-    console.log(runSummary(await buildIndex(vault)));
+    const run = await buildIndex(vault);
+    console.log(runSummary(run));
+    console.log(guidesSummary(run));
     return 0;
   } catch (error) {
     if (!(error instanceof UnsafePathRefused)) throw error;

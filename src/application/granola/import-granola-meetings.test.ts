@@ -1,5 +1,11 @@
 import { buildAiIndex } from '../../domain/ai-index/index.ts';
-import { IMPORTS_PATH, parseImportLedger, recordImport } from '../../domain/meetings/index.ts';
+import {
+  IMPORTS_PATH,
+  MEETING_QUEUE_PATH,
+  parseImportLedger,
+  queuedMeetings,
+  recordImport,
+} from '../../domain/meetings/index.ts';
 import { VaultSession } from '../session/index.ts';
 import {
   FakeGranola,
@@ -20,6 +26,8 @@ import { importGranolaMeetings, type GranolaImportDeps } from './import-granola-
 
 const PATH = 'Meetings/2026/11/2026-11-17 Larkspur Payroll renewal.md';
 const URL = 'https://notes.granola.ai/d/5f1e7c2a-0b3d-4e6f-9a8b-1c2d3e4f5a6b';
+const TRANSCRIPT = 'Transcripts/2026/11/2026-11-17 Larkspur Payroll renewal (transcript).md';
+const LINK = '- Transcript: [[2026-11-17 Larkspur Payroll renewal (transcript)]]';
 
 let files: MemoryVaultFiles;
 let session: VaultSession;
@@ -59,8 +67,13 @@ describe('importing Granola meetings', () => {
     expect(report.watermark).toBe('2026-11-17T17:41:03.000Z');
     const text = files.peek(PATH) ?? '';
     expect(text).toContain('- With: [[Mara Quill]], [[Tobias Fenn]]');
-    expect(text).toContain(`- Source: ${URL}`);
-    expect(text).toContain('## Transcript');
+    expect(text).toContain(`- Source: ${URL}\n${LINK}\n`);
+    expect(text).not.toContain('## Transcript');
+    const transcript = files.peek(TRANSCRIPT) ?? '';
+    expect(transcript.split('\n')[0]).toBe(
+      'Transcript of the meeting [[2026-11-17 Larkspur Payroll renewal]].',
+    );
+    expect(transcript).toContain('**Mara Quill**');
     expect(ledger()).toEqual([
       {
         provider: 'granola',
@@ -96,11 +109,12 @@ describe('importing Granola meetings', () => {
     expect(files.peek(IMPORTS_PATH)).toBe(ledgerText);
   });
 
-  it('merges a transcript that arrives later, once, leaving what the person wrote alone', async () => {
+  it('a transcript that arrives later gets its own note and one link, leaving what the person wrote alone', async () => {
     granola.add(fictionalGranolaNote({ transcript: [] }));
     await importNow();
     const first = files.peek(PATH) ?? '';
-    expect(first).not.toContain('## Transcript');
+    expect(first).not.toContain('Transcript');
+    expect(files.peek(TRANSCRIPT)).toBeUndefined();
     const edited = first.replace('## Summary', 'My own line.\n\n## Summary');
     await files.write({ path: PATH, text: edited, expected: first });
     await applyExternalChanges({ files, session }, [PATH]);
@@ -109,8 +123,8 @@ describe('importing Granola meetings', () => {
     const report = await importNow();
     expect(report.counts.updated).toBe(1);
     const merged = files.peek(PATH) ?? '';
-    expect(merged.startsWith(edited.trimEnd())).toBe(true);
-    expect(merged.match(/## Transcript/g)).toHaveLength(1);
+    expect(merged).toBe(edited.replace(`- Source: ${URL}\n`, `- Source: ${URL}\n${LINK}\n`));
+    expect(files.peek(TRANSCRIPT)).toContain('**Tobias Fenn**');
 
     granola.calls.length = 0;
     expect((await importNow()).counts.unchanged).toBe(1);
@@ -121,6 +135,8 @@ describe('importing Granola meetings', () => {
     await importNow();
     await deleteNote({ files, session }, { path: PATH });
     expect(ledger()[0]?.dismissed).toBe(true);
+    // The transcript stays: deleting a meeting note never deletes another note.
+    expect(files.peek(TRANSCRIPT)).toBeDefined();
     const report = await importNow();
     expect(report.counts).toMatchObject({ imported: 0, skipped: 1 });
     expect(files.peek(PATH)).toBeUndefined();
@@ -180,7 +196,9 @@ describe('importing Granola meetings', () => {
     expect(report.counts).toMatchObject({ imported: 0, unchanged: 1 });
     expect(files.peek(PATH)).toBe(otherFiles.peek(PATH));
     expect(
-      (await files.readAll()).notes.filter(({ path }) => path.startsWith('Meetings/')),
+      (await files.readAll()).notes.filter(
+        ({ path }) => path.startsWith('Meetings/') && path !== MEETING_QUEUE_PATH,
+      ),
     ).toHaveLength(1);
   });
 
@@ -204,9 +222,12 @@ describe('importing Granola meetings', () => {
     const report = await importNow();
     expect(report.counts.updated).toBe(1);
     const text = files.peek(PATH) ?? '';
-    expect(text.startsWith(gemini.trimEnd())).toBe(true);
+    expect(text.startsWith(`- When: 2026-11-17 10:00\n${LINK}\n`, gemini.indexOf('- When'))).toBe(
+      true,
+    );
     expect(text).toContain('## Notes');
-    expect(text).toContain('## Transcript');
+    expect(text).not.toContain('## Transcript');
+    expect(files.peek(TRANSCRIPT)).toBeDefined();
     expect(text.match(/## Summary/g)).toHaveLength(1);
   });
 
@@ -343,5 +364,176 @@ describe('the ledger while an import runs', () => {
       'not_FromOtherMac',
       'not_Lk7pQ2rTs9vWx3',
     ]);
+  });
+});
+
+describe('the meetings queue for Claude', () => {
+  const queued = () => queuedMeetings(files.peek(MEETING_QUEUE_PATH) ?? '');
+  const SECOND = { id: 'not_Second1', web_url: 'https://notes.granola.ai/d/second' };
+
+  /** The queue's writes refused while `refusing` is true, as a full disk or a locked file would. */
+  function refuseQueueWrites(): { refusing: boolean } {
+    const state = { refusing: true };
+    const write = files.write.bind(files);
+    files.write = async (request) => {
+      if (state.refusing && request.path === MEETING_QUEUE_PATH)
+        throw new Error('The disk is full.');
+      await write(request);
+    };
+    return state;
+  }
+
+  it('queues a new meeting’s note once, on the day it was imported in the person’s zone', async () => {
+    await importNow();
+    expect(queued()).toEqual([PATH]);
+    expect(files.peek(MEETING_QUEUE_PATH)).toContain(
+      '- [[Meetings/2026/11/2026-11-17 Larkspur Payroll renewal]] added 2026-11-19\n',
+    );
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    await importNow();
+    expect(queued()).toEqual([PATH]);
+  });
+
+  it('does not queue a note again after Claude took its line out, when the meeting changes', async () => {
+    granola.add(fictionalGranolaNote({ transcript: [] }));
+    await importNow();
+    const header = (files.peek(MEETING_QUEUE_PATH) ?? '').split('- [[')[0] ?? '';
+    files.edit(MEETING_QUEUE_PATH, header);
+    await applyExternalChanges({ files, session }, [MEETING_QUEUE_PATH]);
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    expect((await importNow()).counts.updated).toBe(1);
+    expect(queued()).toEqual([]);
+  });
+
+  it('does not queue a note it only added to: one another Mac or n8n wrote', async () => {
+    const other = MemoryVaultFiles.of({});
+    const otherSession = new VaultSession();
+    await openVault({ files: other, session: otherSession });
+    const untranscribed = new FakeGranola().add(fictionalGranolaNote({ transcript: [] }));
+    await importGranolaMeetings(
+      { ...deps, granola: untranscribed, vault: { files: other, session: otherSession } },
+      { mode: 'import-now', watermark: null },
+    );
+    files.edit(PATH, other.peek(PATH) ?? '');
+    expect((await importNow()).counts.updated).toBe(1);
+    expect(files.peek(MEETING_QUEUE_PATH)).toBeUndefined();
+  });
+
+  it('adds to a queue Claude changed on disk meanwhile, keeping its edit', async () => {
+    await importNow();
+    const edited = `${files.peek(MEETING_QUEUE_PATH) ?? ''}Claude was here.\n`;
+    files.edit(MEETING_QUEUE_PATH, edited);
+    granola.add(fictionalGranolaNote(SECOND));
+    await importNow();
+    const text = files.peek(MEETING_QUEUE_PATH) ?? '';
+    expect(text.startsWith(edited)).toBe(true);
+    expect(queued()).toHaveLength(2);
+  });
+
+  it('imports all the same when the queue cannot be written, and queues the note next time', async () => {
+    const queue = refuseQueueWrites();
+    const report = await importNow();
+    expect(report).toMatchObject({ ended: 'imported', written: [PATH], problems: [] });
+    expect(files.peek(PATH)).toContain(LINK);
+    expect(ledger()[0]?.queueWaiting).toBe(true);
+
+    await importNow();
+    expect(ledger()[0]?.queueWaiting).toBe(true);
+
+    queue.refusing = false;
+    granola.calls.length = 0;
+    const next = await importNow();
+    expect(next.counts.unchanged).toBe(1);
+    expect(queued()).toEqual([PATH]);
+    expect(ledger()[0]?.queueWaiting).toBeUndefined();
+    await importNow();
+    expect(queued()).toEqual([PATH]);
+  });
+
+  it('imports all the same when the ledger cannot be told a waiting line was written', async () => {
+    const queue = refuseQueueWrites();
+    await importNow();
+    queue.refusing = false;
+    const write = files.write.bind(files);
+    files.write = async (request) => {
+      if (request.path === IMPORTS_PATH) throw new Error('The disk is full.');
+      await write(request);
+    };
+    expect((await importNow()).ended).toBe('imported');
+    expect(queued()).toEqual([PATH]);
+  });
+
+  it('lets a bug in the queue’s write surface rather than taking it for a refusal', async () => {
+    const write = files.write.bind(files);
+    files.write = async (request) => {
+      if (request.path === MEETING_QUEUE_PATH) throw new TypeError('undefined is not a function');
+      await write(request);
+    };
+    const report = await importNow();
+    expect(report.counts.failed).toBe(1);
+    expect(report.problems[0]?.problem).toContain('undefined is not a function');
+  });
+
+  it('keeps a waiting note waiting when its meeting is updated before the queue can be written', async () => {
+    refuseQueueWrites();
+    granola.add(fictionalGranolaNote({ transcript: [] }));
+    await importNow();
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    expect((await importNow()).counts.updated).toBe(1);
+    expect(ledger()[0]?.queueWaiting).toBe(true);
+  });
+
+  it('forgets a waiting line whose note the person deleted', async () => {
+    const queue = refuseQueueWrites();
+    await importNow();
+    await deleteNote({ files, session }, { path: PATH });
+    queue.refusing = false;
+    await importNow();
+    expect(files.peek(MEETING_QUEUE_PATH)).toBeUndefined();
+  });
+
+  it('is not a meeting in the AI index', async () => {
+    await importNow();
+    const index = buildAiIndex((await files.readAll()).notes);
+    const meetings = index.filter(({ path }) => path.startsWith('_index/meetings/'));
+    expect(meetings.map(({ path }) => path)).toEqual(['_index/meetings/2026-11.md']);
+    expect(meetings[0]?.text).not.toContain('Processing queue');
+  });
+});
+
+describe('transcripts in their own notes', () => {
+  it('leaves an older note that holds its transcript inline as it is: no second copy, no link', async () => {
+    const older = `Renewal. #meeting\n\n- When: 2026-11-17 10:00\n- Source: ${URL}\n\n## Transcript\n\nMara: hello.\n`;
+    await open({ [PATH]: older });
+    await importNow();
+    const text = files.peek(PATH) ?? '';
+    expect(text).not.toContain(LINK);
+    expect(text.match(/## Transcript/g)).toHaveLength(1);
+    expect(files.peek(TRANSCRIPT)).toBeUndefined();
+  });
+
+  it('keeps a transcript note already there, never writing over it, and links it', async () => {
+    await open({ [TRANSCRIPT]: 'Kept as it was.\n' });
+    await importNow();
+    expect(files.peek(TRANSCRIPT)).toBe('Kept as it was.\n');
+    expect(files.peek(PATH)).toContain(LINK);
+  });
+
+  it('writes the transcript note a linked meeting note lacks, at the next import that changes it', async () => {
+    await importNow();
+    await deleteNote({ files, session }, { path: TRANSCRIPT });
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    const report = await importNow();
+    expect(report.counts.updated).toBe(1);
+    expect(files.peek(TRANSCRIPT)).toContain('**Mara Quill**');
+    expect((files.peek(PATH) ?? '').match(/- Transcript:/g)).toHaveLength(1);
+  });
+
+  it('a meeting note renamed in the app keeps its transcript linked both ways', async () => {
+    await importNow();
+    const renamed = 'Meetings/2026/11/2026-11-17 Larkspur renewal call.md';
+    await renameNote({ files, session }, { from: PATH, to: renamed });
+    expect(files.peek(TRANSCRIPT)).toContain('[[2026-11-17 Larkspur renewal call]]');
+    expect(files.peek(renamed)).toContain(LINK);
   });
 });

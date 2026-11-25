@@ -1,5 +1,6 @@
 import type { VaultIndex } from '../index/index.ts';
 import { splitWikiLinks } from '../links/index.ts';
+import { isMeetingNotePath } from '../meetings/index.ts';
 import { isConflictCopyPath } from '../sync/index.ts';
 import { fileNameOf, type VaultPath } from '../vault/index.ts';
 import { lineSummary } from './note-line.ts';
@@ -36,16 +37,13 @@ export interface MeetingMonth {
   readonly file: string;
 }
 
-/** Whether a note is a meeting note: anything under `Meetings/`. */
-export const isMeetingPath = (path: VaultPath): boolean => path.startsWith(`${MEETINGS_FOLDER}/`);
-
 /** `_index/meetings/<YYYY>-<MM>.md`, and `undated.md` for meeting files whose name has no date. */
 export function meetingFiles(
   index: VaultIndex,
   texts: ReadonlyMap<VaultPath, string>,
 ): { files: IndexFile[]; months: MeetingMonth[] } {
   const byMonth = new Map<string, MeetingEntry[]>();
-  for (const path of index.paths().filter(isMeetingPath)) {
+  for (const path of index.paths().filter(isMeetingNotePath)) {
     const entry = meetingEntry(index, path, texts.get(path) ?? '');
     const month = entry.date === null ? UNDATED_MEETINGS : entry.date.slice(0, 7);
     const group = byMonth.get(month);

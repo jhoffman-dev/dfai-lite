@@ -28,6 +28,12 @@ export interface ImportEntry {
   readonly updatedAt: string;
   /** The person deleted the note: the meeting is not imported again unless they ask. */
   readonly dismissed: boolean;
+  /**
+   * The note was new, and its line has not reached the meetings queue yet
+   * (the queue's write failed): the next import puts it there. Absent once
+   * it has, or for a note that was never new.
+   */
+  readonly queueWaiting?: true;
 }
 
 /** Every entry, each provider and id once, sorted by provider then id. */
@@ -59,6 +65,7 @@ function entryOf(value: unknown): ImportEntry | null {
     source: text(value.source),
     updatedAt,
     dismissed: value.dismissed === true,
+    ...(value.queueWaiting === true ? { queueWaiting: true } : {}),
   };
 }
 
@@ -101,13 +108,14 @@ export function parseImportLedger(source: string): ParsedImportLedger {
 
 /** The file's text: the same ledger always gives the same bytes, keys in a fixed order. */
 export function serializeImportLedger(ledger: ImportLedger): string {
-  const meetings = settled(ledger).map(({ provider, id, path, source, updatedAt, dismissed }) => ({
-    provider,
-    id,
-    path,
-    source,
-    updatedAt,
-    ...(dismissed ? { dismissed: true } : {}),
+  const meetings = settled(ledger).map((entry) => ({
+    provider: entry.provider,
+    id: entry.id,
+    path: entry.path,
+    source: entry.source,
+    updatedAt: entry.updatedAt,
+    ...(entry.dismissed ? { dismissed: true } : {}),
+    ...(entry.queueWaiting === true ? { queueWaiting: true } : {}),
   }));
   return `${JSON.stringify({ version: VERSION, meetings }, null, 2)}\n`;
 }
@@ -151,6 +159,17 @@ export function ledgerAfterDelete(ledger: ImportLedger, path: VaultPath): Import
 export function restoreDismissed(ledger: ImportLedger, provider: string): ImportLedger {
   return ledger.filter((entry) => !(entry.dismissed && entry.provider === provider));
 }
+
+/** The entry with its queue line waiting, or not: only a waiting entry carries the field. */
+export function withQueueWaiting(entry: ImportEntry, waiting: boolean): ImportEntry {
+  const { provider, id, path, source, updatedAt, dismissed } = entry;
+  const plain: ImportEntry = { provider, id, path, source, updatedAt, dismissed };
+  return waiting ? { ...plain, queueWaiting: true } : plain;
+}
+
+/** The meetings whose queue line is still to be written, and whose note is still theirs. */
+export const awaitingQueue = (ledger: ImportLedger): ImportEntry[] =>
+  ledger.filter((entry) => entry.queueWaiting === true && !entry.dismissed);
 
 /** Whether two ledgers say the same: what decides that the file needs no write. */
 export const sameLedger = (left: ImportLedger, right: ImportLedger): boolean =>

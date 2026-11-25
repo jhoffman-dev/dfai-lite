@@ -1,6 +1,6 @@
 import { VaultIndex } from '../index/index.ts';
 import { isConflictCopyPath } from '../sync/index.ts';
-import { isVisibleNote, type VaultPath } from '../vault/index.ts';
+import { isTranscriptPath, isVaultGuide, isVisibleNote, type VaultPath } from '../vault/index.ts';
 import { folderFiles } from './folder-files.ts';
 import { meetingFiles } from './meeting-files.ts';
 import { noteLine } from './note-line.ts';
@@ -8,18 +8,19 @@ import { readmeFile } from './readme-file.ts';
 import { sortedTagTree, tagFile } from './tag-file.ts';
 import { byCode, type IndexFile } from './text.ts';
 
-/** The vault's own guides at its root, and the report a migration left: about the vault, not notes in it. */
-const VAULT_GUIDES = new Set<VaultPath>(['CLAUDE.md', 'README.md', 'MIGRATION-REPORT.md']);
-
 /**
  * The `_index/` files for a vault: a map Claude reads instead of the notes, so
  * it opens only the few that matter. Pure and deterministic — the same notes,
  * in any order, give the same files byte for byte, sorted by path. Hidden
  * paths (`_index/`, `.dfai-lite/`, dotfiles), non-markdown files and the
  * root `CLAUDE.md`, `README.md` and `MIGRATION-REPORT.md` are left out.
+ * Transcript notes are only counted in the README: a line each would bloat
+ * the index with notes Claude opens only for a quote or a summary, and each
+ * meeting note's `- Transcript:` line already names its own.
  */
 export function buildAiIndex(notes: readonly IndexFile[]): readonly IndexFile[] {
-  const visible = notes.filter(({ path }) => isVisibleNote(path) && !VAULT_GUIDES.has(path));
+  const readable = notes.filter(({ path }) => isVisibleNote(path) && !isVaultGuide(path));
+  const visible = readable.filter(({ path }) => !isTranscriptPath(path));
   const index = VaultIndex.build(visible);
   const texts = new Map<VaultPath, string>(visible.map(({ path, text }) => [path, text]));
   const paths = index.paths();
@@ -33,6 +34,7 @@ export function buildAiIndex(notes: readonly IndexFile[]): readonly IndexFile[] 
     months: meetings.months,
     tags,
     conflictCopies: paths.filter(isConflictCopyPath),
+    transcripts: readable.length - visible.length,
   });
   const files = [readme, ...folders.files, tagFile(index, tags), ...meetings.files];
   assertDistinctPaths(files);

@@ -6,38 +6,66 @@ point: read it first, then use `_index/` to find notes without opening them.
 
 ## Find things cheaply
 
-Do not list or read the whole vault. Go through the index:
+Do not list or read the whole vault. Go in this order, and stop as soon as
+you have the notes you need:
 
-| To find…                     | Read                                            |
-| ---------------------------- | ----------------------------------------------- |
-| What folders and areas exist | `_index/README.md` (counts per folder, the map) |
-| Notes in a folder            | `_index/folders/<folder>.md`                    |
-| Notes with a tag             | `_index/tags.md`                                |
-| A meeting, by date or person | `_index/meetings/<YYYY>-<MM>.md`                |
-| What links to a note         | the note's line in its folder index (`←` lists) |
+1. **`README.md`** at the root: the map. What each folder holds and how many
+   notes it has, the busiest folders, the most used tags, the latest dated
+   notes. Its map is generated between markers; the text around it is
+   James's own description of the vault.
+2. **The index**, for one line per note (path, tags, links out, `←`
+   backlinks, first sentence):
 
-Each index line is one note: its path, tags, links out, and its first sentence.
-Pick the few notes that matter from those lines, then open only those. For an
-exact phrase, search the repository's code instead of reading files.
+   | To find…                     | Read                                            |
+   | ---------------------------- | ----------------------------------------------- |
+   | What folders and areas exist | `_index/README.md` (counts per folder)          |
+   | Notes in a folder            | `_index/folders/<folder>.md`                    |
+   | Notes with a tag             | `_index/tags.md`                                |
+   | A meeting, by date or person | `_index/meetings/<YYYY>-<MM>.md`                |
+   | What links to a note         | the note's line in its folder index (`←` lists) |
 
-`_index/` is generated on every push. It can be a minute behind: if a note
-and the index disagree, the note is right.
+3. **Search**, when working in this folder: `node .dfai-lite/search.mjs`
+   reads the notes themselves, so it is never behind. It prints the best 10
+   notes, each as its path, tags and change date, then up to three matching
+   lines with their line numbers. Words must all match; quote a phrase
+   (`'"exact phrase"'`); notes named for the words rank first, then headings,
+   then body text, newer first on ties.
+
+   ```sh
+   node .dfai-lite/search.mjs "rollout plan" --folder Projects
+   node .dfai-lite/search.mjs --tag meeting --since 14d
+   node .dfai-lite/search.mjs --links-to "Mara Quill" --limit 25
+   ```
+
+   `--title` matches names only; `--since` takes a date or `Nd` (the file's
+   change time on this Mac); `--transcripts` adds `Transcripts/` for
+   verbatim quotes, which are skipped otherwise; `--help` lists the rest.
+   Prefer it to `grep` or reading folders: its output is already trimmed.
+
+4. **Open a note** only once its index line or search lines say it is the
+   one, and read the part the line numbers point to.
+
+`_index/` and the README map are generated on every push, so they can be a
+minute behind; search is not. If a note and the index disagree, the note is
+right. Through GitHub, without a shell, read `README.md` and `_index/`, then
+use the repository's code search for an exact phrase.
 
 ## Layout
 
-| Folder                   | Holds                                                                                                |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `Inbox/`                 | Quick notes, unfiled. New notes with no obvious home go here.                                        |
-| `Meetings/<YYYY>/<MM>/`  | One note per meeting (shape below).                                                                  |
-| `People/`                | One note per person, named as they are linked: `Mara Quill.md`.                                      |
-| `Projects/`, `Areas/`    | Work with an end, and ongoing responsibilities.                                                      |
-| `Resources/`             | Reference material and permanent notes.                                                              |
-| `Archive/`               | Finished or dormant. Move here; do not delete.                                                       |
-| `attachments/`           | Pictures pasted or dropped into notes.                                                               |
-| `skills/<name>/SKILL.md` | Instructions for Claude on jobs done often in this vault.                                            |
-| `_index/`                | Generated. Never edit.                                                                               |
-| `.dfai-lite/`            | The app's own state (favorites, icons and colors, callout types, imported meetings). Leave it alone. |
-| `<folder>/.gitkeep`      | Empty; keeps a folder with no notes yet in git. Leave it.                                            |
+| Folder                     | Holds                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `Inbox/`                   | Quick notes, unfiled. New notes with no obvious home go here.                                        |
+| `Meetings/<YYYY>/<MM>/`    | One note per meeting (shape below).                                                                  |
+| `Transcripts/<YYYY>/<MM>/` | One note per meeting transcript, linked from its meeting note. Do not open unless asked (below).     |
+| `People/`                  | One note per person, named as they are linked: `Mara Quill.md`.                                      |
+| `Projects/`, `Areas/`      | Work with an end, and ongoing responsibilities.                                                      |
+| `Resources/`               | Reference material and permanent notes.                                                              |
+| `Archive/`                 | Finished or dormant. Move here; do not delete.                                                       |
+| `attachments/`             | Pictures pasted or dropped into notes.                                                               |
+| `skills/<name>/SKILL.md`   | Instructions for Claude on jobs done often in this vault.                                            |
+| `_index/`                  | Generated. Never edit.                                                                               |
+| `.dfai-lite/`              | The app's own state (favorites, icons and colors, callout types, imported meetings). Leave it alone. |
+| `<folder>/.gitkeep`        | Empty; keeps a folder with no notes yet in git. Leave it.                                            |
 
 ## How a note is written
 
@@ -72,6 +100,14 @@ One sentence on what was decided or discussed. #meeting
 - With: [[Mara Quill]], [[Tobias Fenn]]
 - About: [[Larkspur rollout]]
 - Source: https://docs.example.com/document/d/weekly-sync
+- Transcript: [[2026-11-21 Weekly sync (transcript)]]
+
+<!-- dfai-lite:summary v1 -->
+
+> [!summary] Summary by Claude (…)
+> …
+
+<!-- /dfai-lite:summary -->
 
 ## Summary
 
@@ -82,14 +118,34 @@ One sentence on what was decided or discussed. #meeting
 - [[Mara Quill]] sends the revised plan by Friday.
 
 ## Notes
-
-## Transcript
 ```
 
 Leave out a line or a section that has nothing in it. `Source` is where the
 notes came from, when there is a link. `Notes` holds the detail behind the
-summary. The transcript, when there is one, goes last so a reader can stop
-before it.
+summary. Claude's summary block sits at the top, before the first section
+(`skills/meeting-processing/SKILL.md` writes it).
+
+The transcript is a note of its own:
+`Transcripts/<YYYY>/<MM>/<meeting note's name> (transcript).md`. Its first
+line is `Transcript of the meeting [[<meeting note's name>]].`, then the
+turns; the meeting note links it with its `- Transcript:` line. **Do not open
+`Transcripts/` unless asked** for verbatim quotes or to write that meeting's
+summary: they are long, and the meeting note says what was decided. `_index/`
+only counts them. Never write a transcript back into a meeting note. An older
+meeting note may still have its transcript inline under `## Transcript`, last;
+leave it there unless asked to move it.
+
+## Meetings waiting for a summary
+
+`Meetings/Processing queue.md` lists the meetings DFAI Lite imported that
+have no summary yet, one `- [[link]]` line each (Settings → Granola → "Queue
+meetings without a summary" adds every older one too). When a session starts in
+this vault, or James says "process meetings", read it; if it lists any,
+work it with `skills/meeting-processing/SKILL.md`: a summary block in each
+note, then its line removed. Never remove a line any other way. In this
+folder on a Mac, DFAI Lite syncs: save the files and run no git. Through
+GitHub, a conflict in the queue keeps every `- [[` line from both sides,
+never a conflict copy (the skill says how).
 
 ## Rules for writing here
 

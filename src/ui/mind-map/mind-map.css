@@ -1,0 +1,311 @@
+/* The mind map: the nav bar, the trail walked (once there is one),
+   then the stage, bound to the pane. Notes are
+   neutral pills on the raised ground; a note's own hue and a tag's pastel
+   tint theirs, as the sidebar and the tag pills do. Chrome stays neutral. */
+
+.mind-map-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mind-map__trail {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-1);
+  margin: 0 32px;
+  min-height: 40px;
+  padding: var(--space-1) 0;
+}
+
+.mind-map__trail-label {
+  color: var(--ink-3);
+  font-size: var(--text-meta);
+  font-weight: 500;
+  margin-right: var(--space-1);
+}
+
+.mind-map__crumb {
+  align-items: center;
+  color: var(--ink-3);
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.mind-map__crumb button {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-chip);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: var(--text-column);
+  font-weight: 500;
+  gap: 6px;
+  height: 26px;
+  max-width: 220px;
+  overflow: hidden;
+  padding: 0 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mind-map__crumb button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.mind-map__crumb button[aria-current='location'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mind-map__crumb button:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.mind-map__empty {
+  color: var(--ink-3);
+  margin: var(--space-6) 0;
+  text-align: center;
+}
+
+/* The stage is bound to the pane: out of flow inside a flex child, so what
+   it draws can never size the page (the graph once grew 13,327px tall). */
+.mind-map__stage {
+  background: var(--surface);
+  cursor: grab;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* Clip, not hide: a hidden box still scrolls to show a focused node, which
+     slid the map out from under a click. Clip never scrolls. */
+  overflow: clip;
+  position: relative;
+  touch-action: none;
+}
+
+.mind-map__stage:active {
+  cursor: grabbing;
+}
+
+.mind-map__plane {
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.mind-map__curves {
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+}
+
+.mind-map__curve {
+  fill: none;
+  stroke: var(--graph-edge);
+  stroke-width: 1.4;
+}
+
+.mind-map__curve--more {
+  stroke-dasharray: 3 3;
+}
+
+/* A node sits at its left edge and middle: what the layout places. */
+.mind-map__node {
+  align-items: center;
+  display: flex;
+  gap: 2px;
+  outline: none;
+  position: absolute;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.mind-map__label:not([data-hue]) {
+  --pill: var(--raised);
+  --pill-ink: var(--ink);
+}
+
+.mind-map__label {
+  align-items: center;
+  appearance: none;
+  background: var(--pill);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--pill-ink);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  height: 26px;
+  max-width: 200px;
+  padding: 0 9px;
+}
+
+.mind-map__label[data-hue] {
+  border-color: transparent;
+}
+
+.mind-map__label:hover {
+  border-color: var(--focus);
+}
+
+.mind-map__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mind-map__node:focus-visible .mind-map__label {
+  box-shadow: var(--ring);
+}
+
+.mind-map__node--root .mind-map__label {
+  border-width: 1.5px;
+  font-size: 14px;
+  font-weight: 600;
+  height: 32px;
+  max-width: 240px;
+  padding: 0 12px;
+}
+
+/* A branch is a label, not a thing: no pill, the column's quiet type. */
+.mind-map__node--branch .mind-map__label,
+.mind-map__node--more .mind-map__label {
+  background: none;
+  border-color: transparent;
+  color: var(--ink-3);
+  font-size: var(--text-column);
+  font-weight: 600;
+  padding: 0 6px;
+}
+
+.mind-map__node--branch .mind-map__label:hover,
+.mind-map__node--more .mind-map__label:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.mind-map__count {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.mind-map__node--more .mind-map__label {
+  font-weight: 500;
+  text-decoration: underline dotted;
+}
+
+/* A tag is its pastel pill, round as the tag pills under a title are. */
+.mind-map__node--tag .mind-map__label {
+  border-radius: var(--radius-pill);
+}
+
+/* No note yet: a hollow, dashed pill, as the graph draws a ghost. */
+.mind-map__node--ghost .mind-map__label {
+  background: none;
+  border-style: dashed;
+  color: var(--ink-3);
+}
+
+/* Already on the map: shown so the link is seen, quieted so the walk is not. */
+.mind-map__node--repeat .mind-map__label {
+  background: none;
+  border-style: dotted;
+  color: var(--ink-3);
+}
+
+.mind-map__toggle,
+.mind-map__focus {
+  align-items: center;
+  appearance: none;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 18px;
+}
+
+.mind-map__toggle:hover,
+.mind-map__focus:hover {
+  border-color: var(--focus);
+  color: var(--ink);
+}
+
+/* Focus shows where it can be reached: on a pointer over the node, or the
+   keyboard on it. Out of flow past the node's end, so a hidden one leaves no
+   gap between a pill and its expander. */
+.mind-map__focus {
+  border-color: transparent;
+  left: calc(100% + 4px);
+  opacity: 0;
+  position: absolute;
+}
+
+.mind-map__node:hover .mind-map__focus,
+.mind-map__node:focus-visible .mind-map__focus,
+.mind-map__node[aria-selected='true']:focus .mind-map__focus {
+  opacity: 1;
+}
+
+/* Zoom and Fit, at the stage's corner as a map's controls are: chrome, neutral. */
+.mind-map__zoom {
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  bottom: 12px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  padding: 2px;
+  position: absolute;
+  right: 12px;
+}
+
+.mind-map__zoom button {
+  align-items: center;
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-chip);
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 15px;
+  height: 26px;
+  justify-content: center;
+  width: 28px;
+}
+
+.mind-map__zoom button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.mind-map__zoom button:focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}

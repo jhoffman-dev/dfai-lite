@@ -1,4 +1,4 @@
-import { IMPORTS_PATH } from '../../domain/meetings/index.ts';
+import { IMPORTS_PATH, MEETING_QUEUE_PATH } from '../../domain/meetings/index.ts';
 import { VaultSession } from '../session/index.ts';
 import type { SyncTimers } from '../sync/index.ts';
 import {
@@ -237,6 +237,37 @@ describe('the Granola import schedule', () => {
     expect(files.peek(PATH)).toBeDefined();
     expect(made.getView().dismissed).toBe(0);
     expect(files.peek(IMPORTS_PATH)).not.toContain('dismissed');
+  });
+
+  it('queues every older meeting with no summary yet, once, and says how many', async () => {
+    const old = 'Meetings/2025/03/2025-03-04 Larkspur kickoff.md';
+    const done = 'Meetings/2025/03/2025-03-05 Larkspur review.md';
+    const listed = 'Meetings/2025/03/2025-03-06 Larkspur retro.md';
+    files = MemoryVaultFiles.of({
+      [old]: 'Kickoff. #meeting\n',
+      [done]: 'Review. #meeting\n\n<!-- dfai-lite:summary v1 -->\n',
+      [listed]: 'Retro. #meeting\n',
+      [MEETING_QUEUE_PATH]: `- [[${listed.slice(0, -3)}]] added 2025-03-06\n`,
+      'Transcripts/2025/03/2025-03-04 Larkspur kickoff (transcript).md': 'Transcript.\n',
+    });
+    session = new VaultSession();
+    await openVault({ files, session });
+    const made = await importer();
+    made.queueUnsummarized();
+    await flush();
+    expect(files.peek(MEETING_QUEUE_PATH)).toBe(
+      [
+        `- [[${listed.slice(0, -3)}]] added 2025-03-06`,
+        `- [[${old.slice(0, -3)}]] added 2026-11-19`,
+        '',
+      ].join('\n'),
+    );
+    made.queueUnsummarized();
+    await flush();
+    expect(notices).toEqual([
+      'Queued 1 meeting for Claude to summarize.',
+      'Every meeting has a summary or is already in the queue.',
+    ]);
   });
 
   it('says a refused key once, and a later launch neither imports nor says it again', async () => {

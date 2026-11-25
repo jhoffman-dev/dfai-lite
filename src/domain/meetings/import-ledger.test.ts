@@ -1,4 +1,5 @@
 import {
+  awaitingQueue,
   findImport,
   importAtPath,
   IMPORTS_PATH,
@@ -8,6 +9,7 @@ import {
   recordImport,
   restoreDismissed,
   serializeImportLedger,
+  withQueueWaiting,
   type ImportEntry,
 } from './import-ledger.ts';
 import { meetingCopyPath, meetingSourceOf, shortHash } from './meeting-identity.ts';
@@ -110,6 +112,34 @@ describe('the import ledger', () => {
     expect(restoreDismissed(dismissed, 'gemini')).toEqual(dismissed);
     expect(restoreDismissed([...dismissed, entry({ id: 'kept' })], 'granola')).toEqual([
       entry({ id: 'kept' }),
+    ]);
+  });
+});
+
+describe('a meeting whose queue line is still to be written', () => {
+  it('is kept in the file only while it waits, and read back', () => {
+    const waiting = withQueueWaiting(entry(), true);
+    const text = serializeImportLedger([waiting]);
+    expect(text).toContain('"queueWaiting": true');
+    expect(parseImportLedger(text)).toEqual({ kind: 'ok', ledger: [waiting] });
+    const done = withQueueWaiting(waiting, false);
+    expect(serializeImportLedger([done])).toBe(serializeImportLedger([entry()]));
+    expect('queueWaiting' in done).toBe(false);
+  });
+
+  it('waits only while the note is the person’s: a dismissed meeting is not queued', () => {
+    const waiting = withQueueWaiting(entry(), true);
+    const gone = withQueueWaiting(entry({ id: 'not_B2', dismissed: true }), true);
+    expect(awaitingQueue([waiting, gone, entry({ id: 'not_C3' })])).toEqual([waiting]);
+  });
+
+  it('keeps waiting when its note moves', () => {
+    const moved = ledgerAfterMove([withQueueWaiting(entry(), true)], {
+      from: 'Meetings',
+      to: 'Archive/Meetings',
+    });
+    expect(awaitingQueue(moved).map(({ path }) => path)).toEqual([
+      'Archive/Meetings/2026/11/2026-11-17 Larkspur Payroll renewal.md',
     ]);
   });
 });

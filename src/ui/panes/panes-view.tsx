@@ -1,10 +1,13 @@
 import { useCallback, useState, type CSSProperties } from 'react';
+import type { MapRoot } from '../../domain/mind-map/index.ts';
 import { GraphPage } from '../graph-page/graph-page.tsx';
 import { NotePane } from '../note/note-pane.tsx';
 import { useApp } from '../services.ts';
+import { MindMapPage } from '../mind-map/mind-map-page.tsx';
 import { Home } from '../shell/home.tsx';
 import { Icon } from '../shell/icons.tsx';
 import type { PageHistory } from '../shell/page-bar.tsx';
+import { mapRootOf } from '../shell/map-root-of.ts';
 import { keyFor } from '../shell/shortcuts.ts';
 import { useKeyHost } from '../shell/use-shortcuts.ts';
 import { RowMenu, type MenuItem } from '../sidebar/row-menu.tsx';
@@ -23,6 +26,7 @@ import {
   moveToOtherPane,
   setSplit,
   splitRight,
+  tabById,
   type Layout,
   type Tab,
 } from './layout.ts';
@@ -47,6 +51,20 @@ function GraphTab({ history }: { history: PageHistory }) {
   return <GraphPage activePath={useLayout(graphFocus)} history={history} />;
 }
 
+function MapTab({
+  tabId,
+  root,
+  history,
+}: {
+  tabId: string;
+  root: MapRoot | null;
+  history: PageHistory;
+}) {
+  // Read only by a map that follows: a fixed one never re-renders as notes open.
+  const followed = useLayout((layout) => (root === null ? graphFocus(layout) : null));
+  return <MindMapPage tabId={tabId} root={root} followed={followed} history={history} />;
+}
+
 function TabContent({ tab, focused }: { tab: Tab; focused: boolean }) {
   const { view } = tab;
   const history = useTabHistory(tab.id);
@@ -65,6 +83,8 @@ function TabContent({ tab, focused }: { tab: Tab; focused: boolean }) {
       return <TagsPage tag={view.tag} history={history} />;
     case 'graph':
       return <GraphTab history={history} />;
+    case 'map':
+      return <MapTab tabId={tab.id} root={view.root} history={history} />;
     case 'home':
       return <Home />;
   }
@@ -76,14 +96,19 @@ interface MenuState {
 }
 
 function useTabMenu(canSplit: boolean) {
-  const { workspace, ui, layout } = useApp();
+  const { workspace, ui, layout, actions } = useApp();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const close = useCallback(() => setMenu(null), []);
   const items = (tabId: string): MenuItem[] => {
     const { source } = ui.getState();
     const split = layout.getState().panes.length > 1;
     const arrange = workspace.arrange;
+    const tab = tabById(layout.getState(), tabId);
+    const mapRoot = tab === undefined ? null : mapRootOf(tab.view);
     return [
+      ...(mapRoot === null || tab?.view.kind === 'map'
+        ? []
+        : [{ label: 'Open mind map', run: () => actions.openMap(mapRoot) }]),
       { label: 'Close', run: () => arrange((current) => closeTab(current, tabId, { source })) },
       { label: 'Close others', run: () => arrange((current) => closeOthers(current, tabId)) },
       ...(!canSplit
