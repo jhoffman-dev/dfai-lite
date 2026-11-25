@@ -1,5 +1,6 @@
 import { useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { noteTitle, type ResolvedAppearances } from '../../application/index.ts';
+import type { MapRoot } from '../../domain/mind-map/index.ts';
 import type { Pane, Tab, TabView } from '../panes/layout.ts';
 import { LookGlyph } from '../appearance/look-glyph.tsx';
 import { Icon, type IconName } from '../shell/icons.tsx';
@@ -14,9 +15,21 @@ export function tabTitle(view: TabView): string {
       return view.tag === null ? 'Tags' : `#${view.tag}`;
     case 'graph':
       return 'Graph';
+    case 'map':
+      return mapTitle(view.root);
     case 'home':
       return 'New tab';
   }
+}
+
+/** A mind map's name: what it is drawn from, or that it follows the open note. */
+export function mapTitle(root: MapRoot | null): string {
+  return root === null ? 'Mind map' : `Map: ${rootTitle(root)}`;
+}
+
+/** A map's root as a crumb names it: the note's title, or the tag. */
+export function rootTitle(root: MapRoot): string {
+  return root.kind === 'note' ? noteTitle(root.path) : `#${root.key}`;
 }
 
 /** The glyph before a tab's title, as DFAI draws a page's. */
@@ -28,6 +41,8 @@ function tabGlyph(view: TabView): IconName {
       return 'tag';
     case 'graph':
       return 'graph';
+    case 'map':
+      return 'mind-map';
     case 'home':
       return 'plus';
   }

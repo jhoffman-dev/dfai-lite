@@ -400,3 +400,58 @@ describe('each tab’s Back and Forward', () => {
     expect(tab?.forward).toEqual([]);
   });
 });
+
+describe('opening in the other pane (a map beside a note)', () => {
+  it('splits when there is one pane, then follows links in the other pane’s open tab', () => {
+    const split = open(open(initialLayout(), PLAN), MARA, 'other-pane');
+    expect(shape(split)).toEqual([[`*${PLAN}`], [`*${MARA}`]]);
+    const back = open({ ...split, activePane: 1 }, SHED, 'other-pane');
+    expect(shape(back)).toEqual([[`*${SHED}`], [`*${MARA}`]]);
+    expect(back.activePane).toBe(0);
+  });
+
+  it('opens a new tab where the window cannot split', () => {
+    const narrow = open(open(initialLayout(), PLAN), MARA, 'other-pane', false);
+    expect(shape(narrow)).toEqual([[PLAN, `*${MARA}`]]);
+  });
+
+  it('keeps a mind map tab through a save and a restore', () => {
+    const map: TabView = { kind: 'map', root: { kind: 'note', path: PLAN } };
+    const layout = openView(initialLayout(), {
+      view: map,
+      openIn: 'active',
+      source: false,
+      canSplit: true,
+    });
+    const restored = restoreLayout(JSON.parse(JSON.stringify(layout)), () => true);
+    expect(currentTab(restored as Layout).view).toEqual(map);
+    const follows = restoreLayout(
+      JSON.parse(
+        JSON.stringify(
+          openView(layout, {
+            view: { kind: 'map', root: null },
+            openIn: 'active',
+            source: false,
+            canSplit: true,
+          }),
+        ),
+      ),
+      () => true,
+    );
+    expect(currentTab(follows as Layout).view).toEqual({ kind: 'map', root: null });
+  });
+
+  it('follows a renamed note into its map, and closes the map of a deleted one', () => {
+    const map: TabView = { kind: 'map', root: { kind: 'note', path: PLAN } };
+    const layout = openView(open(initialLayout(), MARA), {
+      view: map,
+      openIn: 'new-tab',
+      source: false,
+      canSplit: true,
+    });
+    const renamed = retargetNote(layout, PLAN, SHED);
+    expect(currentTab(renamed).view).toEqual({ kind: 'map', root: { kind: 'note', path: SHED } });
+    const deleted = closeMissingNotes(layout, (path) => path !== PLAN);
+    expect(shape(deleted)).toEqual([[`*${MARA}`]]);
+  });
+});

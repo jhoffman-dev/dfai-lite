@@ -50,7 +50,7 @@ function TagBranch({
 }
 
 function TaggedNotes({ tag }: { tag: string }) {
-  const { services } = useApp();
+  const { services, actions } = useApp();
   const version = useVault((vault) => vault.version);
   const notes = useMemo(
     () => services.session.index.notesWithTag(tag),
@@ -69,6 +69,15 @@ function TaggedNotes({ tag }: { tag: string }) {
         <span className="tags__uses">
           {notes.length === 1 ? '1 note' : `${notes.length} notes`}
         </span>
+        <button
+          type="button"
+          className="btn btn--ghost tags__map"
+          title={`Open a mind map of #${tag} beside this list`}
+          onClick={() => actions.openMap({ kind: 'tag', key: tag })}
+        >
+          <Icon name="mind-map" size={15} />
+          Mind map
+        </button>
       </header>
       <ul className="tags__notes" aria-label={`Notes tagged ${tag}`}>
         {notes.map((path) => (

@@ -20,6 +20,7 @@ import {
   type VaultDeps,
 } from '../../application/index.ts';
 import type { AppearancePatch } from '../../domain/appearance/index.ts';
+import type { MapRoot } from '../../domain/mind-map/index.ts';
 import type { FolderNode, VaultEntry, VaultPath } from '../../domain/vault/index.ts';
 import { currentTab, setSource, type OpenIn } from '../panes/layout.ts';
 import type { LayoutStore } from '../panes/layout-store.ts';
@@ -42,6 +43,8 @@ export interface NoteActions {
   /** Opens the note a link names, making it first if no note answers. */
   followLink(target: string, openIn?: OpenIn): Promise<void>;
   openTag(name: string, openIn?: OpenIn): void;
+  /** A mind map from a note or a tag (null: one that follows the open note), beside it by default. */
+  openMap(root: MapRoot | null, openIn?: OpenIn): void;
   toggleFavorite(path: VaultPath): Promise<void>;
   moveFavorite(path: VaultPath, index: number): Promise<void>;
   /** Sets or clears a folder's or a note's color and icon (null clears, absent keeps). */
@@ -144,6 +147,7 @@ export function createNoteActions({
       else workspace.open({ kind: 'note', path: result.path }, openIn);
     },
     openTag: (name, openIn) => workspace.open({ kind: 'tags', tag: tagKey(name) }, openIn),
+    openMap: (root, openIn = 'side') => workspace.open({ kind: 'map', root }, openIn),
     toggleFavorite: (path) => toggleFavoriteNote(deps, { path }),
     moveFavorite: (path, index) => reorderFavorite(deps, { path, index }),
     setAppearance: (path, patch) => setPathAppearance(deps, { path, ...patch }),

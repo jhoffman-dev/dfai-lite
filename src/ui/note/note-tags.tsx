@@ -1,8 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { tagHue } from '../../application/index.ts';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { tagHue, tagKey } from '../../application/index.ts';
 import type { VaultPath } from '../../domain/vault/index.ts';
 import { openInFor } from '../panes/open-in.ts';
 import { useApp } from '../services.ts';
+import { RowMenu } from '../sidebar/row-menu.tsx';
 import { useVault } from '../state/vault-store.ts';
 
 /**
@@ -23,26 +24,48 @@ export function NoteTags({ path }: { path: VaultPath }) {
   );
   const row = useRef<HTMLElement>(null);
   const cut = useCutOff(row, tags);
+  const [menu, setMenu] = useState<{ name: string; x: number; y: number } | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
   if (tags.length === 0) return null;
 
   return (
-    <nav ref={row} className="note-tags" aria-label="Tags" data-cut={cut || undefined}>
-      {tags.map((tag) => (
-        <button
-          key={tag.key}
-          type="button"
-          className="note-tags__pill"
-          data-hue={tagHue(tag.name)}
-          title={`Notes tagged #${tag.name}`}
-          // Kept from the button, in a browser that focuses one on a press: the caret stays in the text.
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={(event) => actions.openTag(tag.name, openInFor(event))}
-          onAuxClick={(event) => event.button === 1 && actions.openTag(tag.name, 'new-tab')}
-        >
-          #{tag.name}
-        </button>
-      ))}
-    </nav>
+    <>
+      <nav ref={row} className="note-tags" aria-label="Tags" data-cut={cut || undefined}>
+        {tags.map((tag) => (
+          <button
+            key={tag.key}
+            type="button"
+            className="note-tags__pill"
+            data-hue={tagHue(tag.name)}
+            title={`Notes tagged #${tag.name} (right-click for its mind map)`}
+            // Kept from the button, in a browser that focuses one on a press: the caret stays in the text.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => actions.openTag(tag.name, openInFor(event))}
+            onAuxClick={(event) => event.button === 1 && actions.openTag(tag.name, 'new-tab')}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setMenu({ name: tag.name, x: event.clientX, y: event.clientY });
+            }}
+          >
+            #{tag.name}
+          </button>
+        ))}
+      </nav>
+      {menu === null ? null : (
+        <RowMenu
+          label="Tag actions"
+          at={menu}
+          onClose={closeMenu}
+          items={[
+            { label: 'Show notes tagged', run: () => actions.openTag(menu.name) },
+            {
+              label: 'Open mind map',
+              run: () => actions.openMap({ kind: 'tag', key: tagKey(menu.name) }),
+            },
+          ]}
+        />
+      )}
+    </>
   );
 }
 
