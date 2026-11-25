@@ -4,6 +4,7 @@ import {
   splitInlineTranscript,
   transcriptPathOf,
   withTranscriptLink,
+  type SplitTranscript,
 } from './index.ts';
 
 const MEETING = 'Meetings/2026/11/2026-11-17 Larkspur Payroll renewal.md';
@@ -88,6 +89,15 @@ describe('withTranscriptLink', () => {
   });
 });
 
+/** The split, failing the test when the note was refused or had nothing to move. */
+function done(result: ReturnType<typeof splitInlineTranscript>): SplitTranscript {
+  if (result?.kind !== 'split') throw new Error(`not split: ${JSON.stringify(result)}`);
+  return result;
+}
+
+const refusal = (result: ReturnType<typeof splitInlineTranscript>): string | null =>
+  result?.kind === 'refused' ? result.reason : null;
+
 describe('splitInlineTranscript', () => {
   const turns = lines(
     '**Mara Quill** [00:00:04] Can we keep the rate?',
@@ -114,13 +124,13 @@ describe('splitInlineTranscript', () => {
   );
 
   it('moves every byte of the section’s body to the transcript note and links it', () => {
-    const split = splitInlineTranscript(MEETING, note);
-    expect(split?.moved).toBe(turns);
-    expect(split?.transcript).toEqual({
+    const split = done(splitInlineTranscript(MEETING, note));
+    expect(split.moved).toBe(turns);
+    expect(split.transcript).toEqual({
       path: `Transcripts/2026/11/${NAME}.md`,
       text: `Transcript of the meeting [[2026-11-17 Larkspur Payroll renewal]].\n\n${turns}\n`,
     });
-    expect(split?.meeting).toBe(
+    expect(split.meeting).toBe(
       lines(
         'Renewal call. #meeting',
         '',
@@ -137,35 +147,104 @@ describe('splitInlineTranscript', () => {
   });
 
   it('keeps a section a person added after the transcript', () => {
-    const split = splitInlineTranscript(MEETING, `${note}## Follow-up\n\nCall back.\n`);
-    expect(split?.meeting.endsWith('Rate stays flat.\n\n## Follow-up\n\nCall back.\n')).toBe(true);
-    expect(split?.moved).toBe(turns);
+    const split = done(splitInlineTranscript(MEETING, `${note}## Follow-up\n\nCall back.\n`));
+    expect(split.meeting.endsWith('Rate stays flat.\n\n## Follow-up\n\nCall back.\n')).toBe(true);
+    expect(split.moved).toBe(turns);
   });
 
-  it('keeps a `## ` line inside a code fence in the transcript', () => {
+  it('ends the transcript at a `# ` heading too: a person’s H1 section stays in the meeting note', () => {
+    const split = done(splitInlineTranscript(MEETING, `${note}# Mine\n\nKeep me.\n`));
+    expect(split.moved).toBe(turns);
+    expect(split.meeting.endsWith('Rate stays flat.\n\n# Mine\n\nKeep me.\n')).toBe(true);
+  });
+
+  it('tracks fences the CommonMark way: a `~~~` inside a ``` fence does not close it', () => {
+    const text = lines(
+      'Call.',
+      '',
+      '## Transcript',
+      '',
+      '```',
+      '~~~~',
+      '```',
+      '',
+      '**Mara Quill** Done.',
+      '',
+      '## Notes',
+      '',
+      'Mine.',
+      '',
+    );
+    const split = done(splitInlineTranscript(MEETING, text));
+    expect(split.moved).toBe(lines('```', '~~~~', '```', '', '**Mara Quill** Done.'));
+    expect(split.meeting).toContain('## Notes\n\nMine.\n');
+  });
+
+  it('refuses a transcript with a heading in it, fenced or not: it may not be only transcript', () => {
     const fenced = lines('Call.', '', '## Transcript', '', '```', '## not a heading', '```', '');
-    expect(splitInlineTranscript(MEETING, fenced)?.moved).toBe('```\n## not a heading\n```');
+    expect(refusal(splitInlineTranscript(MEETING, fenced))).toMatch(/heading/);
+  });
+
+  it('refuses a transcript whose code fence never closes: it would swallow what follows', () => {
+    const open = lines(
+      'Call.',
+      '',
+      '## Transcript',
+      '',
+      '```',
+      'Hi.',
+      '',
+      '## Notes',
+      '',
+      'Mine.',
+      '',
+    );
+    expect(refusal(splitInlineTranscript(MEETING, open))).toMatch(/fence/);
+  });
+
+  it('refuses a note that links a transcript note and still holds one inline', () => {
+    const both = `Call.\n\n${LINK}\n\n## Transcript\n\nHi.\n`;
+    expect(refusal(splitInlineTranscript(MEETING, both))).toMatch(/already links/);
+  });
+
+  it('keeps a CRLF note’s line endings, in both notes', () => {
+    const crlf = note.replace(/\n/g, '\r\n');
+    const split = done(splitInlineTranscript(MEETING, crlf));
+    expect(split.meeting).toBe(
+      lines(
+        'Renewal call. #meeting',
+        '',
+        '- When: 2026-11-17 09:30–10:15',
+        '- With: [[Mara Quill]], [[Tobias Fenn]]',
+        LINK,
+        '',
+        '## Notes',
+        '',
+        'Rate stays flat.',
+        '',
+      ).replace(/\n/g, '\r\n'),
+    );
+    expect(split.transcript.text).toBe(
+      `Transcript of the meeting [[2026-11-17 Larkspur Payroll renewal]].\r\n\r\n${turns.replace(/\n/g, '\r\n')}\r\n`,
+    );
   });
 
   it('names the link after the transcript path it is given', () => {
-    const split = splitInlineTranscript(
-      MEETING,
-      note,
-      'Transcripts/2026/11/Other (transcript) 2.md',
+    const split = done(
+      splitInlineTranscript(MEETING, note, 'Transcripts/2026/11/Other (transcript) 2.md'),
     );
-    expect(split?.meeting).toContain('- Transcript: [[Other (transcript) 2]]');
+    expect(split.meeting).toContain('- Transcript: [[Other (transcript) 2]]');
   });
 
-  it('has nothing to do for a note with no inline transcript, an empty one, or a linked one', () => {
+  it('has nothing to do for a note with no inline transcript, or an empty one', () => {
     expect(splitInlineTranscript(MEETING, 'Call.\n\n## Notes\n\nHi.\n')).toBeNull();
     expect(splitInlineTranscript(MEETING, 'Call.\n\n## Transcript\n\n\n')).toBeNull();
-    expect(splitInlineTranscript(MEETING, `Call.\n\n${LINK}\n\n## Transcript\n\nHi.\n`)).toBeNull();
   });
 
   it('is done once: the split meeting note has no inline transcript left', () => {
-    const split = splitInlineTranscript(MEETING, note);
+    const split = done(splitInlineTranscript(MEETING, note));
     expect(hasInlineTranscript(note)).toBe(true);
-    expect(hasInlineTranscript(split?.meeting ?? '')).toBe(false);
-    expect(splitInlineTranscript(MEETING, split?.meeting ?? '')).toBeNull();
+    expect(hasInlineTranscript(split.meeting)).toBe(false);
+    expect(splitInlineTranscript(MEETING, split.meeting)).toBeNull();
   });
 });

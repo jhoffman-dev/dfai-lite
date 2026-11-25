@@ -25,16 +25,21 @@ describe('mergeMeetingNote', () => {
     );
   });
 
-  it('meetingWrite hands over the transcript note to create only when this write adds the link', () => {
+  it('meetingWrite hands over the transcript note whenever the note links it and it is not there', () => {
     const path = 'Meetings/2026/11/2026-11-21 Larkspur rollout sync.md';
-    const first = meetingWrite('', { ...base, transcript }, path);
+    const first = meetingWrite('', { ...base, transcript }, { path });
     expect(first.text).toContain(LINK);
     expect(first.transcript).toEqual({
       path: 'Transcripts/2026/11/2026-11-21 Larkspur rollout sync (transcript).md',
       text: 'Transcript of the meeting [[2026-11-21 Larkspur rollout sync]].\n\n**Mara Quill** [00:00:05] Shall we start?\n',
     });
-    expect(meetingWrite(first.text, { ...base, transcript }, path).transcript).toBeNull();
-    expect(meetingWrite('', base, path).transcript).toBeNull();
+    // A link whose transcript note was never written (a write that failed) gets it next time.
+    expect(meetingWrite(first.text, { ...base, transcript }, { path }).transcript).toEqual(
+      first.transcript,
+    );
+    const there = { path, transcriptExists: true };
+    expect(meetingWrite(first.text, { ...base, transcript }, there).transcript).toBeNull();
+    expect(meetingWrite('', base, { path }).transcript).toBeNull();
   });
 
   it('is the whole note when the merged input is the same: merging twice changes nothing', () => {

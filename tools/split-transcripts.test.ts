@@ -77,6 +77,48 @@ describe('split-transcripts', () => {
     expect(report).toContain(`- ${MEETING} → ${TRANSCRIPT}: Projects/Larkspur.md`);
   });
 
+  it('leaves a note it cannot split safely as it is, and says why', async () => {
+    const withHeading = NOTE.replace('yes.  ', 'yes.\n\n## Follow-up (mine)');
+    await put(MEETING, withHeading.replace('## Follow-up', '```\n## Follow-up'));
+    const report = splitReport(await splitTranscripts(vault, true));
+    expect(await read(MEETING)).toContain('## Follow-up');
+    expect(await read(TRANSCRIPT)).toBeNull();
+    expect(report).toContain('## Left as they are');
+    expect(report).toContain(`- ${MEETING}: `);
+  });
+
+  it('lists a note that links a transcript note and still holds one inline', async () => {
+    const both = NOTE.replace(
+      '- When: 2026-11-17 09:30\n',
+      '- When: 2026-11-17 09:30\n- Transcript: [[2026-11-17 Larkspur Payroll renewal (transcript)]]\n',
+    );
+    await put(MEETING, both);
+    const report = splitReport(await splitTranscripts(vault, false));
+    expect(report).toMatch(new RegExp(`- ${MEETING}: .*already links`));
+    expect(report).toContain('Would move 0');
+  });
+
+  it('says on a dry run that two meeting notes with one name would clash', async () => {
+    const twin = 'Meetings/Archive/2026-11-17 Larkspur Payroll renewal.md';
+    await put(twin, NOTE);
+    const report = splitReport(await splitTranscripts(vault, false));
+    expect(report).toContain('Would move 1');
+    expect(report).toMatch(new RegExp(`- ${twin}: .*same name`));
+  });
+
+  it('never splits a conflict copy, and lists it', async () => {
+    const copy = 'Meetings/2026/11/2026-11-17 Larkspur Payroll renewal (conflict from Studio).md';
+    await put(copy, NOTE);
+    const report = splitReport(await splitTranscripts(vault, true));
+    expect(await read(copy)).toBe(NOTE);
+    expect(report).toMatch(new RegExp(`- ${copy.replace(/[()]/g, '\\$&')}: .*conflict copy`));
+    expect(report).toContain('Moved 1');
+  });
+
+  it('tells the person to quit the app while it writes', async () => {
+    expect(splitReport(await splitTranscripts(vault, false))).toContain('Quit DFAI Lite');
+  });
+
   it('runs from the command line, dry by default, writing its report where asked', async () => {
     const reportFile = join(vault, '..', `${vault.split('/').at(-1)}-report.md`);
     const { stdout } = await run(process.execPath, [CLI, vault, '--report', reportFile]);

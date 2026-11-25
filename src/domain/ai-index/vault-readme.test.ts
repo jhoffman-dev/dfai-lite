@@ -95,6 +95,16 @@ describe('writing the map into a README', () => {
     expect(written(vaultReadme(text, NOTES))).toBe(text);
   });
 
+  it('keeps a CRLF README’s own bytes exactly, with no stray line under the map', () => {
+    const above = '# Mine\r\n\r\nAbove.\r\n';
+    const below = 'Below, mine too.\r\n';
+    const own = `${above}${MAP_START}\r\nold map\r\n${MAP_END}\r\n${below}`;
+    const text = written(vaultReadme(own, NOTES));
+    expect(text.startsWith(above)).toBe(true);
+    expect(text.endsWith(`${MAP_END}\n${below}`)).toBe(true);
+    expect(written(vaultReadme(text, NOTES))).toBe(text);
+  });
+
   it('refuses markers it cannot trust, rather than guess', () => {
     for (const broken of [
       `${MAP_START}\nno end\n`,

@@ -519,6 +519,16 @@ describe('transcripts in their own notes', () => {
     expect(files.peek(PATH)).toContain(LINK);
   });
 
+  it('writes the transcript note a linked meeting note lacks, at the next import that changes it', async () => {
+    await importNow();
+    await deleteNote({ files, session }, { path: TRANSCRIPT });
+    granola.add(fictionalGranolaNote({ updated_at: '2026-11-18T09:00:00Z' }));
+    const report = await importNow();
+    expect(report.counts.updated).toBe(1);
+    expect(files.peek(TRANSCRIPT)).toContain('**Mara Quill**');
+    expect((files.peek(PATH) ?? '').match(/- Transcript:/g)).toHaveLength(1);
+  });
+
   it('a meeting note renamed in the app keeps its transcript linked both ways', async () => {
     await importNow();
     const renamed = 'Meetings/2026/11/2026-11-17 Larkspur renewal call.md';
