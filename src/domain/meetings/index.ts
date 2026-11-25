@@ -11,7 +11,12 @@ export {
   meetingPath,
   type MeetingNote,
 } from './meeting-note.ts';
-export { meetingWrite, mergeMeetingNote, type MeetingWrite } from './merge-meeting-note.ts';
+export {
+  meetingWrite,
+  mergeMeetingNote,
+  type MeetingWrite,
+  type MeetingWriteAt,
+} from './merge-meeting-note.ts';
 export {
   hasInlineTranscript,
   linkedTranscriptOf,
@@ -20,6 +25,7 @@ export {
   transcriptNote,
   transcriptPathOf,
   withTranscriptLink,
+  type RefusedSplit,
   type SplitTranscript,
   type TranscriptNote,
 } from './meeting-transcript.ts';

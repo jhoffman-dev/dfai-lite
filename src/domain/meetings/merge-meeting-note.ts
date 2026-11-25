@@ -8,7 +8,6 @@ import {
 } from './meeting-note.ts';
 import {
   hasInlineTranscript,
-  linkedTranscriptOf,
   transcriptBody,
   transcriptNameOf,
   transcriptToWrite,
@@ -90,21 +89,33 @@ export function mergeMeetingNote(
 /** What a writer puts in the vault for one meeting: the meeting note's text, and a transcript note to create first. */
 export interface MeetingWrite {
   readonly text: string;
-  /** Null unless this write adds the note's `- Transcript:` line. Created, never written over. */
+  /**
+   * The transcript note the meeting note links, to create first: null when
+   * the input has no turns, the note does not link this meeting's transcript,
+   * or the writer said it is there. Created, never written over.
+   */
   readonly transcript: TranscriptNote | null;
 }
 
+/** Where the meeting note is, and whether its transcript note is there, when the writer knows. */
+export interface MeetingWriteAt {
+  /** The meeting note's path; the contract path when left out. */
+  readonly path?: string;
+  /** True when the transcript note is known to be there. Unknown is taken as not: creating is safe. */
+  readonly transcriptExists?: boolean;
+}
+
 /**
- * {@link mergeMeetingNote}, with the transcript note to create when the merge
- * is what links it. Writers create the transcript note first, then write the
- * meeting note, so its link never points at nothing.
+ * {@link mergeMeetingNote}, with the transcript note to create whenever the
+ * note links it and it is not known to be there: a new link, or one whose
+ * transcript an earlier write lost. Writers create the transcript note first,
+ * then write the meeting note, so its link never points at nothing.
  */
 export function meetingWrite(
   existingText: string,
   input: MeetingInput,
-  path: string = meetingPath(input),
+  { path = meetingPath(input), transcriptExists = false }: MeetingWriteAt = {},
 ): MeetingWrite {
   const text = mergeMeetingNote(existingText, input, path);
-  const linksAlready = linkedTranscriptOf(existingText) !== null;
-  return { text, transcript: linksAlready ? null : transcriptToWrite(text, input, path) };
+  return { text, transcript: transcriptExists ? null : transcriptToWrite(text, input, path) };
 }

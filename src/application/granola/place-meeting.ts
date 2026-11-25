@@ -4,6 +4,7 @@ import {
   meetingPath,
   meetingSourceOf,
   meetingWrite,
+  transcriptPathOf,
   type ImportEntry,
   type ImportLedger,
   type MeetingInput,
@@ -79,21 +80,37 @@ function sameSiteOtherMeeting(text: string | null, source: string | undefined): 
   return site !== null && siteOf(theirs) === site;
 }
 
+/** The meeting's write, told whether the transcript note is in the vault. */
+const writeFor = (
+  deps: VaultDeps,
+  existing: string,
+  at: { path: VaultPath; input: MeetingInput },
+) =>
+  meetingWrite(existing, at.input, {
+    path: at.path,
+    transcriptExists: deps.session.file(transcriptPathOf(at.path)) !== null,
+  });
+
 /**
- * Creates the transcript note a meeting note is about to link, before the
- * link is written, so a link never points at nothing because a write failed
- * between the two. A transcript note already there is this meeting's (the
- * name says so), from an earlier import that stopped before its link: it is
- * kept, never written over.
+ * Creates the transcript note a meeting note links (or is about to), before
+ * the link is written, so a link never points at nothing because a write
+ * failed between the two; and a link an earlier write left without its note
+ * gets it now. False when there was nothing to create. A transcript note
+ * already there is this meeting's (the name says so): kept, never written over.
  */
-async function createTranscript(deps: VaultDeps, transcript: TranscriptNote | null): Promise<void> {
-  if (transcript === null || deps.session.file(transcript.path) !== null) return;
+async function createTranscript(
+  deps: VaultDeps,
+  transcript: TranscriptNote | null,
+): Promise<boolean> {
+  if (transcript === null || deps.session.file(transcript.path) !== null) return false;
   try {
     await writeFile(deps, transcript.path, transcript.text);
+    return true;
   } catch (error) {
     if (!(error instanceof FileExistsError)) throw error;
     // Reached the disk meanwhile (the other Mac's import, just synced in): same meeting, same transcript.
     await refreshPaths(deps, [transcript.path]);
+    return false;
   }
 }
 
@@ -105,9 +122,9 @@ async function mergeInto(
   retried = false,
 ): Promise<Placed> {
   const existing = deps.session.file(path)?.text ?? '';
-  const { text: merged, transcript } = meetingWrite(existing, input, path);
-  if (merged === existing) return { path, outcome: 'unchanged' };
-  await createTranscript(deps, transcript);
+  const { text: merged, transcript } = writeFor(deps, existing, { path, input });
+  const created = await createTranscript(deps, transcript);
+  if (merged === existing) return { path, outcome: created ? 'updated' : 'unchanged' };
   try {
     await writeFile(deps, path, merged);
   } catch (error) {
@@ -123,7 +140,7 @@ async function mergeInto(
  * (the other Mac's, just synced in) is the same meeting, and is merged into.
  */
 async function create(deps: VaultDeps, path: VaultPath, input: MeetingInput): Promise<Placed> {
-  const { text, transcript } = meetingWrite('', input, path);
+  const { text, transcript } = writeFor(deps, '', { path, input });
   await createTranscript(deps, transcript);
   try {
     await writeFile(deps, path, text);

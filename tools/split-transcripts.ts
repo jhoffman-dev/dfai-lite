@@ -9,13 +9,15 @@ import { stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { noteTitle } from '../src/domain/vault/index.ts';
 import {
   hasInlineTranscript,
   isMeetingNotePath,
   splitInlineTranscript,
+  transcriptPathOf,
   type SplitTranscript,
 } from '../src/domain/meetings/index.ts';
+import { isConflictCopyPath } from '../src/domain/sync/index.ts';
+import { noteTitle } from '../src/domain/vault/index.ts';
 import { changeFile, readMarkdown, readVaultFile } from './vault-files.ts';
 
 /** What became of one meeting note with a transcript inline. */
@@ -41,18 +43,6 @@ export interface SplitRun {
   readonly outcomes: readonly SplitOutcome[];
 }
 
-/**
- * Why a split cannot go ahead safely, or null: the moved text must be in the
- * original note and, whole, in the transcript note, and no inline transcript
- * may be left behind. A byte that would be lost stops the note.
- */
-function unsafe(original: string, split: SplitTranscript): string | null {
-  if (!original.includes(split.moved)) return 'the moved text is not the note’s own';
-  if (!split.transcript.text.includes(split.moved)) return 'the transcript note would not hold it';
-  if (hasInlineTranscript(split.meeting)) return 'a second ## Transcript section would stay';
-  return null;
-}
-
 /** Why the transcript note's path is taken by a different note, or null when it is free or already this one. */
 async function pathTaken(vault: string, split: SplitTranscript): Promise<string | null> {
   const there = await readVaultFile(vault, split.transcript.path);
@@ -69,7 +59,7 @@ async function applySplit(vault: string, path: string, split: SplitTranscript): 
   }
   await changeFile(vault, path, (now) => {
     const again = now === null ? null : splitInlineTranscript(path, now);
-    if (again === null || again.transcript.text !== split.transcript.text) {
+    if (again?.kind !== 'split' || again.transcript.text !== split.transcript.text) {
       throw new Error('it changed while this ran');
     }
     return again.meeting;
@@ -92,37 +82,64 @@ function blockLinksInto(meeting: Note, moved: string, notes: readonly Note[]): s
     .map(({ path }) => path);
 }
 
+/** The run so far: each transcript path a meeting note has claimed, by folded path. */
+type Claims = Map<string, string>;
+
+/** Why a meeting note with a transcript inline is left alone before any split is tried, or null. */
+function passedOver(note: Note, claims: Claims): string | null {
+  if (isConflictCopyPath(note.path)) {
+    return 'a conflict copy: merge it into its meeting note, then run this again';
+  }
+  const holder = claims.get(transcriptPathOf(note.path).toLowerCase());
+  return holder === undefined
+    ? null
+    : `another meeting note, ${holder}, has the same name, and its transcript goes to ${transcriptPathOf(note.path)}`;
+}
+
 async function splitOne(
   vault: string,
-  { note, notes }: { note: Note; notes: readonly Note[] },
+  { note, notes, claims }: { note: Note; notes: readonly Note[]; claims: Claims },
   write: boolean,
 ): Promise<SplitOutcome | null> {
+  if (!hasInlineTranscript(note.text)) return null;
+  const transcript = transcriptPathOf(note.path);
+  const outcome = (lines: number, skipped: string | null, blockLinks: readonly string[] = []) => ({
+    ...{ meeting: note.path, transcript, lines },
+    ...{ skipped, blockLinks },
+  });
+  const before = passedOver(note, claims);
+  if (before !== null) return outcome(0, before);
   const split = splitInlineTranscript(note.path, note.text);
   if (split === null) return null;
-  const base = {
-    meeting: note.path,
-    transcript: split.transcript.path,
-    lines: split.moved.split('\n').length,
-    blockLinks: blockLinksInto(note, split.moved, notes),
-  };
-  const problem = unsafe(note.text, split) ?? (await pathTaken(vault, split));
-  if (problem !== null || !write) return { ...base, skipped: problem };
+  if (split.kind === 'refused') return outcome(0, split.reason);
+  claims.set(transcript.toLowerCase(), note.path);
+  const lines = split.moved.split('\n').length;
+  const problem = await pathTaken(vault, split);
+  if (problem !== null) return outcome(lines, problem);
+  const blockLinks = blockLinksInto(note, split.moved, notes);
+  if (!write) return outcome(lines, null, blockLinks);
   try {
     await applySplit(vault, note.path, split);
   } catch (error) {
     // One note's failure is reported and the run goes on; nothing of it was lost.
-    return { ...base, skipped: error instanceof Error ? error.message : String(error) };
+    return outcome(lines, error instanceof Error ? error.message : String(error));
   }
-  return { ...base, skipped: null };
+  return outcome(lines, null, blockLinks);
 }
 
-/** Finds every meeting note under `Meetings/` with an inline transcript and splits it (`write`) or says it would. */
+/**
+ * Finds every meeting note under `Meetings/` with an inline transcript and
+ * splits it (`write`) or says it would. Notes are taken in path order, so
+ * of two with one name the first is split and the second reported, on a
+ * dry run too.
+ */
 export async function splitTranscripts(vault: string, write: boolean): Promise<SplitRun> {
   const notes = await readMarkdown(vault);
   const meetings = notes.filter(({ path }) => isMeetingNotePath(path));
+  const claims: Claims = new Map();
   const outcomes: SplitOutcome[] = [];
   for (const note of meetings) {
-    const outcome = await splitOne(vault, { note, notes }, write);
+    const outcome = await splitOne(vault, { note, notes, claims }, write);
     if (outcome !== null) outcomes.push(outcome);
   }
   return { write, meetings: meetings.length, outcomes };
@@ -136,6 +153,8 @@ export function splitReport(run: SplitRun): string {
   const verb = run.write ? 'Moved' : 'Would move';
   return [
     `# Transcripts split out of meeting notes${run.write ? '' : ' (dry run: nothing changed)'}`,
+    '',
+    'Quit DFAI Lite (or at least edit no meeting note) while this runs with `--write`; reopen it after, and it syncs the changes.',
     '',
     `${run.meetings} meeting notes read; ${run.outcomes.length} hold a transcript inline.`,
     `${verb} ${done.length}; left ${left.length} as they are.`,

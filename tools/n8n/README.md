@@ -53,36 +53,56 @@ credential → GitHub API**, with the token as the Access Token.
    file does not exist yet, and the 404 is expected.
 4. **Code node "Merge"** (Run Once for All Items): paste the bundle again, then
    ```js
+   const base64 = (text) => Buffer.from(text, 'utf8').toString('base64');
    return $input.all().flatMap((item, index) => {
      const note = $('Meeting note').itemMatching(index).json;
      const found = typeof item.json.content === 'string';
      const existing = found ? Buffer.from(item.json.content, 'base64').toString('utf8') : '';
-     const { text, transcript } = dfaiMeetings.meetingWrite(existing, note.input, note.path);
-     if (found && text === existing) return []; // nothing new: no commit
-     const put = (path, body, sha) => ({
-       json: {
-         path,
-         message: note.message,
-         content: Buffer.from(body, 'utf8').toString('base64'),
-         sha,
-       },
+     const { text, transcript } = dfaiMeetings.meetingWrite(existing, note.input, {
+       path: note.path,
      });
-     // The transcript note first, created only (no sha), then the meeting note that links it.
-     const first = transcript === null ? [] : [put(transcript.path, transcript.text, undefined)];
-     return [...first, put(note.path, text, item.json.sha)];
+     if (found && text === existing) return []; // nothing new: no commit
+     return [
+       {
+         json: {
+           message: note.message,
+           path: note.path,
+           content: base64(text),
+           sha: item.json.sha,
+           transcriptPath: transcript === null ? null : transcript.path,
+           transcriptContent: transcript === null ? null : base64(transcript.text),
+         },
+       },
+     ];
    });
    ```
-5. **Create or update the file**: an **HTTP Request** node, `PUT
-https://api.github.com/repos/<owner>/<vault repo>/contents/{{ $json.path.split('/').map(encodeURIComponent).join('/') }}`,
+5. **IF node "Has transcript"**: `{{ $json.transcriptPath !== null }}`. True
+   goes to step 6; false goes straight to step 8.
+6. **HTTP Request node "Create transcript"**: `PUT
+https://api.github.com/repos/<owner>/<vault repo>/contents/{{ $json.transcriptPath.split('/').map(encodeURIComponent).join('/') }}`,
    Authentication **Predefined Credential Type → GitHub API**, JSON body
-   `{{ JSON.stringify({ message: $json.message, content: $json.content, sha: $json.sha }) }}`.
-   The commit message is `Meeting: <date> <title>`. With no `sha` GitHub
-   only creates: if the Get failed for another reason and the file does
-   exist, the PUT is refused rather than overwriting the note. (The GitHub
-   node's File → Create and File → Edit do the same in two branches.) Under
-   Settings, **On Error → Continue**: a transcript note already there (an
-   earlier run stopped after writing it) is refused, never overwritten, and
-   the meeting note's PUT after it still runs.
+   `{{ JSON.stringify({ message: $json.message, content: $json.transcriptContent }) }}`.
+   No `sha`, so GitHub only creates: a transcript note already there is
+   refused with **422**, never overwritten. Under Settings, **On Error →
+   Continue (using error output)**. Its success output goes to step 8, its
+   error output to step 7.
+7. **IF node "Already there"**: true only when the error is GitHub's 422
+   (the transcript note exists, so the meeting note may link it): compare
+   the HTTP status in the error item to `422` (open one failed run's output
+   to see the field n8n puts it in). True goes to step 8; false goes to a
+   **Stop and Error** node: a 502, a rate limit or a dropped connection
+   stops here, so the meeting note is never written linking a transcript
+   that is not there, and the next run tries both again.
+8. **HTTP Request node "Write meeting"**: `PUT
+https://api.github.com/repos/<owner>/<vault repo>/contents/{{ $('Merge').item.json.path.split('/').map(encodeURIComponent).join('/') }}`,
+   same authentication, JSON body
+   `{{ JSON.stringify({ message: $('Merge').item.json.message, content: $('Merge').item.json.content, sha: $('Merge').item.json.sha }) }}`
+   (read from "Merge": the item arriving from step 7 is an error item). Leave
+   On Error at its default, stop. The commit message is `Meeting: <date>
+
+<title>`. With no `sha` GitHub only creates: if the Get failed for another
+   reason and the file does exist, the PUT is refused rather than overwriting
+   the note.
 
 After the push, the vault's own `index` workflow (`.github/workflows/index.yml`)
 rewrites `_index/`, so the meeting shows in `_index/meetings/<YYYY>-<MM>.md`

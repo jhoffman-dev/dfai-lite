@@ -56,7 +56,8 @@ export function vaultReadme(existing: string | null, notes: readonly IndexFile[]
     };
   }
   const after = existing.slice(end + MAP_END.length);
-  const tail = after.startsWith('\n') ? after.slice(1) : after;
+  // The block ends in its own newline; the end marker's line ending (LF or CRLF) goes with the old block.
+  const tail = after.replace(/^\r?\n/, '');
   return { kind: 'write', text: `${existing.slice(0, start)}${block}${tail}` };
 }
 

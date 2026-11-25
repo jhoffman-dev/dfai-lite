@@ -16,6 +16,7 @@ import {
   fromGeminiNotes,
   meetingPath,
   meetingWrite,
+  transcriptPathOf,
   parseMeetingInput,
   queueMeetings,
   wallClockIn,
@@ -41,7 +42,9 @@ export function meetingInputOf(json: unknown, gemini: boolean): MeetingInput {
  * link: never over a transcript note already there, which is this meeting's.
  */
 async function fileTranscript(vault: string, path: string, input: MeetingInput): Promise<void> {
-  const { transcript } = meetingWrite((await readVaultFile(vault, path)) ?? '', input, path);
+  const transcriptExists = (await readVaultFile(vault, transcriptPathOf(path))) !== null;
+  const existing = (await readVaultFile(vault, path)) ?? '';
+  const { transcript } = meetingWrite(existing, input, { path, transcriptExists });
   if (transcript === null) return;
   await changeFile(vault, transcript.path, (existing) => existing ?? transcript.text);
 }
@@ -61,7 +64,7 @@ export async function fileMeeting(
   await fileTranscript(vault, path, input);
   let note = '';
   const written = await changeFile(vault, path, (existing) => {
-    note = meetingWrite(existing ?? '', input, path).text;
+    note = meetingWrite(existing ?? '', input, { path }).text;
     return note;
   });
   const queued =

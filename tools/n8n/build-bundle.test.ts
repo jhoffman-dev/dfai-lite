@@ -35,10 +35,10 @@ describe('the n8n bundle', () => {
     const summaryOnly = bundle.meetingNote({ ...input, transcript: [] }).text;
     expect(bundle.mergeMeetingNote(summaryOnly, input)).toBe(bundle.meetingNote(input).text);
     const { path } = bundle.meetingNote(input);
-    expect(bundle.meetingWrite(summaryOnly, input, path)).toEqual(
-      meetings.meetingWrite(summaryOnly, meetings.fromGeminiNotes(json), path),
+    expect(bundle.meetingWrite(summaryOnly, input, { path })).toEqual(
+      meetings.meetingWrite(summaryOnly, meetings.fromGeminiNotes(json), { path }),
     );
-    expect(bundle.meetingWrite(summaryOnly, input, path).transcript?.path).toBe(
+    expect(bundle.meetingWrite(summaryOnly, input, { path }).transcript?.path).toBe(
       'Transcripts/2026/11/2026-11-20 Larkspur rollout sync (transcript).md',
     );
   });
