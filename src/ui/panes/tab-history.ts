@@ -1,4 +1,5 @@
 import type { VaultPath } from '../../domain/vault/index.ts';
+import type { MapRoot } from '../../domain/mind-map/index.ts';
 import type { TabView } from './layout.ts';
 
 /**
@@ -24,7 +25,15 @@ export function sameView(left: TabView, right: TabView): boolean {
   if (left.kind !== right.kind) return false;
   if (left.kind === 'note' && right.kind === 'note') return left.path === right.path;
   if (left.kind === 'tags' && right.kind === 'tags') return left.tag === right.tag;
+  if (left.kind === 'map' && right.kind === 'map') return sameMapRoot(left.root, right.root);
   return true;
+}
+
+function sameMapRoot(left: MapRoot | null, right: MapRoot | null): boolean {
+  if (left === null || right === null) return left === right;
+  return left.kind === 'note' && right.kind === 'note'
+    ? left.path === right.path
+    : left.kind === 'tag' && right.kind === 'tag' && left.key === right.key;
 }
 
 /** A blank tab is nowhere to go back to: a new tab's history starts at its first open. */
@@ -66,10 +75,22 @@ export function destination(tab: TabHistory, direction: HistoryStep): TabView | 
 }
 
 /** A renamed or moved note: every place in the tab that showed it follows. */
+/** The note a place shows, or is a mind map of: what a rename or a delete reaches. */
+function noteOf(view: TabView): VaultPath | null {
+  if (view.kind === 'note') return view.path;
+  if (view.kind === 'map' && view.root?.kind === 'note') return view.root.path;
+  return null;
+}
+
 export function followRename<T extends TabHistory>(tab: T, from: VaultPath, to: VaultPath): T {
-  const moved = (view: TabView) => view.kind === 'note' && view.path === from;
+  const moved = (view: TabView) => noteOf(view) === from;
   if (![tab.view, ...tab.back, ...tab.forward].some(moved)) return tab;
-  const follow = (view: TabView): TabView => (moved(view) ? { kind: 'note', path: to } : view);
+  const follow = (view: TabView): TabView => {
+    if (!moved(view)) return view;
+    return view.kind === 'map'
+      ? { kind: 'map', root: { kind: 'note', path: to } }
+      : { kind: 'note', path: to };
+  };
   return {
     ...tab,
     view: follow(tab.view),
@@ -88,7 +109,10 @@ export function forgetMissing<T extends TabHistory>(
   tab: T,
   exists: (path: VaultPath) => boolean,
 ): T | null {
-  const kept = (view: TabView) => view.kind !== 'note' || exists(view.path);
+  const kept = (view: TabView) => {
+    const path = noteOf(view);
+    return path === null || exists(path);
+  };
   let back = withoutRepeats(tab.back.filter(kept));
   let forward = withoutRepeats(tab.forward.filter(kept));
   let view = tab.view;

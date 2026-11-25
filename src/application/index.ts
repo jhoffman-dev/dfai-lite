@@ -55,3 +55,19 @@ export {
   offeredCallouts,
   resolveCallout,
 } from '../domain/callouts/index.ts';
+export {
+  buildMindMap,
+  branchCurve,
+  DEFAULT_MAP_OPTIONS,
+  EMPTY_MAP_VIEW,
+  entitiesTo,
+  entityKey,
+  focusTrail,
+  layoutMindMap,
+  rootOf,
+  sameRoot,
+  showMore,
+  stepOnMap,
+  toggleNode,
+  trailAt,
+} from '../domain/mind-map/index.ts';

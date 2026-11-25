@@ -58,6 +58,7 @@ export function menuItemsFor(target: MenuTarget, context: MenuContext): MenuItem
   return [
     { label: 'Open in new tab', run: () => actions.openNote(path, 'new-tab') },
     { label: 'Open to the side', run: () => actions.openNote(path, 'side') },
+    { label: 'Open mind map', run: () => actions.openMap({ kind: 'note', path }) },
     { label: 'Rename', run: () => actions.startRename(path) },
     { label: 'Move to…', run: () => context.askMove({ kind: 'note', path }) },
     { label: 'Icon & color…', run: () => context.askAppearance(target) },

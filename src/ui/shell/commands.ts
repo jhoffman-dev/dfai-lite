@@ -11,6 +11,7 @@ import {
 import { isNarrow } from '../panes/narrow.ts';
 import type { AppContextValue } from '../services.ts';
 import type { Command } from './shortcuts.ts';
+import { mapRootOf } from './map-root-of.ts';
 
 /** Runs a command; `arg` is the position for `tab.jump`. */
 export type RunCommand = (command: Command, arg?: number) => void;
@@ -38,6 +39,7 @@ export function createCommands({
       const path = activeNote();
       if (path !== null) ui.setState({ paletteOpen: false, moving: { kind: 'note', path } });
     },
+    'map.open': () => actions.openMap(mapRootOf(currentTab(layout.getState()).view)),
     'palette.open': () => ui.setState({ paletteOpen: true }),
     'history.back': () => workspace.step('back'),
     'history.forward': () => workspace.step('forward'),

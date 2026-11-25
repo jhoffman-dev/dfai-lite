@@ -58,6 +58,27 @@ const CHROME = {
     circle(12, 18, 2.6),
     path('M8.3 7.9l8-1.2M7.2 9.1l3.7 6.7M16.9 8.2l-3.7 7.4', 'round'),
   ],
+  // Lite's own: a root on the left, three branches curving out to the right.
+  'mind-map': [
+    circle(5.5, 12, 2.4),
+    circle(18.5, 5.5, 2),
+    circle(18.5, 12, 2),
+    circle(18.5, 18.5, 2),
+    path('M7.9 12h8.6M7.6 10.8C11 6 12.5 5.5 16.5 5.5M7.6 13.2C11 18 12.5 18.5 16.5 18.5', 'round'),
+  ],
+  // Lite's own: a crosshair, what Focus centers the map on.
+  target: [
+    circle(12, 12, 6.5),
+    circle(12, 12, 1.6, 'fill'),
+    path('M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3', 'round'),
+  ],
+  // Lite's own: four corners, the whole map fitted to the view.
+  fit: [
+    path(
+      'M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15',
+      'both',
+    ),
+  ],
   keyboard: [
     rect(3, 6, 18, 12, 2.5),
     path('M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M8 14h8', 'round'),
